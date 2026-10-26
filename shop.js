@@ -6,6 +6,24 @@
 const SHOP_BOOTS = [["fin","Sniper boots"],["pas","Maestro boots"],["pac","Lightning boots"],["def","Rock boots"],["sta","Engine boots"]];
 const SHOP_TIER = [null, {n:"Bronze", cost:250}, {n:"Silver", cost:450}, {n:"Gold", cost:800}];
 const SHOP_COACH_MAX = 3;
+/* Coin packs for real money. Payments aren't connected yet: shopCheckout() is where a payment provider (for example
+   Stripe Checkout) goes, resolving true once the payment succeeds. Until SHOP_PAYMENTS is turned on it hands the coins
+   over straight away, and the shop says so, so nobody thinks they've been charged. */
+const SHOP_PAYMENTS = false;
+const SHOP_PACKS = [
+  {id:"handful", t:"Handful", coins:500, price:"£0.99"},
+  {id:"pouch", t:"Pouch", coins:1200, price:"£1.99", bonus:"+20%"},
+  {id:"bag", t:"Bag", coins:2800, price:"£3.99", bonus:"+40%"},
+  {id:"chest", t:"Chest", coins:6500, price:"£7.99", bonus:"+60%", tag:"Popular"},
+  {id:"vault", t:"Vault", coins:15000, price:"£14.99", bonus:"+80%", tag:"Best value"}
+];
+async function shopCheckout(pack){ return !SHOP_PAYMENTS; }
+async function shopBuyPack(id){
+  const P = SHOP_PACKS.find(p=>p.id===id); if (!P || !(await shopCheckout(P))) return;
+  Account.addCoins(P.coins);
+  shopMsg = `${P.t}: +${P.coins.toLocaleString()} coins added.${SHOP_PAYMENTS ? "" : " Free for now, while payments are being set up."}`;
+  shopRepaint();
+}
 const shopBootName = k => k==="def" && S && S.player && S.player.pos==="GK" ? "Safe-hands gloves" : SHOP_BOOTS.find(b=>b[0]===k)[1];
 const shopAttrName = k => S && S.attr ? mcAttrName(k) : MC_ATTR.find(x=>x[0]===k)[1];
 let shopMsg = "";
@@ -41,7 +59,7 @@ function shopHTML(){
   }).join("");
   const boosts = shopBoosts();
   return `<div class="dlg-in">
-    <div class="dlg-head"><i class="coin big" aria-hidden="true"></i><div style="min-width:0"><h2 id="shopDlgTitle">Shop</h2><p class="hint">You have <b>${have.toLocaleString()}</b> gold coins</p></div>
+    <div class="dlg-head"><i class="coin big" aria-hidden="true"></i><div style="min-width:0"><h2 id="shopDlgTitle">Shop</h2><p class="hint">You have <b>${have.toLocaleString()}</b> gold coins · <button type="button" class="linkbtn" data-shop="get">Get more</button></p></div>
       <button type="button" class="dlg-x" data-shop="close" aria-label="Close">×</button></div>
     ${shopMsg ? `<p class="ref" role="status" style="margin:0">${esc(shopMsg)}</p>` : ""}
     <section><h3>Boots</h3><p class="hint">Boots are yours to keep, in every career. Wear one pair at a time: its boost counts in every match, from whether you're picked to how forgiving the mini-games are.</p>
@@ -51,7 +69,15 @@ function shopHTML(){
         <div class="row"><button type="button" class="btn small ${!b.off && have>=b.cost ? "primary" : ""}" data-shop="boost" data-k="${b.id}" ${!b.off && have>=b.cost ? "" : "disabled"}>${b.off || `Buy · <i class="coin" aria-hidden="true"></i> ${b.cost}`}</button></div></div>`).join("")}</div>`
       : `<p class="hint">Training boosts work during a season in the match centre. Start or carry on your career to use them.</p>`}
     </section>
-    <p class="hint" style="margin:0">Earn coins by playing key moments: win 50, draw 10, each goal 20, each assist 15, own goal −10.</p>
+    <section id="shopCoins"><h3>Buy coins</h3>
+      <p class="hint">Or earn them by playing key moments: win 50, draw 10, each goal 20, each assist 15, own goal −10.</p>
+      ${SHOP_PAYMENTS ? "" : `<p class="ref" style="margin:0 0 10px"><strong>Payments aren't set up yet,</strong> so coin packs are free while the game's being tested. Tap one and the coins are yours.</p>`}
+      <div class="shop-grid packs">${SHOP_PACKS.map((P,i)=>`<div class="shop-card pack ${P.tag?"hot":""}">
+        ${P.tag ? `<span class="pack-tag">${P.tag}</span>` : ""}
+        <span class="stack" aria-hidden="true">${'<i class="coin"></i>'.repeat(i+1)}</span>
+        <b class="pack-n">${P.coins.toLocaleString()}</b><span class="pack-t">${P.t}${P.bonus ? ` · <em>${P.bonus} extra</em>` : ""}</span>
+        <button type="button" class="btn small primary" data-shop="pack" data-k="${P.id}" aria-label="Buy ${P.coins} coins for ${P.price}">${P.price}${SHOP_PAYMENTS ? "" : " · Free now"}</button></div>`).join("")}</div>
+    </section>
   </div>`;
 }
 function shopOpen(){
@@ -84,6 +110,8 @@ document.addEventListener("click", e=>{
   if (a==="boot") shopBuyBoot(k);
   else if (a==="wear"){ const L = Account.locker(); L.on = k || null; Account.setLocker(L); shopMsg = k ? `Now wearing ${shopBootName(k)}.` : "Boots off."; }
   else if (a==="boost") shopBuyBoost(k);
+  else if (a==="pack") return shopBuyPack(k);
+  else if (a==="get") return document.getElementById("shopCoins")?.scrollIntoView({behavior:"smooth", block:"start"});
   shopRepaint();
 });
 document.getElementById("shopDlg")?.addEventListener("click", e=>{ if (e.target.id==="shopDlg") shopClose(); });

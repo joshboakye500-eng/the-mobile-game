@@ -697,3 +697,13 @@ button.coins:hover{background:rgba(0,0,0,.5)}
 .pips i{width:10px;height:10px;border-radius:50%;background:var(--line)}
 .pips i.got{background:var(--gold);box-shadow:0 0 6px var(--gold)}
 .attr .v small.boot{color:var(--gold)}
+.packs{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.pack{position:relative;justify-items:center;text-align:center;padding-top:16px}
+.pack.hot{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pack-tag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:var(--f-label);font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--accent);color:var(--accent-ink)}
+.stack{display:flex;justify-content:center;font-size:22px;height:24px}
+.stack .coin+.coin{margin-left:-11px}
+.pack-n{font-family:var(--f-display);font-weight:900;font-size:28px;line-height:1;color:var(--gold)}
+.pack-t{font-size:13px;color:var(--muted)}
+.pack-t em{font-style:normal;color:var(--up);font-weight:600}
+.pack .btn{width:100%}
