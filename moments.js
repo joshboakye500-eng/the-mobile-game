@@ -21,7 +21,6 @@ const LV_DSHARE = {GK:.55, CB:.3, LB:.2, RB:.2, CDM:.15, CM:.08};
 const LV_COLS = {l:75, c:150, r:225}, LV_ROWS = {t:50, b:98};
 let lvEl = null, lvRaf = 0, lvKey = null;
 
-function lvWanted(f){ const m = S.mcLiveMode || "big"; return m==="all" || (m==="big" && !!f.big); }
 // scoreboard names: Tottenham Hotspur → TOT, Manchester City → MCI, Real Madrid → MAD
 function lvAbbr(n){
   const w = String(n).replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter(x=>x && !/^(FC|AFC|AC|SC|SV|CF|CD|RC|RB|VfB|VfL|TSG|1|Real|Club|Borussia|Bayer|Inter)$/i.test(x));
@@ -70,6 +69,60 @@ function lvPlan(f, X){
   list.forEach(m=>{ m.min = from + Math.floor(Math.random()*(to-from+1)); });
   return list.sort((x,y)=>x.min-y.min);
 }
+/* ---------- first-time instructions ----------
+   Before your first match, and the first time each mini-game comes up, a card explains it. Each account
+   remembers what it has seen; "How to play" on a match's intro shows them again. */
+const LV_TXT = (x, y, s, a="middle") => `<text x="${x}" y="${y}" text-anchor="${a}" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="13" letter-spacing=".5" fill="#FFE9A8">${s}</text>`;
+const LV_HELP = {
+  intro:{t:"Key moments", steps:["In every match you're picked for, you play the moments that involve you: 2 to 4 if you start, 1 if you come off the bench.",
+    "The rest of the match is simulated around them, so the final score includes what you did.",
+    "Your attributes, form and sharpness make every moment easier. Tap <b>Sim the match</b> on a match's intro to skip it."]},
+  shot:{t:"How to shoot", steps:["<b>Tap the goal</b> where you want to shoot. The corners are hardest to save.",
+    "A marker slides along the power bar. Tap <b>Shoot!</b> (or the bar) while it's <b>in the green</b>.",
+    "Too early and the shot is weak; too late and it flies over. Good keepers sometimes guess right."],
+    svg:`<svg viewBox="0 0 240 160"><rect x="30" y="10" width="180" height="72" fill="rgba(255,255,255,.05)" stroke="#F4F7F2" stroke-width="4"/><circle cx="182" cy="30" r="10" fill="none" stroke="#F5C542" stroke-width="3"/><circle cx="182" cy="30" r="3" fill="#F5C542"/>${LV_TXT(120,52,"1 · TAP TO AIM")}
+      <rect x="30" y="112" width="180" height="16" rx="8" fill="rgba(255,255,255,.14)"/><rect x="138" y="112" width="34" height="16" fill="rgba(74,222,128,.8)"/><rect x="152" y="106" width="5" height="28" rx="2" fill="#fff"/>${LV_TXT(120,152,"2 · STOP IT IN THE GREEN")}</svg>`},
+  pass:{t:"How to pass", steps:["Two of your teammates are marked: a <b>red defender</b> is right next to them.",
+    "<b>Tap the free teammate</b> before the timer runs out.", "The defenders keep moving, so look again just before you tap."],
+    svg:`<svg viewBox="0 0 240 160"><rect width="240" height="160" rx="12" fill="#1D6537"/><circle cx="45" cy="50" r="13" fill="#F4F7F2"/><circle cx="58" cy="62" r="7" fill="#EF4444"/><circle cx="195" cy="50" r="13" fill="#F4F7F2"/><circle cx="182" cy="62" r="7" fill="#EF4444"/>
+      <circle cx="120" cy="34" r="13" fill="#F4F7F2" stroke="#F5C542" stroke-width="4"/><circle cx="120" cy="128" r="12" fill="#F5C542"/><path d="M120 114V52" stroke="#FFE9A8" stroke-width="2.5" stroke-dasharray="5 5"/>${LV_TXT(120,152,"TAP THE ONE WITH NO DEFENDER")}</svg>`},
+  tackle:{t:"How to tackle", steps:["The attacker runs along the line towards the <b>green zone</b>.",
+    "Tap <b>Tackle!</b> while he's inside the green.", "Too early and you dive in; too late and he's past you."],
+    svg:`<svg viewBox="0 0 240 120"><rect width="240" height="120" rx="12" fill="#1D6537"/><path d="M14 60H226" stroke="rgba(255,255,255,.35)" stroke-width="4"/><rect x="146" y="28" width="40" height="64" rx="8" fill="rgba(74,222,128,.35)" stroke="#4ADE80" stroke-width="2"/>
+      <circle cx="70" cy="60" r="13" fill="#EF4444" stroke="#fff" stroke-width="3"/><path d="M92 60h34m-8-7 8 7-8 7" stroke="#FFE9A8" stroke-width="3" fill="none"/>${LV_TXT(120,112,"TAP WHEN HE'S IN THE GREEN")}</svg>`},
+  block:{t:"How to block", steps:["The shot travels along the line towards goal.", "Tap <b>Block!</b> when the ball is <b>in the green</b>.", "Miss it and they'll probably score."],
+    svg:`<svg viewBox="0 0 240 120"><rect width="240" height="120" rx="12" fill="#1D6537"/><path d="M14 60H214" stroke="rgba(255,255,255,.35)" stroke-width="4"/><rect x="166" y="28" width="34" height="64" rx="8" fill="rgba(74,222,128,.35)" stroke="#4ADE80" stroke-width="2"/>
+      <rect x="216" y="24" width="12" height="72" fill="rgba(255,255,255,.2)" stroke="#F4F7F2" stroke-width="3"/><circle cx="80" cy="60" r="9" fill="#fff"/><path d="M98 60h40m-8-7 8 7-8 7" stroke="#FFE9A8" stroke-width="3" fill="none"/>${LV_TXT(115,112,"TAP WHEN THE BALL'S IN THE GREEN")}</svg>`},
+  coins:{t:"Gold coins", steps:["You earn gold coins in every match you play with key moments. Your total sits next to your name at the top.",
+    "A win is worth <b>50</b>, a draw <b>10</b> and a defeat nothing.", "Every goal you score adds <b>20</b> and every assist <b>15</b>, but an own goal costs <b>10</b>. Simmed matches don't earn coins."]},
+  save:{t:"How to save", steps:["The striker lines up his shot. Don't move too early: strikers punish keepers who guess.",
+    "Watch which way the ball goes, then <b>tap that side of the goal</b>: left, middle or right.", "Your shot-stopping decides how much time you get."],
+    svg:`<svg viewBox="0 0 240 150"><rect x="20" y="10" width="200" height="90" fill="rgba(255,255,255,.05)" stroke="#F4F7F2" stroke-width="4"/><path d="M87 12v86M153 12v86" stroke="rgba(255,255,255,.3)" stroke-dasharray="5 5"/>
+      <circle cx="120" cy="130" r="8" fill="#fff"/><path d="M112 124 62 70" stroke="#FFE9A8" stroke-width="3" stroke-dasharray="5 4"/><circle cx="54" cy="62" r="20" fill="rgba(245,197,66,.25)" stroke="#F5C542" stroke-width="3"/>${LV_TXT(160,140,"TAP WHERE IT'S GOING","start")}</svg>`}
+};
+// gold coins for a match you played: the result, plus your goals and assists, minus own goals
+const LV_COINS = {win:50, draw:10, loss:0, goal:20, assist:15, og:-10};
+function lvCoins(f){
+  const r = f.res, me = f.me, res = r.gf>r.ga ? "win" : r.gf===r.ga ? "draw" : "loss", og = me.og || 0;
+  const parts = [[{win:"Win", draw:"Draw", loss:"Defeat"}[res], LV_COINS[res]], ...(me.g ? [[`${me.g} goal${me.g>1?"s":""}`, me.g*LV_COINS.goal]] : []),
+    ...(me.a ? [[`${me.a} assist${me.a>1?"s":""}`, me.a*LV_COINS.assist]] : []), ...(og ? [[`${og} own goal${og>1?"s":""}`, og*LV_COINS.og]] : [])];
+  return {parts, total:parts.reduce((s,p)=>s + p[1], 0)};
+}
+const lvHelpKey = m => m.side==="att" ? (m.kind==="pass" ? "pass" : "shot") : m.kind;
+function lvSeen(){ try{ return JSON.parse(localStorage.getItem(Account.storageKey("tips"))) || {}; }catch(e){ return {}; } }
+function lvMarkSeen(k){ const s = lvSeen(); s[k] = 1; try{ localStorage.setItem(Account.storageKey("tips"), JSON.stringify(s)); }catch(e){} }
+async function lvHelp(keys, first){
+  for (const k of keys){
+    const H = LV_HELP[k];
+    await lvAsk(`<div class="lv-card lv-help"><div class="lv-eye">${first ? "First time? Here's how it works" : "How to play"}</div><h2 class="lv-t">${H.t}</h2>
+      ${H.svg ? `<div class="lv-demo" aria-hidden="true">${H.svg}</div>` : ""}<ol class="lv-steps">${H.steps.map(s=>`<li>${s}</li>`).join("")}</ol>
+      <button type="button" class="btn primary big" data-lv="ok" data-lv-focus>${first ? "Got it, let's play" : "Got it"}</button></div>`);
+    lvMarkSeen(k);
+  }
+}
+// every guide that matters for your position
+function lvHelpAll(){ const pos = S.player.pos; return ["intro", ...new Set([...(LV_ATT[pos]||[]).map(k=>k==="pass" ? "pass" : "shot"), ...(LV_DEF[pos]||[])])]; }
+
 async function lvPlayMatch(f, w){
   const X = mcXg(f), me = f.me, plan = lvPlan(f, X), pos = S.player.pos;
   const home = f.home || f.neutral ? S.mc.club : f.opp, away = f.home || f.neutral ? f.opp : S.mc.club;
@@ -78,16 +131,19 @@ async function lvPlayMatch(f, w){
   const rest = (n, us) => { for (let i=0;i<n;i++) ev.push({min:1+Math.floor(Math.random()*90), us}); };
   rest(mcPoisson(X.lf*(1 - Math.min(X.pG+X.pA, .6))), true);
   rest(mcPoisson(X.la*(1 - Math.min((LV_DSHARE[pos]||0)*X.t, .6))), false);
-  const st = {f, X, ev, g:0, a:0, bonus:0, left:plan.length, log:[]};
+  const st = {f, X, ev, g:0, a:0, og:0, bonus:0, left:plan.length, log:[]};
   lvOpen();
   try{
-    const go = await lvAsk(`<div class="lv-card">
-        <div class="lv-eye">★ ${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : ""} · ${mcDate(w, f)}</div>
+    if (!lvSeen().intro) await lvHelp(["intro"], true);
+    let go;
+    while ((go = await lvAsk(`<div class="lv-card">
+        <div class="lv-eye">${f.big ? "★ " : ""}${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : ""} · ${mcDate(w, f)}</div>
         <div class="lv-teams"><span>${esc(home)}</span><i>v</i><span>${esc(away)}</span></div>
         <p>${me.st==="start" ? "You're in the starting line-up." : `You start on the bench and come on around the ${ord(90-me.mins)} minute.`}
           ${plan.length} key moment${plan.length===1?"":"s"} will come your way.</p>
         <div class="lv-row"><button type="button" class="btn primary big" data-lv="play" data-lv-focus>Play key moments</button><button type="button" class="btn" data-lv="sim">Sim the match</button></div>
-      </div>`);
+        <button type="button" class="lv-skip" data-lv="help" style="justify-self:start">How to play</button>
+      </div>`))==="help") await lvHelp(lvHelpAll(), false);
     if (go==="play"){
       let auto = false;
       for (const m of plan){
@@ -95,7 +151,9 @@ async function lvPlayMatch(f, w){
         if (r==="skip"){ auto = true; lvAutoMoment(st, m); }
         st.left--;
       }
-      mcResolve(f, w, {gf:ev.filter(e=>e.us).length, ga:ev.filter(e=>!e.us).length, g:st.g, a:st.a, bonus:st.bonus});
+      mcResolve(f, w, {gf:ev.filter(e=>e.us).length, ga:ev.filter(e=>!e.us).length, g:st.g, a:st.a, og:st.og, bonus:st.bonus});
+      f.coins = lvCoins(f).total; Account.addCoins(f.coins); save();
+      if (!lvSeen().coins) await lvHelp(["coins"], true);
     } else mcResolve(f, w);
     await lvFullTime(st, home, away);
   } finally { lvClose(); }
@@ -105,12 +163,14 @@ function lvAutoMoment(st, m){
   if (m.side==="att"){
     if (m.kind==="pass"){ if (Math.random()<.6) lvAssist(st, m, lvConv(st)); else st.bonus -= .05; }
     else if (Math.random()<.36){ st.g++; st.ev.push({min:m.min, us:true}); } else st.bonus -= .05;
-  } else if (Math.random()<.55) st.bonus += .2; else if (Math.random()<(m.kind==="save" ? .9 : .55)){ st.ev.push({min:m.min, us:false}); st.bonus -= .25; }
+  } else if (Math.random()<.55) st.bonus += .2;
+  else if (Math.random()<(m.kind==="save" ? .9 : m.kind==="block" ? .7 : .55)){ st.ev.push({min:m.min, us:false}); st.bonus -= .25; if (m.kind==="block" && Math.random()<.3){ st.og++; st.bonus -= .15; } }
   st.log.push({min:m.min, txt:"Simmed"});
 }
 const lvConv = st => clamp(.58 + (st.X.base - st.f.oppStr)*.012, .35, .8);
 function lvAssist(st, m, conv){ if (Math.random()<conv){ st.a++; st.ev.push({min:m.min, us:true}); return true; } st.bonus += .1; return false; }
 async function lvMoment(st, m){
+  if (!lvSeen()[lvHelpKey(m)]) await lvHelp([lvHelpKey(m)], true);
   if (m.side==="att") return m.kind==="pass" ? lvPass(st, m) : lvShot(st, m);
   return m.kind==="save" ? lvSave(st, m) : lvTiming(st, m);
 }
@@ -135,6 +195,8 @@ async function lvFullTime(st, home, away){
       <div class="lv-eye">Full time${f.res.pens ? ` · ${f.res.pens==="won"?"won":"lost"} on penalties` : f.agg ? ` · ${f.agg[0]}–${f.agg[1]} on aggregate` : ""}</div>
       <div class="lv-ft"><span>${esc(home)}</span><b>${l}–${r}</b><span>${esc(away)}</span></div>
       <div class="lv-rate"><span class="label">Your rating</span><b class="${me.r>=7.5?"hi":me.r<6?"lo":""}">${me.r ?? "–"}</b><span>${bits.join(" · ") || (me.mins ? "No goal involvement" : "")}</span></div>
+      ${f.coins!=null ? (()=>{ const C = lvCoins(f); return `<div class="lv-coins"><i class="coin" aria-hidden="true"></i><b>${C.total>=0?"+":""}${C.total}</b><span>${C.parts.map(([l,n])=>`${esc(l)} ${n>=0?"+":""}${n}`).join(" · ")}</span></div>`; })()
+        : `<p class="lv-nocoins">Simmed matches don't earn gold coins. Play the key moments to earn them.</p>`}
       ${st.log.length ? `<ol class="lv-log">${st.log.map(x=>`<li class="${x.good===true?"good":x.good===false?"bad":""}"><span>${x.min}'</span>${esc(x.txt)}</li>`).join("")}</ol>` : ""}
       <button type="button" class="btn primary big" data-lv="ok" data-lv-focus>Continue</button>
     </div>`);
@@ -281,10 +343,10 @@ function lvTiming(st, m){
       if (done) return; done = true; cancelAnimationFrame(lvRaf); act.disabled = true;
       const ok = Math.abs(p-mid)<=zone/2, early = p<mid-zone/2;
       if (ok){ st.bonus += .3; res(lvOutcome(st, m, true, block ? "Blocked!" : "Tackle won!", block ? "Off your shin and away" : "Clean as a whistle")); return; }
-      const scored = Math.random() < (block ? .7 : .5);
-      if (scored){ st.ev.push({min:m.min, us:false}); st.bonus -= .3; } else st.bonus -= .1;
+      const scored = Math.random() < (block ? .7 : .5), og = scored && block && Math.random() < .3;   // a block that goes wrong can deflect in off you
+      if (scored){ st.ev.push({min:m.min, us:false}); st.bonus -= og ? .45 : .3; if (og) st.og++; } else st.bonus -= .1;
       const why = early ? (block ? "You went down too soon" : "You dived in") : (block ? "Too late" : "He skipped past you");
-      res(lvOutcome(st, m, false, scored ? "They score" : "Got away with it", scored ? why : `${why}, but the shot went wide`));
+      res(lvOutcome(st, m, false, og ? "Own goal" : scored ? "They score" : "Got away with it", og ? "It deflected in off you" : scored ? why : `${why}, but the shot went wide`));
     };
     act.addEventListener("pointerdown", e=>{ e.preventDefault(); go(); });
     act.addEventListener("click", go);

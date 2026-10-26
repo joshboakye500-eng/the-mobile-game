@@ -6,7 +6,7 @@
    calls Account.boot(start) once it has loaded, and this file calls back into the game (render, exportBackup…)
    only after that. */
 const Account = (() => {
-  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1";
+  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1", VERSION = "1.5";
   const OLD = {career:"efp-career-v1", hall:"efp-hall-v1"};   // where saves lived before accounts existed
   const $id = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -97,9 +97,15 @@ const Account = (() => {
   }
   function signOut(){ try{ localStorage.removeItem(SESSION); }catch(e){} location.reload(); }
   function wipe(acc){
-    for (const kind of Object.keys(OLD)){ try{ localStorage.removeItem(keyFor(acc, kind)); }catch(e){} }
+    for (const kind of [...Object.keys(OLD), "tips", "coins"]){ try{ localStorage.removeItem(keyFor(acc, kind)); }catch(e){} }
     put(LIST, accounts().filter(a=>a.id!==acc.id));
   }
+
+  /* ---------- gold coins ----------
+     Earned in matches you play (moments.js) and kept on the account, so they carry across careers. */
+  function coins(){ try{ return Math.max(0, Math.round(+localStorage.getItem(keyFor(me, "coins")) || 0)); }catch(e){ return 0; } }
+  function setCoins(n){ try{ localStorage.setItem(keyFor(me, "coins"), String(Math.max(0, Math.round(n)))); }catch(e){} paintLine(); }
+  const coinHTML = n => `<span class="coins" title="Gold coins"><i class="coin" aria-hidden="true"></i>${n.toLocaleString()}<span class="vh"> gold coins</span></span>`;
 
   /* ---------- header ---------- */
   function paintLine(state){
@@ -108,6 +114,7 @@ const Account = (() => {
     el.innerHTML = `<button type="button" class="acct-btn" data-acct="open" aria-haspopup="dialog" aria-label="Account: ${esc(me.name)}">
         <span class="acct-av" aria-hidden="true">${esc(initial(me.name))}</span><span class="acct-nm">${esc(me.name)}</span>
         <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
+      ${coinHTML(coins())}
       <span class="cloud" data-state="${state==="error"?"error":"saved"}" role="status">${state==="error" ? "Couldn't save: this phone's storage is full or blocked" : "✓ Saved on this phone"}</span>`;
   }
 
@@ -175,7 +182,7 @@ const Account = (() => {
     const since = new Date(me.created).toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"});
     return `<div class="dlg-in">
       <div class="dlg-head"><span class="acct-av big" aria-hidden="true">${esc(initial(me.name))}</span>
-        <div style="min-width:0"><h2 id="acctDlgTitle">${esc(me.name)}</h2><p class="hint">Account on this phone · since ${esc(since)}</p></div>
+        <div style="min-width:0"><h2 id="acctDlgTitle">${esc(me.name)}</h2><p class="hint">Account on this phone · since ${esc(since)} · ${coins().toLocaleString()} gold coins</p></div>
         <button type="button" class="dlg-x" data-acct="close" aria-label="Close">×</button></div>
       <section><h3>Your saves</h3>
         <p class="hint">Your career and Legacy save on this phone as you play. Download a backup to keep them safe, or to carry on playing on another phone.</p>
@@ -198,6 +205,7 @@ const Account = (() => {
           <div class="field"><label for="d-pw">Password</label><input id="d-pw" name="pw" type="password" autocomplete="current-password"></div>
           <button class="btn small danger" type="submit">Delete account</button><p class="err" id="delErr" role="alert"></p>
         </form></details>
+      <p class="hint" style="margin:0">Game version ${VERSION}. <button type="button" class="linkbtn" data-acct="update">Check for updates</button></p>
       <div class="row dlg-foot"><button type="button" class="btn" data-acct="signout">Sign out</button><button type="button" class="btn primary" data-acct="close">Back to the game</button></div>
     </div>`;
   }
@@ -217,6 +225,7 @@ const Account = (() => {
     else if (a==="open") openMenu();
     else if (a==="close") closeMenu();
     else if (a==="signout") signOut();
+    else if (a==="update"){ b.textContent = "Checking…"; try{ const r = await navigator.serviceWorker?.getRegistration(); await r?.update(); }catch(err){} location.reload(); }
     else if (a==="backup"){ closeMenu(); exportBackup(); }
     else if (a==="install" && installEvt){ const ev = installEvt; installEvt = null; ev.prompt(); try{ await ev.userChoice; }catch(err){} paintInstall(); }
   });
@@ -271,6 +280,7 @@ const Account = (() => {
     },
     storageKey: kind => keyFor(me, kind),
     statusText: () => `Signed in as ${me.name}. Saved on this phone.`,
+    coins, addCoins: n => setCoins(coins() + n), mergeCoins: n => setCoins(Math.max(coins(), +n || 0)), coinHTML,
     fileTag: () => me.name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "player",
     saveFailed: () => paintLine("error")
   };

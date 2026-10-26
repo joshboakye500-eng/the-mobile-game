@@ -50,11 +50,12 @@ function seasonMode(){
   if (!S.modeSeason || S.modeSeason.s!==s) S.modeSeason = {s, m: halfOf()===1 && !S.h1 ? (S.mode || "centre") : "manual"};
   return S.modeSeason.m;
 }
-function mcCanSwitch(){ return halfOf()===1 && !S.h1 && !(S.mc && S.mc.key===mcKey() && S.mc.wi>0); }
+// switching is allowed before this half's first week; back to manual entry only before the season starts
+function mcCanSwitch(to){ return !(S.mc && S.mc.key===mcKey() && S.mc.wi>0) && (to==="centre" || (halfOf()===1 && !S.h1)); }
 function mcModeSwitch(){
   const now = seasonMode(), other = now==="centre" ? "manual" : "centre";
   const what = m => m==="manual" ? "enter your stats by hand (handy for logging a real FC career)" : "play your seasons in the match centre";
-  if (mcCanSwitch()) return `<p class="hint" style="margin-top:14px">Prefer to ${what(other)}? <button type="button" class="linkbtn" data-act="mc-mode" data-k="${other}">Switch for this season</button></p>`;
+  if (mcCanSwitch(other)) return `<p class="hint" style="margin-top:14px">Prefer to ${what(other)}? <button type="button" class="linkbtn" data-act="mc-mode" data-k="${other}">Switch for this season</button></p>`;
   if ((S.mode || "centre")!==now) return `<p class="hint" style="margin-top:14px">From next season you'll ${what(S.mode)}. <button type="button" class="linkbtn" data-act="mc-mode" data-k="${now}">Keep things as they are</button></p>`;
   return `<p class="hint" style="margin-top:14px">Prefer to ${what(other)}? <button type="button" class="linkbtn" data-act="mc-mode" data-k="${other}">Switch from next season</button></p>`;
 }
@@ -234,7 +235,7 @@ function mcResolve(f, w, live){
   const our = S.mc.club, rec = mcRec(our), pos = S.player.pos, a = S.attr, c = S.cond, me = f.me, X = mcXg(f), t = X.t;
   const r = f.code==="league" ? null : f.eu ? rec.eu : rec.cups[f.code];
   let gf, ga;
-  if (live){ gf = live.gf; ga = live.ga; me.g = live.g; me.a = live.a; f.live = true; }
+  if (live){ gf = live.gf; ga = live.ga; me.g = live.g; me.a = live.a; me.og = live.og || 0; f.live = true; }
   else {
     gf = mcPoisson(X.lf); ga = mcPoisson(X.la);
     if (me.mins) for (let i=0;i<gf;i++){ const x = Math.random(); if (x<X.pG) me.g++; else if (x<X.pG+X.pA) me.a++; }
@@ -275,15 +276,15 @@ function mcLive(f){
   const rec = mcRec(S.mc.club), r = f.eu ? rec.eu : rec.cups[f.code];
   return !!r && r.alive && (f.eu && f.ri===-1 ? r.next===null : f.gi!=null ? r.next===0 : r.next===f.ri);
 }
-// one week: training, then midweek ties, then the weekend. Big games (or every game) can be played live as key
-// moments; each fixture is saved as it's decided, so closing the app mid-week picks up where it left off
-async function mcWeek(live){
+// one week: training, then midweek ties, then the weekend. Every match you're picked for is played live as key
+// moments (lvPlayMatch); each fixture is saved as it's decided, so closing the app mid-week picks up where it left off
+async function mcWeek(live=true){
   const M = S.mc, wk = M.weeks[M.wi]; if (!wk || M.done) return;
   const specs = {}; cupSpecs(M.club).forEach(c=>{ specs[c.code] = c; });
   if (!wk.trained){ mcTrain(M.wi); wk.trained = true; }
   for (const f of wk.fx.slice().sort((x,y)=>(x.code==="league")-(y.code==="league"))){
     if (f.res || f.skip || !mcSetup(f, M.wi, specs)) continue;
-    if (live && f.me.mins && lvWanted(f)){
+    if (live && f.me.mins){
       save();
       try{ await lvPlayMatch(f, M.wi); } catch(err){ console.error(err); if (!f.res) mcResolve(f, M.wi); }   // never leave a match half-played
     } else mcResolve(f, M.wi);
@@ -294,7 +295,8 @@ let mcBusy = false;
 async function mcAdvance(kind){
   const M = S.mc; if (!M || M.done || mcBusy) return;
   mcBusy = true; M.from = M.wi;
-  try{ do await mcWeek(kind==="week"); while (!M.done && kind!=="week" && !(kind==="big" && M.weeks[M.wi].fx.some(f=>f.big && mcLive(f)))); }
+  // "half" plays straight through to January (or May), opening every match you're in; the panel keeps up between weeks
+  try{ do { await mcWeek(); if (kind==="half"){ save(); render(); } } while (kind==="half" && !M.done); }
   finally{ mcBusy = false; }
   save(); render();
 }
@@ -361,8 +363,8 @@ function mcMeLine(f){
   const me = f.me; if (!me) return "";
   const st = {start:"Started", sub:`Came on for ${me.mins}'`, bench:"Unused sub", inj:`Injured${me.why?` (${esc(me.why)})`:""}`, intl:"Away on international duty"}[me.st];
   if (!me.mins) return st;
-  const bits = [me.g ? `<b>${me.g} goal${me.g>1?"s":""}</b>` : "", me.a ? `<b>${me.a} assist${me.a>1?"s":""}</b>` : "", me.cs && (DEF.includes(S.player.pos) || S.player.pos==="CDM") ? "clean sheet" : ""].filter(Boolean);
-  return `${st}${bits.length ? " · " + bits.join(", ") : ""} · <span class="rt ${me.r>=7.5?"hi":me.r<6?"lo":""}">${me.r}</span>`;
+  const bits = [me.g ? `<b>${me.g} goal${me.g>1?"s":""}</b>` : "", me.a ? `<b>${me.a} assist${me.a>1?"s":""}</b>` : "", me.og ? `${me.og} own goal${me.og>1?"s":""}` : "", me.cs && (DEF.includes(S.player.pos) || S.player.pos==="CDM") ? "clean sheet" : ""].filter(Boolean);
+  return `${st}${bits.length ? " · " + bits.join(", ") : ""} · <span class="rt ${me.r>=7.5?"hi":me.r<6?"lo":""}">${me.r}</span>${f.coins!=null ? ` · <span class="coins sm"><i class="coin" aria-hidden="true"></i>${f.coins>=0?"+":""}${f.coins}</span>` : ""}`;
 }
 function mcFxRow(f, w){
   const done = !!f.res, wdl = done ? (f.res.gf>f.res.ga || f.res.pens==="won" ? "w" : f.res.gf<f.res.ga || f.res.pens==="lost" ? "l" : "d") : "";
@@ -388,11 +390,11 @@ function mcPanel(){
     : T.focus==="prep" ? "Match prep: sharpens you for the coming games, with little attribute growth."
     : `${mcAttrName(T.focus)} grows fastest, the rest a little.`;
   const ageHint = S.age<=20 ? "At your age training pays off fast." : S.age<=26 ? "Steady gains if you keep at it." : S.age<=29 ? "Gains are small now." : "Past 30, training slows your decline.";
-  const showCS = DEF.includes(S.player.pos), lvMode = S.mcLiveMode || "big";
-  const liveNext = !M.done && lvMode!=="off" && M.weeks[M.wi].fx.some(f=>mcLive(f) && (lvMode==="all" || f.big));
+  const showCS = DEF.includes(S.player.pos), bigNext = !M.done && M.weeks[M.wi].fx.some(f=>f.big && mcLive(f));
   return `<section class="panel" id="actionPanel">
     <div class="row" style="justify-content:space-between"><h2 style="margin:0">${seasonLabel(S.season)} · ${esc(M.club)}</h2><span class="pill ${h===1?"":"eu"}">${h===1?"Part 1 · August to December":"Part 2 · January to May"}</span></div>
-    <p class="hint" style="margin-top:8px">${M.done ? `All ${W} weeks played.` : `Week ${M.wi+1} of ${W} · ${mcDate(M.wi)}.`} Pick a training focus, then play on. Your attributes, form, sharpness and fitness decide whether the manager picks you and how you play.</p>
+    <p class="hint" style="margin-top:8px">${M.done ? `All ${W} weeks played.` : `Week ${M.wi+1} of ${W} · ${mcDate(M.wi)}.`} Pick a training focus, then tap <strong>Play next week</strong>.</p>
+    <p class="hint" style="margin-top:4px">In every match you're picked for, you play your key moments: ${S.player.pos==="GK" ? "saves" : DEF.includes(S.player.pos) ? "tackles, blocks and the odd chance" : "shots, passes and the odd tackle"}. Your attributes, form, sharpness and fitness decide whether the manager picks you and how forgiving they are.</p>
     <div class="meter" style="margin-top:8px"><span style="width:${Math.round(M.wi/W*100)}%"></span></div>
     ${injNow ? `<p class="ref bad" style="margin-top:12px"><strong>Injured: ${esc(injNow.name)}.</strong> You'll miss games until you're fit again. Training this week is rehab.</p>` : ""}
     ${!M.done && M.wi<M.intlTo ? `<p class="ref" style="margin-top:12px">Away on international duty for the first ${M.intlTo} weeks of the half.</p>` : ""}
@@ -410,11 +412,9 @@ function mcPanel(){
       ${T.focus!=="rest" ? `<div class="seg mc-int" role="group" aria-label="Intensity"><button type="button" data-act="mc-hard" data-k="0" aria-pressed="${!T.hard}">Normal</button><button type="button" data-act="mc-hard" data-k="1" aria-pressed="${!!T.hard}">Hard</button></div>` : ""}
       <p class="hint" style="margin-top:8px">${focusHint} ${T.focus!=="rest" ? (T.hard ? "Hard sessions grow you about 60% faster, but tire you and more than double the injury risk." : "Normal sessions are safe and let you recover.") : ""} ${ageHint}</p>
       <div class="mc-actions">
-        <button class="btn primary" data-act="mc-week">${liveNext ? "Play next week · ★ big game" : "Play next week"}</button>
-        <button class="btn" data-act="mc-big">Sim to the next big game</button>
-        <button class="btn" data-act="mc-half">${h===1 ? "Sim to January" : "Sim to the end of the season"}</button>
-      </div>
-      <div class="row mc-live"><span class="label">Play key moments in</span><div class="chips" role="group" aria-label="Play key moments in" style="margin:0">${[["big","Big games"],["all","Every game"],["off","No games"]].map(([k,l])=>`<button type="button" class="chip ${lvMode===k?"on":""}" data-act="mc-live" data-k="${k}" aria-pressed="${lvMode===k}">${l}</button>`).join("")}</div></div>`}
+        <button class="btn primary" data-act="mc-week">${bigNext ? "Play next week · ★ big game" : "Play next week"}</button>
+        <button class="btn" data-act="mc-half">${h===1 ? "Play to January" : "Play to the end of the season"}</button>
+      </div>`}
     ${latest.length ? `<h3>Latest results</h3><div class="fxl">${latest.map(([f,w])=>mcFxRow(f,w)).join("")}</div>` : ""}
     ${!M.done && next.length ? `<h3>Coming up</h3><div class="fxl">${next.slice(0,3).map(([f,w])=>mcFxRow(f,w)).join("")}</div>` : ""}
     ${tgPanel()}
@@ -431,14 +431,12 @@ function mcPanel(){
 function mcAction(a, b){
   const k = b.dataset.k;
   if (a==="mc-week") mcAdvance("week");
-  else if (a==="mc-big") mcAdvance("big");
   else if (a==="mc-half") mcAdvance("half");
   else if (a==="mc-finish") mcFinishHalf();
   else if (a==="mc-focus"){ S.train.focus = k; save(); render(); }
   else if (a==="mc-hard"){ S.train.hard = k==="1"; save(); render(); }
-  else if (a==="mc-live"){ S.mcLiveMode = k; save(); render(); }
   else if (a==="mc-mode"){
-    if (mcCanSwitch()){ S.modeSeason = {s:seasonLabel(S.season), m:k}; if (k==="manual" && S.tg && S.tg.s===seasonLabel(S.season)) S.tg = null; }   // no targets for a season you log by hand
+    if (mcCanSwitch(k)){ S.modeSeason = {s:seasonLabel(S.season), m:k}; if (k==="manual" && S.tg && S.tg.s===seasonLabel(S.season)) S.tg = null; }   // no targets for a season you log by hand
     S.mode = k; save(); render();
   }
 }

@@ -577,7 +577,7 @@ function save(){
    Saves live on this device under the signed-in account (account.js). A backup file carries the current career
    and every Legacy career to another phone, and also loads backups downloaded from the Claude version of the game. */
 async function exportBackup(){
-  const data = {game:"English Footballing Pyramid", saved:new Date().toISOString(), career:S||null, legacy:loadHall()};
+  const data = {game:"English Footballing Pyramid", saved:new Date().toISOString(), career:S||null, legacy:loadHall(), coins:Account.coins()};
   const json = JSON.stringify(data), filename = `pyramid-backup-${Account.fileTag()}-${new Date().toISOString().slice(0,10)}.json`;
   // on phones, hand the file to the share sheet (Save to Files, AirDrop, email…) where the browser allows it
   try{
@@ -601,6 +601,7 @@ function importBackup(file){
       const map = new Map(loadHall().map(e=>[e.id,e]));
       (d.legacy||[]).forEach(e=>{ const l = map.get(e.id); if (!l || (e.updated||0) > (l.updated||0)) map.set(e.id, e); });
       saveHall([...map.values()]);
+      if (d.coins) Account.mergeCoins(d.coins);   // the bigger balance wins, so a backup can't be loaded twice for double coins
       if (d.career && (!S || confirmImport)){ S = d.career; normalize(); save(); }
       confirmImport = false;
       flash = `Backup loaded: ${(d.legacy||[]).length} Legacy career${(d.legacy||[]).length===1?"":"s"}${d.career?" and your saved career":""}.`;
