@@ -6,7 +6,7 @@
    calls Account.boot(start) once it has loaded, and this file calls back into the game (render, exportBackup…)
    only after that. */
 const Account = (() => {
-  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1", VERSION = "1.5";
+  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1", VERSION = "1.6";
   const OLD = {career:"efp-career-v1", hall:"efp-hall-v1"};   // where saves lived before accounts existed
   const $id = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -97,7 +97,7 @@ const Account = (() => {
   }
   function signOut(){ try{ localStorage.removeItem(SESSION); }catch(e){} location.reload(); }
   function wipe(acc){
-    for (const kind of [...Object.keys(OLD), "tips", "coins"]){ try{ localStorage.removeItem(keyFor(acc, kind)); }catch(e){} }
+    for (const kind of [...Object.keys(OLD), "tips", "coins", "locker"]){ try{ localStorage.removeItem(keyFor(acc, kind)); }catch(e){} }
     put(LIST, accounts().filter(a=>a.id!==acc.id));
   }
 
@@ -106,6 +106,9 @@ const Account = (() => {
   function coins(){ try{ return Math.max(0, Math.round(+localStorage.getItem(keyFor(me, "coins")) || 0)); }catch(e){ return 0; } }
   function setCoins(n){ try{ localStorage.setItem(keyFor(me, "coins"), String(Math.max(0, Math.round(n)))); }catch(e){} paintLine(); }
   const coinHTML = n => `<span class="coins" title="Gold coins"><i class="coin" aria-hidden="true"></i>${n.toLocaleString()}<span class="vh"> gold coins</span></span>`;
+  // the boots you own (level 1–3 per attribute) and the pair you're wearing, also kept on the account
+  function locker(){ try{ const L = JSON.parse(localStorage.getItem(keyFor(me, "locker"))); if (L && L.boots) return L; }catch(e){} return {boots:{}, on:null}; }
+  function setLocker(L){ try{ localStorage.setItem(keyFor(me, "locker"), JSON.stringify(L)); }catch(e){} }
 
   /* ---------- header ---------- */
   function paintLine(state){
@@ -114,7 +117,7 @@ const Account = (() => {
     el.innerHTML = `<button type="button" class="acct-btn" data-acct="open" aria-haspopup="dialog" aria-label="Account: ${esc(me.name)}">
         <span class="acct-av" aria-hidden="true">${esc(initial(me.name))}</span><span class="acct-nm">${esc(me.name)}</span>
         <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
-      ${coinHTML(coins())}
+      <button type="button" class="coins" data-shop="open" aria-label="${coins().toLocaleString()} gold coins: open the shop"><i class="coin" aria-hidden="true"></i>${coins().toLocaleString()}<span class="coins-shop">Shop</span></button>
       <span class="cloud" data-state="${state==="error"?"error":"saved"}" role="status">${state==="error" ? "Couldn't save: this phone's storage is full or blocked" : "✓ Saved on this phone"}</span>`;
   }
 
@@ -281,6 +284,10 @@ const Account = (() => {
     storageKey: kind => keyFor(me, kind),
     statusText: () => `Signed in as ${me.name}. Saved on this phone.`,
     coins, addCoins: n => setCoins(coins() + n), mergeCoins: n => setCoins(Math.max(coins(), +n || 0)), coinHTML,
+    spend: n => { if (coins() < n) return false; setCoins(coins() - n); return true; },
+    locker, setLocker,
+    // a backup's boots: keep the best level of each pair
+    mergeLocker: L => { if (!L || !L.boots) return; const mine = locker(); for (const k in L.boots) mine.boots[k] = Math.max(mine.boots[k]||0, Math.min(3, +L.boots[k]||0)); mine.on ||= L.on || null; setLocker(mine); },
     fileTag: () => me.name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "player",
     saveFailed: () => paintLine("error")
   };

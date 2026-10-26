@@ -30,7 +30,7 @@ const tgMet = (it, tot) => it.k==="avg" ? tot.rN>=3 && tot.avg>=it.n : tot[it.k]
 
 // what a manager can fairly ask: games from how often you'd start, output from your share of the team's goals
 function tgMake(scale){
-  const club = S.club, t = tierOf(club), T = TIERS[t], pos = S.player.pos, a = S.attr, w = mcWeights(), base = strOf(club);
+  const club = S.club, t = tierOf(club), T = TIERS[t], pos = S.player.pos, a = mcA(), w = mcWeights(), base = strOf(club);
   const league = S.world.tiers[t], avg = league.reduce((s,n)=>s + strOf(n), 0)/league.length;
   // the team's games: the league, about three per cup and ten in Europe
   const games = compPlan(club).reduce((s,c)=>s + (c.code==="league" ? (T.games || 38) : c.eu ? 10 : 3), 0)*scale, p = mcStartChance();

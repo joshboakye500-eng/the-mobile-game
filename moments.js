@@ -219,7 +219,7 @@ function lvGoalSvg(kc){
 }
 const lvMove = (id, x, y, rot=0, sc=1) => lv$(id)?.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${sc.toFixed(2)})`);
 function lvShot(st, m){
-  const K = LV_SHOT[m.kind], f = st.f, a = S.attr, c = S.cond, attr = m.kind==="header" ? (a.fin*.6 + a.def*.4) : a.fin;
+  const K = LV_SHOT[m.kind], f = st.f, a = mcA(), c = S.cond, attr = m.kind==="header" ? (a.fin*.6 + a.def*.4) : a.fin;
   const zone = clamp(K.z + (attr - f.oppStr)*.004 + (c.sharp-60)*.001 + (mcFormAvg()-6.6)*.02, .05, .32), mid = .72;
   const per = K.per*clamp(1 + (attr - f.oppStr)*.01, .75, 1.3), kq = clamp(.5 + (f.oppStr - attr)/40, .2, .85);
   return new Promise(res=>{
@@ -267,7 +267,7 @@ function lvShot(st, m){
 /* ---------- passes: tap the free teammate ---------- */
 const LV_SPOTS = [[16,40],[50,20],[84,40]];
 function lvPass(st, m){
-  const f = st.f, a = S.attr, c = S.cond, pos = S.player.pos;
+  const f = st.f, a = mcA(), c = S.cond, pos = S.player.pos;
   const win = clamp(2400 + (a.pas - f.oppStr)*30 + (c.sharp-60)*4, 1400, 3400), iv = clamp(950 + (a.pas - f.oppStr)*10, 550, 1300);
   const title = {LB:"Overlap down the wing", RB:"Overlap down the wing", ST:"Hold it up and lay it off", LW:"Cutting inside", RW:"Cutting inside"}[pos] || "Teammate making a run";
   const spots = LV_SPOTS.map(([x,y])=>[x + Math.random()*8-4, y + Math.random()*8-4]);
@@ -317,7 +317,7 @@ function lvPass(st, m){
 
 /* ---------- tackles and blocks: timing ---------- */
 function lvTiming(st, m){
-  const f = st.f, a = S.attr, c = S.cond, block = m.kind==="block";
+  const f = st.f, a = mcA(), c = S.cond, block = m.kind==="block";
   const zone = clamp(.14 + (a.def - f.oppStr)*.005 + (c.sharp-60)*.0008 + (mcFormAvg()-6.6)*.02, .06, .3), mid = block ? .8 : .68;
   const per = clamp(1300 - (f.oppStr - a.def)*12 - (block ? 0 : (f.oppStr - a.pac)*5), 700, 1700);
   const T = block ? {t:"Shot heading for goal!", s:"Throw yourself in the way: tap when the ball reaches the green.", b:"Block!"}
@@ -357,7 +357,7 @@ function lvTiming(st, m){
 
 /* ---------- saves: react to the shot ---------- */
 function lvSave(st, m){
-  const f = st.f, a = S.attr, c = S.cond, pen = Math.random()<.1;
+  const f = st.f, a = mcA(), c = S.cond, pen = Math.random()<.1;
   const react = clamp(720 + (a.def - f.oppStr)*14 + (c.sharp-60)*2 + (mcFormAvg()-6.6)*40 - (pen ? 120 : 0), 380, 1150);
   const T = pen ? {t:"Penalty!", s:"Watch the ball and dive the right way: tap that side of the goal."}
     : pick([{t:"One-on-one!", s:"He's through. Watch the ball and dive the right way."}, {t:"Shot from the edge of the box", s:"Watch the ball and dive the right way: tap that side of the goal."}]);

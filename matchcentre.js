@@ -23,7 +23,11 @@ const MC_MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 /* ---------- attributes ---------- */
 function mcWeights(){ const w = MC_W[S.player.pos] || MC_W.CM; return Object.fromEntries(MC_ATTR.map(([k],i)=>[k, w[i]])); }
-function mcOvr(a = S.attr){ const w = mcWeights(); return Math.round(MC_ATTR.reduce((s,[k])=>s + w[k]*a[k], 0)); }
+// the boost from the boots you're wearing (shop.js); mcA() is your attributes as they count in matches
+const MC_BOOT = [0, 2, 4, 6];
+function mcBoot(){ const L = Account.locker(), lvl = L.on ? L.boots[L.on] || 0 : 0; return lvl ? {k:L.on, n:MC_BOOT[lvl]} : null; }
+function mcA(){ const a = {...S.attr}, b = mcBoot(); if (b) a[b.k] = Math.min(99, a[b.k] + b.n); return a; }
+function mcOvr(a = mcA()){ const w = mcWeights(); return Math.round(MC_ATTR.reduce((s,[k])=>s + w[k]*a[k], 0)); }
 function mcAttrName(k){ return k==="def" && S.player.pos==="GK" ? "Shot-stopping" : MC_TRAIN.find(x=>x[0]===k)[1]; }
 // a new player (or an older save) starts around the first team's level, lower while still breaking through
 function mcInit(){
@@ -174,7 +178,7 @@ function mcTrain(w){
   if (mcInjury(mcFrac(w))){ c.fat = Math.max(0, c.fat-20); c.sharp = Math.max(20, c.sharp-6); }   // rehab
   else if (T.focus==="rest"){ c.fat = Math.max(0, c.fat-35); c.sharp = Math.max(20, c.sharp-5); }
   else {
-    const m = T.hard ? 1.6 : 1;
+    const m = (T.hard ? 1.6 : 1)*(S.boost && S.boost.double>0 ? 2 : 1);   // double training from the shop
     MC_ATTR.forEach(([k])=>{ a[k] += g*m*(k===T.focus ? 1 : T.focus==="prep" ? .1 : .2)*mcRoom(k); });
     if (T.focus==="prep") c.sharp = Math.min(100, c.sharp + (T.hard ? 10 : 7));
     c.fat = clamp(c.fat - (T.hard ? 5 : 15), 0, 100); c.sharp = Math.max(20, c.sharp-3);
@@ -183,6 +187,7 @@ function mcTrain(w){
   // past 30 the legs go first
   if (age>=30){ const d = (age-29)*.028; a.pac -= d; a.sta -= d*.8; a.fin -= d*.35; a.def -= d*.35; a.pas -= d*.2; }
   MC_ATTR.forEach(([k])=>{ a[k] = +clamp(a[k], 20, 99).toFixed(2); });
+  if (S.boost && S.boost.double>0) S.boost.double--;
 }
 function mcSelect(f, w){
   const inj = mcInjury(mcFrac(w));
@@ -220,7 +225,7 @@ function mcSetup(f, w, specs){
 }
 // expected goals each way, and the chance each of your team's goals is yours (pG) or set up by you (pA)
 function mcXg(f){
-  const base = strOf(S.mc.club), pos = S.player.pos, a = S.attr, me = f.me, t = me.mins/90, fa = mcFormAvg();
+  const base = strOf(S.mc.club), pos = S.player.pos, a = mcA(), me = f.me, t = me.mins/90, fa = mcFormAvg();
   // you lift the team in proportion to how much better you are than it, and how long you're on the pitch
   const boost = clamp((mcOvr()-base)*.25*t + (me.mins ? (fa-6.6)*.5 : 0), -3, 4), att = MC_ATT[pos] ?? .5, ha = f.neutral ? 0 : f.home ? 1.5 : -1.5;
   const lf = 1.35*Math.exp((base + boost*att + ha - f.oppStr)/20), la = 1.35*Math.exp((f.oppStr - base - boost*(1-att) - ha)/20);
@@ -249,7 +254,7 @@ function mcResolve(f, w, live){
     if (me.st==="sub") rt = 6.3 + (rt-6.35)*.6;
     me.r = +clamp(rt, 3.5, 10).toFixed(1);
     c.form = c.form.concat(me.r).slice(-6);
-    c.fat = clamp(c.fat + 13*t*(1 - (a.sta-55)/150)*(pos==="GK" ? .5 : 1), 0, 100); c.sharp = clamp(c.sharp + 9*t, 0, 100);
+    c.fat = clamp(c.fat + 13*t*(1 - (mcA().sta-55)/150)*(pos==="GK" ? .5 : 1), 0, 100); c.sharp = clamp(c.sharp + 9*t, 0, 100);
     MC_ATTR.forEach(([k])=>{ a[k] = +(a[k] + mcGrowth(S.age)*.08*t*mcRoom(k)).toFixed(2); });   // matches teach you too
     if (me.g>=3) note("good", `Hat-trick against ${f.opp}`, `${me.g} goals in a ${gf}–${ga} ${win?"win":loss?"defeat":"draw"}. Match rating ${me.r}.`);
   }
@@ -407,7 +412,9 @@ function mcPanel(){
     </div>
     ${M.done ? `<div class="ref" style="margin-top:16px"><strong>${h===1 ? "That's the first half of the season done." : "That's the season done."}</strong> ${tot.apps} appearances, ${tot.g} goals and ${tot.a} assists${showCS?`, ${tot.cs} clean sheets`:""}, average rating ${avgR}.</div>
       <div class="mc-actions"><button class="btn primary big" data-act="mc-finish">${h===1 ? "Go to the January window" : "See how the season ended"}</button></div>`
-    : `<h3>Training this week</h3>
+    : `<div class="row" style="justify-content:space-between;margin-top:18px"><h3 style="margin:0">Training this week</h3><button type="button" class="btn small" data-shop="open"><i class="coin" aria-hidden="true"></i> Shop</button></div>
+      ${S.boost && S.boost.double>0 ? `<p class="hint" style="margin:6px 0 0"><span class="pill gold">Double training</span> ${S.boost.double} week${S.boost.double===1?"":"s"} left</p>` : ""}
+      <div style="height:10px"></div>
       <div class="chips" role="group" aria-label="Training focus" style="margin:0 0 10px">${MC_TRAIN.map(([k])=>`<button type="button" class="chip ${T.focus===k?"on":""}" data-act="mc-focus" data-k="${k}" aria-pressed="${T.focus===k}">${esc(mcAttrName(k))}</button>`).join("")}</div>
       ${T.focus!=="rest" ? `<div class="seg mc-int" role="group" aria-label="Intensity"><button type="button" data-act="mc-hard" data-k="0" aria-pressed="${!T.hard}">Normal</button><button type="button" data-act="mc-hard" data-k="1" aria-pressed="${!!T.hard}">Hard</button></div>` : ""}
       <p class="hint" style="margin-top:8px">${focusHint} ${T.focus!=="rest" ? (T.hard ? "Hard sessions grow you about 60% faster, but tire you and more than double the injury risk." : "Normal sessions are safe and let you recover.") : ""} ${ageHint}</p>
@@ -421,8 +428,9 @@ function mcPanel(){
     <h3>This half so far</h3>
     <div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
     <h3>Your attributes</h3>
-    <div class="attrs">${MC_ATTR.map(([k])=>{ const d = a0 ? Math.round(a[k]-a0[k]) : 0; return `<div class="attr"><span>${esc(mcAttrName(k))}</span><div class="meter"><span style="width:${a[k]}%"></span></div><span class="v">${Math.round(a[k])}${d ? `<small class="${d>0?"":"neg"}">${d>0?"+":""}${d}</small>` : ""}</span></div>`; }).join("")}</div>
-    <p class="hint" style="margin-top:8px">Changes are since the start of the season. ${mcPotLabel()}.</p>
+    <div class="attrs">${MC_ATTR.map(([k])=>{ const d = a0 ? Math.round(a[k]-a0[k]) : 0, bt = mcBoot(), bn = bt && bt.k===k ? bt.n : 0;
+      return `<div class="attr"><span>${esc(mcAttrName(k))}</span><div class="meter"><span style="width:${Math.min(99, a[k]+bn)}%"></span></div><span class="v">${Math.round(Math.min(99, a[k]+bn))}${bn ? `<small class="boot" title="From your boots">👟+${bn}</small>` : ""}${d ? `<small class="${d>0?"":"neg"}">${d>0?"+":""}${d}</small>` : ""}</span></div>`; }).join("")}</div>
+    <p class="hint" style="margin-top:8px">Green and red show changes since the start of the season.${mcBoot() ? ` 👟 is the boost from your ${esc(shopBootName(mcBoot().k))}.` : " Buy boots in the shop to boost an attribute."} ${mcPotLabel()}.</p>
     <details class="ss" style="margin-top:14px"><summary><div class="ss-head"><span class="ss-club">All fixtures and results</span><span class="ss-fin">${played.length}/${list.length}</span></div></summary>
       <div class="ss-body"><div class="fxl">${list.map(([f,w])=>mcFxRow(f,w)).join("")}</div><p class="hint" style="margin-top:8px">★ marks the big games. Cup ties only appear while the team is still in the competition.</p></div></details>
     ${mcModeSwitch()}

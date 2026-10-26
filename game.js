@@ -577,7 +577,7 @@ function save(){
    Saves live on this device under the signed-in account (account.js). A backup file carries the current career
    and every Legacy career to another phone, and also loads backups downloaded from the Claude version of the game. */
 async function exportBackup(){
-  const data = {game:"English Footballing Pyramid", saved:new Date().toISOString(), career:S||null, legacy:loadHall(), coins:Account.coins()};
+  const data = {game:"English Footballing Pyramid", saved:new Date().toISOString(), career:S||null, legacy:loadHall(), coins:Account.coins(), locker:Account.locker()};
   const json = JSON.stringify(data), filename = `pyramid-backup-${Account.fileTag()}-${new Date().toISOString().slice(0,10)}.json`;
   // on phones, hand the file to the share sheet (Save to Files, AirDrop, email…) where the browser allows it
   try{
@@ -601,7 +601,8 @@ function importBackup(file){
       const map = new Map(loadHall().map(e=>[e.id,e]));
       (d.legacy||[]).forEach(e=>{ const l = map.get(e.id); if (!l || (e.updated||0) > (l.updated||0)) map.set(e.id, e); });
       saveHall([...map.values()]);
-      if (d.coins) Account.mergeCoins(d.coins);   // the bigger balance wins, so a backup can't be loaded twice for double coins
+      if (d.coins) Account.mergeCoins(d.coins);
+      Account.mergeLocker(d.locker);   // the bigger balance wins, so a backup can't be loaded twice for double coins
       if (d.career && (!S || confirmImport)){ S = d.career; normalize(); save(); }
       confirmImport = false;
       flash = `Backup loaded: ${(d.legacy||[]).length} Legacy career${(d.legacy||[]).length===1?"":"s"}${d.career?" and your saved career":""}.`;
@@ -2780,7 +2781,7 @@ function renderCareer(){
             <div class="fact"><div class="label">Nation${S.intl&&S.intl.caps?` · ${S.intl.caps} caps`:""}</div><div class="v" style="font-size:18px;overflow-wrap:anywhere">${esc(pl.nation||"—")}</div></div>
           </div>
           ${S.release?`<div class="label">Release clause · ${money(S.release)}</div>`:""}
-          <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
+          <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.attr&&mcBoot()?`<span class="pill">👟 ${esc(shopBootName(mcBoot().k))} +${mcBoot().n}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
           <div class="value-box">
             <div><div class="label">Market value</div><div class="value-big">${money(S.value)}</div></div>
             ${last?`<div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))}</div>`:""}

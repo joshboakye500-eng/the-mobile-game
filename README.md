@@ -38,6 +38,16 @@ Each half-season is a **match centre**: a fixture list for your club (league, cu
 
   The first time a player meets key moments, and each kind of mini-game, a short card with a diagram explains how it works. *How to play* on any match's intro shows them again.
 - **Gold coins.** Every match you play with key moments earns coins: a win is worth 50, a draw 10 and a defeat nothing; each goal adds 20 and each assist 15, and an own goal costs 10. Simmed matches earn nothing. Your total shows next to your name, and the full-time screen breaks down each match. Coins belong to the account, so they carry across careers, and they travel in backup files.
+- **Shop.** Tap your coins at the top, or *Shop* in the match centre, to spend them:
+
+  | Item | What it does | Cost |
+  | --- | --- | --- |
+  | Boots: Sniper, Maestro, Lightning, Rock (Safe-hands gloves for keepers) and Engine | +2 / +4 / +6 to finishing, passing, pace, defending (or shot-stopping) or stamina in every match. Wear one pair at a time; boots are kept on your account across careers | 250, then 450 to Silver and 800 to Gold |
+  | Double training | Training gains doubled for 4 weeks | 250 |
+  | Personal coach | +1 to your training focus now, up to 3 times a season | 400 |
+  | Physio | Fitness back to 100 | 75 |
+  | Sharpness drills | Sharpness back to 100 | 75 |
+  | Injury treatment | Halves the time left on your current injury | 300 |
 - **Results count.** Your club's league points and cup runs come from these fixtures, and your half-season numbers feed the same reviews, transfer offers and awards as before.
 
 - **Targets and clauses.** Each season the manager sets three targets: appearances, an output target for your position (goals, goals and assists, assists or clean sheets) and an average rating. Meeting them wins his trust, so you start more; missing them costs it. Time out injured is allowed for, and a January move brings new half-season targets. Your agent also adds clauses: hit a stretch number and a bigger club will bid for you in the summer, or make enough appearances and your wage goes up. Progress shows in the match centre, with inbox updates at the halfway point and at the end of the season.
@@ -75,6 +85,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
 | `moments.js` | Key moments: the live match screen and its shot, pass, tackle/block and save mini-games |
 | `targets.js` | The manager's season targets and your agent's clauses |
+| `shop.js` | The shop: boots and training boosts bought with gold coins |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |
 | `manifest.webmanifest`, `icons/` | App name, colours and home-screen icons |
 | `fonts/` | The game's fonts (Big Shoulders Display, Barlow, Barlow Condensed), served from here under the SIL Open Font License |
