@@ -1813,7 +1813,7 @@ function finishSeason(comps, janFrom){
     note("club", `${S.club} are ready to sell`, m.k==="seller" ? `The club signed you to develop and sell on, and after that season your value is ${money(S.value)}. They've told your agent they'll listen to offers and won't offer a new deal. Expect bigger clubs to call.` : `The club know they can't hold on to you if a bigger side comes in. They'll accept the right offer.`); }
   if (sale==="makeway") note("club", `${S.club} want to move you on`, `The club are planning to bring in younger players. At ${age} they'd prefer to sell you this summer, and any new deal would be short and on lower wages.`);
   if (S.years===1 && !listed && !loanEnded && age>=30 && sale!=="makeway") note("info", "One year left", `Your contract runs out next summer. At ${age}, expect clubs to offer shorter deals.`);
-  const offerOpts = {listed, loanAsk, share:adjShare, loanFrom:loanEnded, good:pf.score>.75, sale};
+  const offerOpts = {listed, loanAsk, share:adjShare, loanFrom:loanEnded, good:pf.score>.75, sale, bid:tgSeasonEnd()};
   S.pending = {pf, f:tgt.f, prev, won, listed, loanAsk, warn: warn && !(youth && S.badStreak<2), stoodBy, loanEnded, sale, injuries, offerOpts, offers:genOffers(pf, offerOpts)};
   S.phase = "window"; tab = "season";
   if (tourPending){
@@ -1885,6 +1885,13 @@ function genOffers(pf, opts={}){
     const club = pick(pool.slice().sort((a,b)=>Math.abs(repOf(a,t)-want)-Math.abs(repOf(b,t)-want)).slice(0,4));
     used.add(club);
     offers.push(make(club, t, feeFor(t, club), roleFor(t)));
+  }
+  // the club your agent's clause promised
+  if (opts.bid && opts.bid!==cur && !opts.january){
+    const have = offers.find(o=>o.club===opts.bid), t = tierOf(opts.bid);
+    const o = have || make(opts.bid, t, feeFor(t, opts.bid), roleFor(t));
+    if (!have){ used.add(opts.bid); offers.push(o); }
+    o.agent = true; o.msg = "Your agent's clause paid off: they've come in for you.";
   }
   // veterans past their best may find nobody wants them
   if (!offers.length && !opts.january && (age<35 || sc>=.4 || Math.random()<.5)){ const t = pickLeague(Math.max(.05, cp-.2), ct); const c = pick(S.world.tiers[t].filter(x=>x!==cur)); offers.push(make(c,t,0,"Guaranteed starter")); }

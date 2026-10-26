@@ -655,3 +655,11 @@ html.lv-open,html.lv-open body{overflow:hidden}
 .lv-log li span{font-family:var(--f-label);font-weight:700;color:rgba(242,246,243,.6)}
 .lv-log li.good{border-left-color:#4ADE80} .lv-log li.bad{border-left-color:#FB923C}
 @media (prefers-reduced-motion:reduce){.lv-cue{animation:none}.lv-res{animation:none}}
+
+/* ---- targets and clauses ---- */
+.tgl{display:grid;gap:8px}
+.tg{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,34%) auto;gap:10px;align-items:center;font-size:14px}
+.tg.clause{grid-template-columns:minmax(0,1fr) minmax(60px,26%) auto}
+.tg b{font-family:var(--f-display);font-weight:800;font-size:18px;white-space:nowrap;text-align:right}
+.tg b small{font-size:13px;color:var(--muted)}
+.tg.ok b{color:var(--up)}

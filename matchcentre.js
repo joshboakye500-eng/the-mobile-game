@@ -145,6 +145,7 @@ function mcBuild(){
   inj.forEach(i=>{ if (i.at==null) i.at = +(lo + Math.random()*Math.max(0, 1-lo-i.red)).toFixed(3); });
   S.mc = {key:mcKey(), club:our, half, weeks:weeks.map(fx=>({fx})), wi:0, done:false, from:0,
     intlTo: half===2 ? Math.round((1-(S.intlAway||1))*W) : 0};
+  tgEnsure();
 }
 
 /* ---------- playing a week ---------- */
@@ -307,6 +308,7 @@ function mcFinishHalf(){
     o.apps++; o.g += f.me.g; o.a += f.me.a; if (f.me.cs) o.cs++;
   }));
   M.finished = true;
+  tgHalfway();
   applyHalf(comps);
 }
 
@@ -415,6 +417,7 @@ function mcPanel(){
       <div class="row mc-live"><span class="label">Play key moments in</span><div class="chips" role="group" aria-label="Play key moments in" style="margin:0">${[["big","Big games"],["all","Every game"],["off","No games"]].map(([k,l])=>`<button type="button" class="chip ${lvMode===k?"on":""}" data-act="mc-live" data-k="${k}" aria-pressed="${lvMode===k}">${l}</button>`).join("")}</div></div>`}
     ${latest.length ? `<h3>Latest results</h3><div class="fxl">${latest.map(([f,w])=>mcFxRow(f,w)).join("")}</div>` : ""}
     ${!M.done && next.length ? `<h3>Coming up</h3><div class="fxl">${next.slice(0,3).map(([f,w])=>mcFxRow(f,w)).join("")}</div>` : ""}
+    ${tgPanel()}
     <h3>This half so far</h3>
     <div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
     <h3>Your attributes</h3>
@@ -434,5 +437,8 @@ function mcAction(a, b){
   else if (a==="mc-focus"){ S.train.focus = k; save(); render(); }
   else if (a==="mc-hard"){ S.train.hard = k==="1"; save(); render(); }
   else if (a==="mc-live"){ S.mcLiveMode = k; save(); render(); }
-  else if (a==="mc-mode"){ S.mode = k; if (mcCanSwitch()) S.modeSeason = {s:seasonLabel(S.season), m:k}; save(); render(); }
+  else if (a==="mc-mode"){
+    if (mcCanSwitch()){ S.modeSeason = {s:seasonLabel(S.season), m:k}; if (k==="manual" && S.tg && S.tg.s===seasonLabel(S.season)) S.tg = null; }   // no targets for a season you log by hand
+    S.mode = k; save(); render();
+  }
 }

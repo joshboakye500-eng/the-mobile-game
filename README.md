@@ -37,6 +37,8 @@ Each half-season is a **match centre**: a fixture list for your club (league, cu
   Your attributes, form and sharpness set how forgiving each one is, and better opponents have better keepers. The rest of the match is simulated around your moments, so the final score includes what you did. You can always *Sim the match*, or *Sim the rest* of its moments.
 - **Results count.** Your club's league points and cup runs come from these fixtures, and your half-season numbers feed the same reviews, transfer offers and awards as before.
 
+- **Targets and clauses.** Each season the manager sets three targets: appearances, an output target for your position (goals, goals and assists, assists or clean sheets) and an average rating. Meeting them wins his trust, so you start more; missing them costs it. Time out injured is allowed for, and a January move brings new half-season targets. Your agent also adds clauses: hit a stretch number and a bigger club will bid for you in the summer, or make enough appearances and your wage goes up. Progress shows in the match centre, with inbox updates at the halfway point and at the end of the season.
+
 Prefer to log a real FC career? Use *Enter your stats by hand* under the match centre. A season is played in one mode throughout, so switching mid-season takes effect the next season.
 
 ## Installing it on a phone
@@ -69,6 +71,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `account.js` | Accounts, the sign-in screen, the Account menu and the install instructions |
 | `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
 | `moments.js` | Key moments: the live match screen and its shot, pass, tackle/block and save mini-games |
+| `targets.js` | The manager's season targets and your agent's clauses |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |
 | `manifest.webmanifest`, `icons/` | App name, colours and home-screen icons |
 | `fonts/` | The game's fonts (Big Shoulders Display, Barlow, Barlow Condensed), served from here under the SIL Open Font License |
