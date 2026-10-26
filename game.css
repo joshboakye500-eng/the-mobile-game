@@ -556,3 +556,32 @@ label.btn{line-height:normal}   /* file pickers styled as buttons line up with r
   .dlg-in{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
   .dlg-foot .btn{flex:1}
 }
+
+/* ---- match centre ---- */
+.mc-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-top:14px}
+.mc-tiles .total small{display:block;font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-tiles .total .meter{margin-top:8px}
+@media (max-width:600px){.mc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.mc-tiles .total:last-child:nth-child(odd){grid-column:1/-1}}
+.mc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.mc-actions .btn{flex:1 1 170px}
+.seg.mc-int{grid-template-columns:repeat(2,minmax(0,1fr));max-width:260px}
+.seg.mc-int button{font-size:17px;padding:8px 0}
+.fxl{display:grid;gap:6px}
+.fx{display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:8px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);font-size:14px}
+.fx.big{border-color:color-mix(in srgb,var(--accent) 60%,var(--line))}
+.fx.todo{opacity:.8}
+.fx-d{font-family:var(--f-label);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:12px;color:var(--muted)}
+.fx-o{font-weight:700;min-width:0;overflow-wrap:anywhere;line-height:1.25}
+.fx-o small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.fx-s{font-family:var(--f-display);font-weight:800;font-size:22px;text-align:right;white-space:nowrap}
+.fx-s.w{color:var(--up)} .fx-s.l{color:var(--down)}
+.fx-me{grid-column:2/-1;font-size:13px;color:var(--muted)}
+.fx-me b{color:var(--ink)}
+.rt{display:inline-block;min-width:34px;text-align:center;border-radius:6px;padding:0 5px;font-weight:700;background:var(--line);color:var(--ink)}
+.rt.hi{background:var(--gold);color:var(--accent-ink)} .rt.lo{background:var(--down);color:#fff}
+.attrs{display:grid;gap:8px}
+.attr{display:grid;grid-template-columns:104px minmax(0,1fr) 58px;gap:10px;align-items:center;font-size:14px}
+.attr .v{font-family:var(--f-display);font-weight:800;font-size:19px;text-align:right;white-space:nowrap}
+.attr .v small{font-family:var(--f-label);font-size:12px;color:var(--up);margin-left:3px}
+.attr .v small.neg{color:var(--down)}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--euro);text-decoration:underline;cursor:pointer}

@@ -975,6 +975,32 @@ function compPlan(club){
   return out;
 }
 
+// the domestic cups a club enters this season, shared by the season sim and the match centre
+function cupSpecs(our){
+  const t = tierOf(our), T = TIERS[t], W = S.world, plan = compPlan(our), out = [];
+  if (T.country==="England"){
+    const faRounds = ["4th Qualifying Round","1st Round","2nd Round","3rd Round","4th Round","5th Round","Quarter-final","Semi-final","Final"];
+    out.push({code:"fa", name:"FA Cup", rounds:faRounds, entry:plan.find(p=>p.code==="fa").entry,
+      oppFor:i=> i<=2 ? domesticOpp([3,4,5],1,our) : i<=4 ? domesticOpp([1,2,3,4,5], i-1, our) : domesticOpp([1,2], i-3, our)});
+    const pl = plan.find(p=>p.code==="lc");
+    if (pl) out.push({code:"lc", name:"League Cup", rounds:["1st Round","2nd Round","3rd Round","4th Round","Quarter-final","Semi-final","Final"], entry:pl.entry,
+        legs:i=>i===5?2:1, oppFor:i=>domesticOpp(i<2?[2,3,4]:i<3?[1,2,3,4]:[1,2], i<3?2:i-1, our)});
+    if (t===3||t===4) out.push({code:"eflt", name:"EFL Trophy", rounds:["Group stage","Round of 32","Round of 16","Quarter-final","Semi-final","Final"], entry:0, group:true,
+        oppFor:()=>domesticOpp([3,4],1,our)});
+    if (t===5){
+      const pool = W.tiers[5].concat(W.tiers[6]).filter(n=>n!==our);
+      out.push({code:"fat", name:"FA Trophy", rounds:["3rd Round","4th Round","5th Round","Quarter-final","Semi-final","Final"], entry:0,
+        oppFor:i=>shuffle(pool).slice(0,1+Math.floor(i/2)).map(n=>({n,str:strOf(n)})).sort((a,b)=>b.str-a.str)[0]});
+    }
+  } else {
+    const C = T.cup, p = plan.find(x=>x.code===C.code), second = W.tiers[T.second];
+    out.push({code:C.code, name:C.name, rounds:C.rounds, entry:p.entry,
+      legs:i=>i===C.sf?2:1,
+      oppFor:i=> i<C.early ? (n=>({n,str:strOf(n)}))(pick(second))
+        : shuffle(W.tiers[t].filter(n=>n!==our)).slice(0, i-C.early+1).map(n=>({n,str:strOf(n)})).sort((a,b)=>b.str-a.str)[0]});
+  }
+  return out;
+}
 function simSeason(comps){
   const our = S.club, t = tierOf(our), T = TIERS[t], I = playerImpact(comps, t), base = strOf(our);
   const my = k => base + (I[k]||0), bL = I.league||0, need = k => (comps[k]&&comps[k].apps)||0;
@@ -982,6 +1008,7 @@ function simSeason(comps){
   const expRank = {};
   for (const k of LEAGUES) W.tiers[k].slice().sort((a,b)=>strOf(b)-strOf(a)).forEach((n,i)=>expRank[n]=i+1);
   const tables = {}; for (const k of LEAGUES) tables[k] = simLeague(k, {[our]:bL});
+  mcLeagueTable(tables[t], our);   // your club's real results, when you played the season in the match centre
   const tbl = tables[t], row = tbl.find(r=>r.n===our);
   let leagueGames = T.games;
   const sb = n => strOf(n) + (n===our?bL:0);
@@ -1017,32 +1044,10 @@ function simSeason(comps){
   }
   const reprieved = t===5 && row.pos > tbl.length-TIERS[5].down;
 
-  // cups, driven by your stats
-  const out = [], plan = compPlan(our);
-  if (T.country==="England"){
-    const faRounds = ["4th Qualifying Round","1st Round","2nd Round","3rd Round","4th Round","5th Round","Quarter-final","Semi-final","Final"];
-    const pf = plan.find(p=>p.code==="fa");
-    out.push(runCup({code:"fa", name:"FA Cup", rounds:faRounds, entry:pf.entry, my:my("fa"), need:need("fa"),
-      oppFor:i=> i<=2 ? domesticOpp([3,4,5],1,our) : i<=4 ? domesticOpp([1,2,3,4,5], i-1, our) : domesticOpp([1,2], i-3, our)}));
-    const pl = plan.find(p=>p.code==="lc");
-    if (pl) out.push(runCup({code:"lc", name:"League Cup", rounds:["1st Round","2nd Round","3rd Round","4th Round","Quarter-final","Semi-final","Final"], entry:pl.entry, my:my("lc"), need:need("lc"),
-        legs:i=>i===5?2:1, oppFor:i=>domesticOpp(i<2?[2,3,4]:i<3?[1,2,3,4]:[1,2], i<3?2:i-1, our)}));
-    if (t===3||t===4) out.push(runCup({code:"eflt", name:"EFL Trophy", rounds:["Group stage","Round of 32","Round of 16","Quarter-final","Semi-final","Final"], entry:0, my:my("eflt"), need:need("eflt"), group:true,
-        oppFor:()=>domesticOpp([3,4],1,our)}));
-    if (t===5){
-      const pool = W.tiers[5].concat(W.tiers[6]).filter(n=>n!==our);
-      out.push(runCup({code:"fat", name:"FA Trophy", rounds:["3rd Round","4th Round","5th Round","Quarter-final","Semi-final","Final"], entry:0, my:my("fat"), need:need("fat"),
-        oppFor:i=>shuffle(pool).slice(0,1+Math.floor(i/2)).map(n=>({n,str:strOf(n)})).sort((a,b)=>b.str-a.str)[0]}));
-    }
-  } else {
-    const C = T.cup, p = plan.find(x=>x.code===C.code), second = W.tiers[T.second];
-    out.push(runCup({code:C.code, name:C.name, rounds:C.rounds, entry:p.entry, my:my(C.code), need:need(C.code),
-      legs:i=>i===C.sf?2:1,
-      oppFor:i=> i<C.early ? (n=>({n,str:strOf(n)}))(pick(second))
-        : shuffle(W.tiers[t].filter(n=>n!==our)).slice(0, i-C.early+1).map(n=>({n,str:strOf(n)})).sort((a,b)=>b.str-a.str)[0]}));
-  }
+  // cups and Europe: from the match centre's fixtures when you played the season there, otherwise driven by your stats
+  const out = cupSpecs(our).map(c=>mcCupResult(our, c) || runCup({...c, my:my(c.code), need:need(c.code)}));
   const euCode = W.europe[our];
-  if (euCode) out.push(runEurope(euCode, my(euCode), need(euCode), our));
+  if (euCode) out.push(mcEuroResult(our, euCode) || runEurope(euCode, my(euCode), need(euCode), our));
 
   // league outcome
   let moved = null, outcome;
@@ -1629,7 +1634,10 @@ function totOf(comps){ const t = {apps:0,g:0,a:0,cs:0}; Object.values(comps||{})
 function mergeComps(a, b){ const out = {}; [a||{}, b||{}].forEach(x=>Object.entries(x).forEach(([k,c])=>{ const o = out[k] ||= {apps:0,g:0,a:0,cs:0,code:c.code||k}; o.apps+=c.apps; o.g+=c.g; o.a+=c.a; o.cs+=(c.cs||0); })); return out; }
 const halfOf = () => (S.half===2 ? 2 : 1);
 function submitSeason(){
-  const comps = readStatsForm(currentPlan()); if (!comps) return;
+  const comps = readStatsForm(currentPlan()); if (comps) applyHalf(comps);
+}
+// a finished half-season, from the manual form or the match centre
+function applyHalf(comps){
   if (halfOf()===1 && !S.sim){ midSeason(comps); return; }
   let full = comps, janFrom = null;
   if (S.h1){ if (S.h1.club===S.club) full = mergeComps(S.h1.comps, comps); else janFrom = S.h1; }
@@ -2365,6 +2373,7 @@ function fitnessBox(){
   </div>`;
 }
 function statsPanel(){
+  if (seasonMode()==="centre") return mcPanel();
   const c = S.club, t = tierOf(c), ex = expectedFinish(c), plan = currentPlan();
   const showCS = DEF.includes(S.player.pos), cols = showCS?4:3;
   return `<section class="panel" id="actionPanel">
@@ -2387,6 +2396,7 @@ function statsPanel(){
       <div class="ref"><strong>Benchmark.</strong> Michael Olise at 24 in 2025/26: 52 games, 22 goals, 31 assists for Bayern. Transfermarkt took him from €150m to about €170–180m. You only collect a winner's medal if you played at least once in that competition.</div>
       <div class="row"><button class="btn primary" type="submit">${halfOf()===1?"Play to January":"Finish the season"}</button><span class="err" id="seasonErr" role="alert"></span></div>
     </form>
+    ${mcModeSwitch()}
   </section>`;
 }
 // who went up and who went down: compare last season's tables with where every club is now
@@ -2762,7 +2772,7 @@ function renderCareer(){
             <div class="fact"><div class="label">Nation${S.intl&&S.intl.caps?` · ${S.intl.caps} caps`:""}</div><div class="v" style="font-size:18px;overflow-wrap:anywhere">${esc(pl.nation||"—")}</div></div>
           </div>
           ${S.release?`<div class="label">Release clause · ${money(S.release)}</div>`:""}
-          <div class="pills">${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
+          <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
           <div class="value-box">
             <div><div class="label">Market value</div><div class="value-big">${money(S.value)}</div></div>
             ${last?`<div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))}</div>`:""}
@@ -2842,6 +2852,7 @@ let confirmNew = false;
 document.addEventListener("click", e=>{
   const b = e.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act;
+  if (a.startsWith("mc-")){ mcAction(a, b); return; }
   if (a==="tab"){ tab = b.dataset.k; render(); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
   else if (a==="backup-export"){ exportBackup(); }
   else if (a==="intl-yes" || a==="intl-no"){ const n = (S.notes||[]).find(x=>x.ask && x.ask.id===b.dataset.k); if (n){ n.ask.answer = a==="intl-yes"; save(); render(); } }

@@ -21,6 +21,17 @@ That's the link to share. Every later push to `main` updates it, and players pic
 
 To try it before merging, pick this work's branch in step 3 instead of `main`, then switch back to `main` after merging.
 
+## How a season plays
+
+Each half-season is a **match centre**: a fixture list for your club (league, cups and Europe), played week by week.
+
+- **Training.** Each week, pick a focus (finishing, passing, pace, defending or shot-stopping, stamina, match prep, or rest) and how hard to train. Hard training grows you faster but tires you and raises the injury risk. Young players grow fast, and over-30s fight decline.
+- **Selection.** Whether you start, come off the bench or sit out depends on the manager's trust, how your overall rating compares with the squad, your form and how tired you are.
+- **Matches.** Fixtures are simulated from your attributes, form, sharpness and fitness. Your goals and assists come out of the team's scorelines. ★ marks the big games, and *Play to the next big game* stops just before one.
+- **Results count.** Your club's league points and cup runs come from these fixtures, and your half-season numbers feed the same reviews, transfer offers and awards as before.
+
+Prefer to log a real FC career? Use *Enter your stats by hand* under the match centre. A season is played in one mode throughout, so switching mid-season takes effect the next season.
+
 ## Installing it on a phone
 
 The game shows these steps on its first screen and in the **Account** menu.
@@ -49,13 +60,14 @@ Players on different phones can't see each other's careers. That would need an o
 | `index.html` | The page: header, game area, app and phone settings |
 | `game.js` / `game.css` | The game itself, taken from the artifact. Saving now goes to the signed-in account instead of Claude |
 | `account.js` | Accounts, the sign-in screen, the Account menu and the install instructions |
+| `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |
 | `manifest.webmanifest`, `icons/` | App name, colours and home-screen icons |
 | `fonts/` | The game's fonts (Big Shoulders Display, Barlow, Barlow Condensed), served from here under the SIL Open Font License |
 
 ## Making changes
 
-Edit the files and push to `main`. When the network is good, phones fetch the newest `index.html`, `game.js`, `game.css` and `account.js`. If you **rename or remove** a file, also change `CACHE` in `sw.js` (for example to `"pyramid-v2"`) and update its file list, so phones drop the old copy.
+Edit the files and push to `main`. When the network is good, phones fetch the newest versions of the game's files. If you **rename or remove** a file, also change `CACHE` in `sw.js` (for example to `"pyramid-v2"`) and update its file list, so phones drop the old copy.
 
 To run it on your computer:
 
