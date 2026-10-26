@@ -392,8 +392,9 @@ const seasonLabel = y => `${y}/${String((y+1)%100).padStart(2,"0")}`;
 const logistic = d => 1/(1+Math.exp(-d));
 
 /* ================= STATE ================= */
-const KEY = "efp-career-v1";
-const HALL_KEY = "efp-hall-v1";
+// each account on this device keeps its own career and Legacy; start() points these at the signed-in account
+let KEY = "efp-career-v1";
+let HALL_KEY = "efp-hall-v1";
 function loadHall(){ try{ return JSON.parse(localStorage.getItem(HALL_KEY)) || []; }catch(e){ return []; } }
 function saveHall(h){ try{ localStorage.setItem(HALL_KEY, JSON.stringify(h)); }catch(e){} }
 function careerSummary(){
@@ -428,7 +429,6 @@ function recordCareer(){
   S.id ||= "c" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   const entry = careerSummary();
   const hall = loadHall().filter(e=>e.id!==S.id); hall.push(entry); saveHall(hall);
-  pushHallEntry(entry);
 }
 const BOARD = [["apps","Appearances",v=>v],["caps","Caps",v=>v],["intlGoals","International goals",v=>v],["intlTrophies","International trophies",v=>v],["goals","Goals",v=>v],["assists","Assists",v=>v],["ga","Goals + assists",v=>v],
   ["cs","Clean sheets",v=>v],["bdor","Ballon d'Ors",v=>v],["trophies","Club trophies",v=>v],["leagues","League titles",v=>v],
@@ -533,7 +533,7 @@ function boardPanel(){
   const col = (key, v) => `<td class="n ${key===k?"sorted":""}">${v}</td>`;
   return `<section class="panel">
     <h2>Legacy</h2>
-    <p class="hint">Every career you've played in this browser, saved and compared. ${hall.length} career${hall.length===1?"":"s"} on record. Tap a stat to re-rank the top 10, and tap a player to open their profile.</p>
+    <p class="hint">Every career you've played on this account, saved and compared. ${hall.length} career${hall.length===1?"":"s"} on record. Tap a stat to re-rank the top 10, and tap a player to open their profile.</p>
     <div class="chips" role="group" aria-label="Rank by">${BOARD.map(([key,l])=>`<button class="chip ${key===k?"on":""}" data-act="board" data-k="${key}" aria-pressed="${key===k}">${l}</button>`).join("")}</div>
     ${rows.length ? `<ol class="lb">${rows.map((r,i)=>`<li class="${S&&r.id===S.id?"me":""}" data-act="profile" data-k="${esc(r.id)}" tabindex="0" role="button" aria-label="Open ${esc(r.name)}'s profile">
         <span class="lb-pos">${i+1}</span>
@@ -570,85 +570,27 @@ function save(){
   // keep the inbox to the latest 250 messages so saves stay small
   if (S.notes && S.notes.length>250){ const cut = S.notes.length-250; S.notes = S.notes.slice(cut); S.notesSeen = Math.max(0, (S.notesSeen||0)-cut); }
   S.updated = Date.now();
-  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
-  queueCloudSave();
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ Account.saveFailed(); }
 }
 
-/* ================= SAVING TO YOUR CLAUDE ACCOUNT =================
-   The current career and every Legacy career are kept in this artifact's private per-person store
-   (data/users/<your id>/...), so they survive reloads, cleared browsers and switching devices.
-   This browser's storage is a fast local copy; the account copy wins when it's newer. */
-const cloud = {db:null, base:null, status:"checking", busy:false, again:false, t:null, recKey:null, hallSent:{}};
-function cloudLabel(){ return ({checking:"Checking your account…", saving:"Saving to your account…", saved:"✓ Saved to your Claude account", error:"Couldn't reach your account. Saved on this device for now.", offline: window.claude ? "Saved on this device only (open it signed in to Claude to save to your account)" : "Saved in this browser. Download a backup from Legacy now and then."})[cloud.status] || ""; }
-function setCloudStatus(st){ cloud.status = st; ["cloudStatus","cloudStatus2"].forEach(id=>{ const el = document.getElementById(id); if (el){ el.textContent = cloudLabel(); el.dataset.state = st; } }); }
-const clean = o => JSON.parse(JSON.stringify(o));
-function queueCloudSave(){ if (!cloud.base || !S) return; clearTimeout(cloud.t); cloud.t = setTimeout(cloudFlush, 900); }
-async function cloudFlush(){
-  if (!cloud.base || !S) return;
-  if (cloud.busy){ cloud.again = true; return; }
-  cloud.busy = true; setCloudStatus("saving");
-  try{
-    const {records, newing, ...rest} = S;
-    await cloud.base.doc("save").set({updated:S.updated||Date.now(), state:clean(rest)});
-    const rk = (S.id||"") + ":" + seasonLabel(S.season) + ":" + (S.history||[]).length;
-    if (rk!==cloud.recKey){ await cloud.base.doc("records").set({updated:S.updated||Date.now(), id:S.id||"", records:clean(records||{})}); cloud.recKey = rk; }
-    setCloudStatus("saved");
-  }catch(e){ setCloudStatus("error"); }
-  cloud.busy = false;
-  if (cloud.again){ cloud.again = false; cloudFlush(); }
-}
-async function pushHallEntry(e){
-  if (!cloud.base || !e || !e.id) return;
-  const key = String(e.updated||0); if (cloud.hallSent[e.id]===key) return;
-  try{ await cloud.base.doc("hall").collection("careers").doc(e.id).set(clean(e)); cloud.hallSent[e.id] = key; }catch(err){ setCloudStatus("error"); }
-}
-async function cloudInit(){
-  try{
-    if (!window.claude || !window.claude.use){ setCloudStatus("offline"); return; }
-    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-    const uid = user ? await user.id() : null;
-    if (!db || !uid){ setCloudStatus("offline"); render(); return; }
-    cloud.db = db; cloud.base = db.collection("data/users/" + uid);
-    const [saveSnap, recSnap, hallSnap] = await Promise.all([cloud.base.doc("save").get(), cloud.base.doc("records").get(), cloud.base.doc("hall").collection("careers").get()]);
-    // Legacy: keep every career from both copies, newest version of each
-    const map = new Map(loadHall().map(e=>[e.id, e]));
-    hallSnap.docs.forEach(d=>{ const e = d.data(); if (!e || !e.id) return; cloud.hallSent[e.id] = String(e.updated||0); const l = map.get(e.id); if (!l || (e.updated||0) > (l.updated||0)) map.set(e.id, clean(e)); });
-    saveHall([...map.values()]);
-    for (const e of map.values()) await pushHallEntry(e);
-    // Current career: whichever copy was saved last
-    const cs = saveSnap.exists ? saveSnap.data() : null;
-    if (cs && cs.state && (cs.updated||0) > ((S && S.updated)||0)){
-      const st = clean(cs.state);
-      const rec = recSnap.exists ? recSnap.data() : null;
-      st.records = rec && rec.id===st.id ? clean(rec.records||{}) : (S && S.id===st.id ? S.records||{} : {});
-      S = st; normalize();
-      try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
-      cloud.recKey = (S.id||"") + ":" + seasonLabel(S.season) + ":" + (S.history||[]).length;
-      if (!draft) flash = "Your career was loaded from your Claude account.";
-      setCloudStatus("saved"); if (!draft || !S.newing) render();
-    } else {
-      setCloudStatus("saved");
-      if (S) cloudFlush();
-      render();
-    }
-  }catch(e){ setCloudStatus("error"); }
-}
-
-/* ================= BACKUP FILE ================= */
+/* ================= BACKUP FILE =================
+   Saves live on this device under the signed-in account (account.js). A backup file carries the current career
+   and every Legacy career to another phone, and also loads backups downloaded from the Claude version of the game. */
 async function exportBackup(){
   const data = {game:"English Footballing Pyramid", saved:new Date().toISOString(), career:S||null, legacy:loadHall()};
-  const json = JSON.stringify(data);
+  const json = JSON.stringify(data), filename = `pyramid-backup-${Account.fileTag()}-${new Date().toISOString().slice(0,10)}.json`;
+  // on phones, hand the file to the share sheet (Save to Files, AirDrop, email…) where the browser allows it
   try{
-    const dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null;
-    if (dl){ await dl.save({filename:`pyramid-backup-${new Date().toISOString().slice(0,10)}.json`, data:json}); flash = "Backup saved."; render(); return; }
-  }catch(e){ if (e && e.code==="declined") return; flash = e && e.code==="rate_limited" ? "A download is already waiting for you to confirm." : "The download didn't go through. Try again in a moment."; render(); return; }
-  // opened as a standalone file (not inside Claude): a normal browser download works
-  if (!window.claude){
-    try{ const url = URL.createObjectURL(new Blob([json], {type:"application/json"})); const link = document.createElement("a");
-      link.href = url; link.download = `pyramid-backup-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(link); link.click(); link.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 2000); flash = "Backup downloaded."; render(); return; }catch(e){}
-  }
-  flash = "Downloads aren't available here. Your saves are still kept in your account."; render();
+    const file = new File([json], filename, {type:"application/json"});
+    if (matchMedia("(pointer:coarse)").matches && navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:"English Footballing Pyramid backup"}); flash = "Backup saved."; render(); return;
+    }
+  }catch(e){ if (e && e.name==="AbortError") return; }
+  try{ const url = URL.createObjectURL(new Blob([json], {type:"application/json"})); const link = document.createElement("a");
+    link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000); flash = "Backup downloaded."; }
+  catch(e){ flash = "The download didn't go through. Try again in a moment."; }
+  render();
 }
 function importBackup(file){
   const r = new FileReader();
@@ -658,7 +600,7 @@ function importBackup(file){
       if (!d || (d.game!=="English Footballing Pyramid")) throw 0;
       const map = new Map(loadHall().map(e=>[e.id,e]));
       (d.legacy||[]).forEach(e=>{ const l = map.get(e.id); if (!l || (e.updated||0) > (l.updated||0)) map.set(e.id, e); });
-      saveHall([...map.values()]); [...map.values()].forEach(pushHallEntry);
+      saveHall([...map.values()]);
       if (d.career && (!S || confirmImport)){ S = d.career; normalize(); save(); }
       confirmImport = false;
       flash = `Backup loaded: ${(d.legacy||[]).length} Legacy career${(d.legacy||[]).length===1?"":"s"}${d.career?" and your saved career":""}.`;
@@ -670,8 +612,8 @@ function importBackup(file){
 let confirmImport = false;
 function backupPanel(){
   return `<section class="panel"><h2>Your saves</h2>
-    <p class="hint"><span id="cloudStatus2">${esc(cloudLabel())}</span></p>
-    <p class="hint" style="margin-top:8px">Your current career and every career in Legacy save to your Claude account automatically, so they're there on any device you open this on while signed in. You can also keep a backup file.</p>
+    <p class="hint">${esc(Account.statusText())}</p>
+    <p class="hint" style="margin-top:8px">Your current career and every career in Legacy save on this phone automatically, under your account. To move them to another phone, or keep them safe, download a backup and load it there. Backups from the Claude version of the game load here too.</p>
     <div class="row" style="margin-top:10px">
       <button class="btn small" data-act="backup-export">Download backup</button>
       <label class="btn small" for="backupFile" style="display:inline-flex;align-items:center">Load backup</label>
@@ -1204,7 +1146,6 @@ function renderCreate(){
   $("#app").innerHTML = `
   ${migratedNote?`<p class="ref" role="status" style="margin:0 0 18px">${esc(migratedNote)}</p>`:""}
   ${flash?`<p class="ref" role="status" style="margin:0 0 18px">${esc(flash)}</p>`:""}
-  ${!S && cloud.status==="checking"?`<p class="ref" role="status" style="margin:0 0 18px">Checking your Claude account for a saved career…</p>`:""}
   <div class="intro">
     <div class="eyebrow">New career · ${seasonLabel(2026)}</div>
     <h2 class="intro-h">Build your player</h2>
@@ -2849,7 +2790,7 @@ const TAB_IC = (()=>{ const w = d => `<svg viewBox="0 0 24 24" fill="none" strok
 })();
 let showBoard = false;
 function render(){
-  renderInner(); flash = ""; setCloudStatus(cloud.status);
+  renderInner(); flash = "";
   document.documentElement.dataset.window = (!showBoard && S && !S.newing) ? (S.phase==="winter" ? "winter" : S.phase==="tournament" ? "tourney" : S.phase==="window" ? "summer" : "") : "";
 }
 function renderInner(){
@@ -2946,12 +2887,11 @@ function normalize(){
   if (S) S.newing = false;
   if (S && S.player && S.phase!=="retired" && !(S.notes||[]).some(n=>n.ask && n.ask.id===`fr-${seasonLabel(S.season)}`)) scheduleIntl();
 }
-function start(data){
-  if (data && data.S) S = data.S; else load();
+function start(){
+  KEY = Account.storageKey("career"); HALL_KEY = Account.storageKey("hall");
+  load();
   normalize();
   render();
-  setCloudStatus(cloud.status);
-  cloudInit();
 }
-window.claude?.hot?.snapshot?.(()=>({S}));
-window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+// account.js shows the sign-in screen first, then starts the game for that account
+Account.boot(start);

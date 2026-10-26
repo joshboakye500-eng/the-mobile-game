@@ -1,3 +1,9 @@
+/* page basics (the Claude artifact frame used to supply these) */
+:root{color-scheme:light;padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;padding:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+
 /* Layout: "Under the floodlights" — a night-stadium hero band, glass panels over a floodlit bokeh sky and a perspective pitch; player card + pyramid on the left, tabbed panels on the right (bottom nav on phones). */
 :root{
   --bg:#E8EFEA; --surface:#FFFFFF; --surface-2:rgba(16,48,34,.045); --panel:rgba(255,255,255,.88); --ink:#0F1C16; --muted:#55665C; --line:rgba(16,48,34,.13);
@@ -499,4 +505,54 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 @media (prefers-reduced-motion:no-preference){
   .band h1{animation:lightsup 1.2s ease-out both}
   @keyframes lightsup{from{opacity:.2;text-shadow:none}to{opacity:1}}
+}
+
+/* ---- accounts, install & phone app ---- */
+/* the hero band runs up under the phone's status bar when the game is installed */
+.band{padding-top:calc(30px + env(safe-area-inset-top,0px))}
+.band::before{top:calc(10px + env(safe-area-inset-top,0px))}
+.acct-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.acct-line .cloud{margin-top:0}
+.acct-btn{display:inline-flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:var(--chalk);font:inherit;font-weight:600;font-size:14px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);max-width:100%}
+.acct-btn:hover{background:rgba(255,255,255,.14)}
+.acct-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-av{width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-size:16px;line-height:1;background:var(--accent);color:var(--accent-ink);box-shadow:0 0 14px -2px var(--accent)}
+.acct-av.big{width:46px;height:46px;font-size:26px}
+.gate{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:22px;align-items:start;max-width:980px}
+@media (max-width:860px){.gate{grid-template-columns:minmax(0,1fr)}}
+.gate .panel{display:grid;gap:16px}
+.gate .panel h2{margin:0}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.seg2 button{font-family:var(--f-label);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:14px;padding:10px 6px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.seg2 button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 0 18px -4px var(--accent)}
+.acct-form{display:grid;gap:14px}
+.acct-form input{font-size:16px}   /* 16px stops iPhones zooming in on focus */
+.acct-form .btn.big{width:100%}
+.err:empty{display:none}
+.err{margin:0}
+.err.ok{color:var(--up)}
+.btn.danger{background:var(--down);border-color:var(--down);color:#fff}
+label.btn{line-height:normal}   /* file pickers styled as buttons line up with real buttons */
+.steps{margin:0;padding-left:22px;display:grid;gap:8px}
+.steps .ic{vertical-align:-3px;color:var(--euro)}
+.forgot summary,.dlg-more summary{cursor:pointer;font-family:var(--f-label);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:13px;color:var(--muted)}
+.forgot[open] summary,.dlg-more[open] summary{margin-bottom:10px}
+.forgot .hint{margin-bottom:10px}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-top:10px}
+.chk input{width:auto}
+.acct-dlg{border:1px solid var(--line);border-radius:18px;padding:0;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.acct-dlg::backdrop{background:rgba(3,8,6,.6);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.dlg-in{padding:20px;display:grid;gap:18px}
+.dlg-in section,.dlg-more{border-top:1px solid var(--line);padding-top:14px}
+.dlg-in h3{font-family:var(--f-label);text-transform:uppercase;letter-spacing:.12em;font-size:13px;color:var(--muted);margin:0 0 8px;font-weight:600}
+.dlg-in .hint{margin-bottom:10px}
+.dlg-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
+.dlg-head h2{font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:28px;line-height:1;margin:0;overflow-wrap:anywhere}
+.dlg-head .hint{margin:4px 0 0}
+.dlg-x{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:24px;line-height:1;cursor:pointer}
+.dlg-foot{justify-content:space-between;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:600px){
+  .acct-dlg{margin:auto 0 0;width:100%;max-width:100%;max-height:92dvh;border-radius:18px 18px 0 0;border-bottom:0}
+  .dlg-in{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+  .dlg-foot .btn{flex:1}
 }
