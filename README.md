@@ -27,7 +27,14 @@ Each half-season is a **match centre**: a fixture list for your club (league, cu
 
 - **Training.** Each week, pick a focus (finishing, passing, pace, defending or shot-stopping, stamina, match prep, or rest) and how hard to train. Hard training grows you faster but tires you and raises the injury risk. Young players grow fast, and over-30s fight decline.
 - **Selection.** Whether you start, come off the bench or sit out depends on the manager's trust, how your overall rating compares with the squad, your form and how tired you are.
-- **Matches.** Fixtures are simulated from your attributes, form, sharpness and fitness. Your goals and assists come out of the team's scorelines. ★ marks the big games, and *Play to the next big game* stops just before one.
+- **Matches.** Fixtures are simulated from your attributes, form, sharpness and fitness. Your goals and assists come out of the team's scorelines. ★ marks the big games, and *Sim to the next big game* stops just before one.
+- **Key moments.** In big games (or every game, or none, your choice) you play the 2–4 moments that involve you, or 1 if you come off the bench:
+  - **Shots:** pick a spot in the goal, then stop the power bar in the green.
+  - **Passes:** tap the teammate who isn't marked before time runs out.
+  - **Tackles and blocks:** tap when the attacker or the ball is in the green.
+  - **Saves (keepers):** watch the shot and dive the right way.
+
+  Your attributes, form and sharpness set how forgiving each one is, and better opponents have better keepers. The rest of the match is simulated around your moments, so the final score includes what you did. You can always *Sim the match*, or *Sim the rest* of its moments.
 - **Results count.** Your club's league points and cup runs come from these fixtures, and your half-season numbers feed the same reviews, transfer offers and awards as before.
 
 Prefer to log a real FC career? Use *Enter your stats by hand* under the match centre. A season is played in one mode throughout, so switching mid-season takes effect the next season.
@@ -61,6 +68,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `game.js` / `game.css` | The game itself, taken from the artifact. Saving now goes to the signed-in account instead of Claude |
 | `account.js` | Accounts, the sign-in screen, the Account menu and the install instructions |
 | `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
+| `moments.js` | Key moments: the live match screen and its shot, pass, tackle/block and save mini-games |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |
 | `manifest.webmanifest`, `icons/` | App name, colours and home-screen icons |
 | `fonts/` | The game's fonts (Big Shoulders Display, Barlow, Barlow Condensed), served from here under the SIL Open Font License |

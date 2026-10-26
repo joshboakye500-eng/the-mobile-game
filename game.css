@@ -585,3 +585,73 @@ label.btn{line-height:normal}   /* file pickers styled as buttons line up with r
 .attr .v small{font-family:var(--f-label);font-size:12px;color:var(--up);margin-left:3px}
 .attr .v small.neg{color:var(--down)}
 .linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--euro);text-decoration:underline;cursor:pointer}
+
+/* ---- key moments: the live match screen, always under the floodlights ---- */
+.mc-live{margin-top:12px;gap:8px 12px}
+html.lv-open,html.lv-open body{overflow:hidden}
+.lv{position:fixed;inset:0;z-index:100;overflow-y:auto;-webkit-overflow-scrolling:touch;color:#F2F6F3;color-scheme:dark;
+  background:radial-gradient(ellipse 60% 40% at 10% -5%,rgba(245,197,66,.28),transparent 70%),radial-gradient(ellipse 60% 40% at 90% -5%,rgba(45,212,191,.22),transparent 70%),linear-gradient(180deg,#050A08,#0A1A12 70%,#0E2A1C);
+  padding:max(14px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.lv-in{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.lv .label{color:rgba(242,246,243,.65)}
+.lv-top{display:flex;align-items:center;gap:12px;font-family:var(--f-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:15px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 12px}
+.lv-sc{flex:1;font-variant-numeric:tabular-nums}
+.lv-sc b{color:#FFE9A8}
+.lv-skip{background:none;border:0;padding:0;color:rgba(242,246,243,.7);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer}
+.lv-t{font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:clamp(30px,8.5vw,44px);line-height:.92;margin:4px 0 0;color:#FFE9A8;text-shadow:0 0 24px rgba(245,197,66,.4)}
+.lv-s{margin:0;color:rgba(242,246,243,.78)}
+.lv-stage{position:relative;border-radius:16px;overflow:hidden;background:#08180F;aspect-ratio:300/180;touch-action:manipulation;-webkit-user-select:none;user-select:none;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 50px -25px #000}
+.lv-stage svg{display:block;width:100%;height:100%}
+.lv-aims{position:absolute;left:10%;right:10%;top:11%;height:58%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:3px}
+.lv-aim,.lv-thirds button{border:0;background:transparent;cursor:pointer;border-radius:8px;padding:0}
+.lv-aim:hover,.lv-aim:focus-visible{background:rgba(255,255,255,.1)}
+.lv-aim.on{background:rgba(245,197,66,.22);box-shadow:inset 0 0 0 2px #F5C542}
+.lv-aim.on::after{content:"";display:block;width:18px;height:18px;margin:auto;border-radius:50%;border:2px solid #F5C542;box-shadow:0 0 12px #F5C542}
+.lv-thirds{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr)}
+.lv-thirds button+button{border-left:1px dashed rgba(255,255,255,.14)}
+.lv-thirds button:active{background:rgba(245,197,66,.15)}
+.lv-cue{position:absolute;left:0;right:0;top:2px;text-align:center;font-family:var(--f-label);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:14px;color:#FFE9A8;animation:lvpulse .8s ease-in-out infinite alternate;pointer-events:none}
+.lv-bar{position:relative;height:24px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);overflow:hidden;touch-action:manipulation}
+.lv-zone{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,rgba(74,222,128,.5),rgba(74,222,128,.85),rgba(74,222,128,.5))}
+.lv-mark{position:absolute;top:-3px;bottom:-3px;left:0;width:5px;margin-left:-2.5px;border-radius:3px;background:#fff;box-shadow:0 0 12px #fff}
+.lv-act{width:100%}
+.lv-res{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px;text-align:center;background:rgba(3,8,6,.55);animation:lvpop .35s ease-out}
+.lv-res span{font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:clamp(40px,12vw,64px);line-height:.9;text-shadow:0 0 30px currentColor}
+.lv-res small{font-size:15px;color:rgba(242,246,243,.85)}
+.lv-res.good span{color:#FFE08A} .lv-res.bad span{color:#FCA5A5}
+@keyframes lvpop{from{opacity:0;transform:scale(1.15)}to{opacity:1;transform:none}}
+@keyframes lvpulse{from{opacity:.45}to{opacity:1}}
+.lv-pitch{background:linear-gradient(0deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/100% 50%,repeating-linear-gradient(0deg,#1B6236 0 12%,#1F6B3B 12% 24%)}
+.lv-p{position:absolute;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:900}
+.lv-mate{width:46px;height:46px;border:3px solid #fff;background:#F4F7F2;color:#0F1C16;font-size:20px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.35);padding:0}
+.lv-opp{width:26px;height:26px;background:#EF4444;border:2px solid #7F1D1D;transition:left .25s ease,top .25s ease;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.lv-me{width:44px;height:44px;background:#F5C542;color:#1A1400;font-size:12px;letter-spacing:.04em;box-shadow:0 0 18px rgba(245,197,66,.7)}
+.lv-pball{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px #15171A;transition:left .35s ease-out,top .35s ease-out;pointer-events:none}
+.lv-timer{height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.lv-timer span{display:block;height:100%;width:100%;background:linear-gradient(90deg,#F5C542,#FFE08A)}
+.lv-run{background:repeating-linear-gradient(90deg,#1B6236 0 10%,#1F6B3B 10% 20%)}
+.lv-lane{position:absolute;left:4%;right:4%;top:50%;height:4px;margin-top:-2px;background:rgba(255,255,255,.25);border-radius:2px}
+.lv-tz{position:absolute;top:22%;bottom:22%;border-radius:10px;background:rgba(74,222,128,.35);box-shadow:inset 0 0 0 2px rgba(74,222,128,.9)}
+.lv-runner{position:absolute;top:50%;left:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:#EF4444;border:3px solid #fff;box-shadow:0 0 14px rgba(239,68,68,.7)}
+.lv-runner.ball{width:22px;height:22px;margin:-11px 0 0 -11px;background:#fff;border:2px solid #15171A;box-shadow:0 0 12px #fff}
+.lv-net{position:absolute;right:0;top:18%;bottom:18%;width:7%;background:repeating-linear-gradient(0deg,rgba(255,255,255,.25) 0 2px,transparent 2px 8px),repeating-linear-gradient(90deg,rgba(255,255,255,.25) 0 2px,transparent 2px 8px);border-left:4px solid #F4F7F2}
+.lv-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:20px;display:grid;gap:14px;margin-top:8vh}
+.lv-card p{margin:0;color:rgba(242,246,243,.82)}
+.lv-eye{font-family:var(--f-label);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:13px;color:#F5C542}
+.lv-teams{display:grid;gap:4px;font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:clamp(28px,8vw,40px);line-height:.95}
+.lv-teams i{font-style:normal;font-size:.5em;color:rgba(242,246,243,.5)}
+.lv-row{display:flex;flex-wrap:wrap;gap:8px}
+.lv-row .btn{flex:1 1 180px}
+.lv-ftc{margin-top:4vh}
+.lv-ft{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:clamp(18px,5vw,24px);line-height:1}
+.lv-ft span:last-child{text-align:right}
+.lv-ft b{font-size:clamp(44px,13vw,64px);color:#FFE9A8;text-shadow:0 0 24px rgba(245,197,66,.45)}
+.lv-rate{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:10px}
+.lv-rate b{font-family:var(--f-display);font-weight:900;font-size:30px;padding:2px 10px;border-radius:10px;background:rgba(255,255,255,.12)}
+.lv-rate b.hi{background:#F5C542;color:#1A1400} .lv-rate b.lo{background:#C2410C;color:#fff}
+.lv-rate span:last-child{color:rgba(242,246,243,.8);font-size:14px}
+.lv-log{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.lv-log li{display:grid;grid-template-columns:40px 1fr;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.05);border-left:4px solid rgba(255,255,255,.2);font-size:14px}
+.lv-log li span{font-family:var(--f-label);font-weight:700;color:rgba(242,246,243,.6)}
+.lv-log li.good{border-left-color:#4ADE80} .lv-log li.bad{border-left-color:#FB923C}
+@media (prefers-reduced-motion:reduce){.lv-cue{animation:none}.lv-res{animation:none}}
