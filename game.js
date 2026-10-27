@@ -398,7 +398,7 @@ let HALL_KEY = "efp-hall-v1";
 function loadHall(){ try{ return JSON.parse(localStorage.getItem(HALL_KEY)) || []; }catch(e){ return []; } }
 function saveHall(h){ try{ localStorage.setItem(HALL_KEY, JSON.stringify(h)); }catch(e){} }
 function careerSummary(){
-  const t = {apps:0,g:0,a:0,cs:0}; S.history.forEach(h=>{ t.apps+=h.tot.apps; t.g+=h.tot.g; t.a+=h.tot.a; t.cs+=(h.tot.cs||0); });
+  const t = {apps:0,g:0,a:0,cs:0,rs:0,rn:0,potm:0}; S.history.forEach(h=>{ t.apps+=h.tot.apps; t.g+=h.tot.g; t.a+=h.tot.a; t.cs+=(h.tot.cs||0); t.rs+=(h.tot.rs||0); t.rn+=(h.tot.rn||0); t.potm+=(h.tot.potm||0); });
   const bd = S.history.map(h=>h.review&&h.review.world&&h.review.world.bdor).filter(Boolean);
   const first = S.history[0], last = S.history[S.history.length-1];
   const teamT = S.trophies.filter(x=>!["boot","medal","ballon"].includes(x.kind)).length;
@@ -406,6 +406,7 @@ function careerSummary(){
   return {id:S.id, name:S.player.name, nation:S.player.nation||"", pos:S.player.pos, from:seasonLabel(2026), seasons:new Set(S.history.map(h=>h.season)).size,
     status:S.phase==="retired"?"Retired":"Active", club:S.club, clubs:clubs.length,
     apps:t.apps, goals:t.g, assists:t.a, ga:t.g+t.a, earnings:Math.round(S.earnings||0),
+    avgR:t.rn ? +(t.rs/t.rn).toFixed(2) : 0, potm:t.potm,
     peak:Math.max(S.startValue||0, ...S.history.map(h=>h.after)), trophies:teamT,
     bdor:S.trophies.filter(x=>x.kind==="ballon").length, cs:t.cs,
     caps:(S.intl&&S.intl.caps)||0, intlGoals:(S.intl&&S.intl.g)||0, intlTrophies:S.trophies.filter(x=>x.kind==="intl").length,
@@ -417,6 +418,7 @@ function careerSummary(){
       look:{skin:S.player.skin, hair:S.player.hair, hairColour:S.player.hairColour, number:S.player.number},
       start:{club:S.log[0] ? S.history[0].club : S.club, value:S.startValue, age:first ? first.age : S.age},
       seasons:S.history.map(h=>({s:h.season, age:h.age, club:h.club, tier:h.tier, loan:!!h.loan, apps:h.tot.apps, g:h.tot.g, a:h.tot.a, cs:h.tot.cs||0, v:h.after,
+        r:h.tot.rn ? +(h.tot.rs/h.tot.rn).toFixed(2) : null, m:h.tot.of ? Math.round(h.tot.mins/h.tot.of*100) : null, pm:h.tot.potm||0,
         pos:h.finish?h.finish.pos:null, lg:TIERS[h.tier]?TIERS[h.tier].short:"", inj:(h.injuries||[]).filter(i=>i.tier==="major"||i.tier==="medium").map(i=>i.name),
         bd:h.review&&h.review.world?h.review.world.bdor||null:null, tr:(h.trophies||[]).length})),
       log:S.log.map(m=>({s:m.season, t:m.text, f:m.fee})),
@@ -432,7 +434,8 @@ function recordCareer(){
 }
 const BOARD = [["apps","Appearances",v=>v],["caps","Caps",v=>v],["intlGoals","International goals",v=>v],["intlTrophies","International trophies",v=>v],["goals","Goals",v=>v],["assists","Assists",v=>v],["ga","Goals + assists",v=>v],
   ["cs","Clean sheets",v=>v],["bdor","Ballon d'Ors",v=>v],["trophies","Club trophies",v=>v],["leagues","League titles",v=>v],
-  ["europe","European trophies",v=>v],["awards","Individual awards",v=>v],["seasons","Seasons",v=>v],["peak","Peak value",v=>money(v)],["earnings","Career earnings",v=>gbp(v)]];
+  ["europe","European trophies",v=>v],["awards","Individual awards",v=>v],["avgR","Average rating",v=>v?v.toFixed(2):"–"],["potm","Player of the Match",v=>v],
+  ["seasons","Seasons",v=>v],["peak","Peak value",v=>money(v)],["earnings","Career earnings",v=>gbp(v)]];
 let boardKey = "apps", profileId = null;
 function profileFind(id){
   if (S && S.id===id && S.history && S.history.length) return careerSummary();
@@ -504,6 +507,7 @@ function profilePanel(id){
     </div>
     <div class="totals" style="margin-top:14px">
       ${tile("Apps", r.apps)}${tile("Goals", r.goals)}${tile("Assists", r.assists)}${DEF.includes(r.pos)?tile("Clean sheets", r.cs??0):tile("G+A", r.ga)}
+      ${tile("Avg rating", r.avgR ? r.avgR.toFixed(2) : "–")}${tile("Player of the Match", r.potm||0)}
       ${tile("Club trophies", r.trophies)}${tile("Ballon d'Or", r.bdor?r.bdor+" won":r.bestBdor?"Best "+ord(r.bestBdor):"—")}${tile("Peak value", money(r.peak))}${tile("Earnings", gbp(r.earnings))}
     </div>
   </section>
@@ -515,8 +519,8 @@ function profilePanel(id){
     ${Object.keys(groups).length?`<div class="cabinet">${Object.entries(groups).sort((a,b)=>order[a[1].kind]-order[b[1].kind]).map(([name,g])=>`<div class="tro">${trophyIcon(g.kind, name)}<div class="tn">${esc(name)}</div>${g.items.length>1?`<div class="tc">×${g.items.length}</div>`:""}<div class="ts">${g.items.map(i=>`${i.s} · ${esc(i.c)}`).join("<br>")}</div></div>`).join("")}</div>`:`<p class="empty">No trophies won.</p>`}
   </section>
   <section class="panel"><h2>Season by season</h2>
-    <div class="tablewrap"><table style="min-width:600px"><thead><tr><th>Season</th><th class="n">Age</th><th>Club</th><th>Finish</th><th class="n">Apps</th><th class="n">Goals</th><th class="n">Assists</th>${DEF.includes(r.pos)?`<th class="n">CS</th>`:""}<th class="n">Value</th></tr></thead><tbody>
-      ${D.seasons.slice().reverse().map(q=>`<tr><td>${q.s}</td><td class="n">${q.age}</td><td>${esc(q.club)}${q.loan?" (loan)":""}</td><td>${q.pos?ord(q.pos)+" "+esc(q.lg):esc(q.lg)}</td><td class="n">${q.apps}</td><td class="n">${q.g}</td><td class="n">${q.a}</td>${DEF.includes(r.pos)?`<td class="n">${q.cs}</td>`:""}<td class="n">${money(q.v)}</td></tr>`).join("")}
+    <div class="tablewrap"><table style="min-width:600px"><thead><tr><th>Season</th><th class="n">Age</th><th>Club</th><th>Finish</th><th class="n">Apps</th><th class="n">Mins</th><th class="n">Goals</th><th class="n">Assists</th>${DEF.includes(r.pos)?`<th class="n">CS</th>`:""}<th class="n">Rating</th><th class="n">Value</th></tr></thead><tbody>
+      ${D.seasons.slice().reverse().map(q=>`<tr><td>${q.s}</td><td class="n">${q.age}</td><td>${esc(q.club)}${q.loan?" (loan)":""}</td><td>${q.pos?ord(q.pos)+" "+esc(q.lg):esc(q.lg)}</td><td class="n">${q.apps}</td><td class="n">${q.m!=null?q.m+"%":"–"}</td><td class="n">${q.g}</td><td class="n">${q.a}</td>${DEF.includes(r.pos)?`<td class="n">${q.cs}</td>`:""}<td class="n">${q.r!=null?q.r.toFixed(2):"–"}${q.pm?` <span class="hint">★${q.pm}</span>`:""}</td><td class="n">${money(q.v)}</td></tr>`).join("")}
     </tbody></table></div>
   </section>
   <section class="panel"><h2>Transfers & contracts</h2>
@@ -539,7 +543,7 @@ function boardPanel(){
         <span class="lb-pos">${i+1}</span>
         <span class="lb-who"><strong>${esc(r.name)}</strong><small>${esc(r.pos)} · ${esc(r.nation||"—")} · ${r.seasons} season${r.seasons===1?"":"s"} · ${r.status==="Retired"?"Retired":"Now at "+esc(r.club)}</small></span>
         <span class="lb-val">${fmt(r[k]||0)}</span>
-        <span class="lb-sub">${r.apps} apps · ${r.goals} G · ${r.assists} A${DEF.includes(r.pos)?` · ${r.cs??0} CS`:""} · ${r.trophies} 🏆${r.bdor?` · ${r.bdor} Ballon d'Or`:""}</span>
+        <span class="lb-sub">${r.apps} apps · ${r.goals} G · ${r.assists} A${DEF.includes(r.pos)?` · ${r.cs??0} CS`:""}${r.avgR?` · ${r.avgR.toFixed(2)} avg`:""} · ${r.trophies} 🏆${r.bdor?` · ${r.bdor} Ballon d'Or`:""}<span class="lb-go">Profile ›</span></span>
       </li>`).join("")}</ol>` : `<p class="empty">${k==="cs"?"Clean sheets only count for goalkeepers and defenders. Play a career as one and it'll appear here.":"No careers yet. Finish a season and it'll appear here."}</p>`}
   </section>`], rows.length>1 && ["h2h", "Head to head", `<section class="panel">
     <h2>Head to head</h2>
@@ -652,13 +656,20 @@ function perf(comps, teamPct, pos, avail=1, age=25){
   for (const k in comps){ const c = comps[k], w = COMP_W[c.code||k] ?? .7; wA += w*c.apps; wGA += w*(c.g+c.a); wCS += w*(c.cs||0); apps += c.apps; }
   if (!apps) return {score:.15, time:.1};
   const ex = expectShare(age), youth = age<=19 ? .7 : age<=21 ? .82 : age<=23 ? .92 : 1;
-  const gaR = p.exp ? Math.min((wGA/wA)/(p.exp*youth), 1.4) : 0;
+  // a match centre season's goals and assists follow the team's (mcXg), so they're judged against a little less than
+  // the numbers people type in from a real career
+  const centre = Object.values(comps).some(c=>c.of) ? .8 : 1;
+  const gaR = p.exp ? Math.min((wGA/wA)/(p.exp*youth*centre), 1.4) : 0;
   const csR = Math.min((wCS/wA)/.35, 1.4);
   // all-round contribution: how much you played, and how well your team did (league finish, 0 = bottom, 1 = top)
   const target = 40*Math.max(avail,.2)*ex;
   const share = clamp(wA/target, 0, 1), tp = teamPct ?? .5;
   const rS = clamp(.55*share + .45*tp, 0, 1);
-  const score = clamp(p.w*gaR + p.cs*csR + (1-p.w-p.cs)*rS, .1, 1.3);
+  let score = clamp(p.w*gaR + p.cs*csR + (1-p.w-p.cs)*rS, .1, 1.3);
+  // your match ratings (a season in the match centre) count for 40% of it once you've ten of them: 6.0 is nothing,
+  // 7.5 a full mark, 8.1 the most
+  let rs = 0, rn = 0; for (const k in comps){ rs += comps[k].rs || 0; rn += comps[k].rn || 0; }
+  if (rn){ const rq = clamp((rs/rn - 6)/1.5, 0, 1.4), wr = .4*Math.min(1, rn/10); score = clamp(score*(1-wr) + rq*wr, .1, 1.3); }
   const time = Math.pow(clamp(wA/target,.1,1), .7);
   return {score,time};
 }
@@ -1630,10 +1641,13 @@ function newState(player, age, clubName, years, custom, value){
 }
 
 /* ================= SEASON FLOW ================= */
-// a season's numbers; mins (minutes played) and of (the team's minutes while you were there) come from the match centre
-function totOf(comps){ const t = {apps:0,g:0,a:0,cs:0,mins:0,of:0}; Object.values(comps||{}).forEach(c=>{ t.apps+=c.apps; t.g+=c.g; t.a+=c.a; t.cs+=(c.cs||0); t.mins+=(c.mins||0); t.of+=(c.of||0); }); return t; }
-function mergeComps(a, b){ const out = {}; [a||{}, b||{}].forEach(x=>Object.entries(x).forEach(([k,c])=>{ const o = out[k] ||= {apps:0,g:0,a:0,cs:0,mins:0,of:0,code:c.code||k}; o.apps+=c.apps; o.g+=c.g; o.a+=c.a; o.cs+=(c.cs||0); o.mins+=(c.mins||0); o.of+=(c.of||0); })); return out; }
+// a season's numbers. From the match centre also: mins (minutes played) and of (the team's minutes while you were
+// there), rs and rn (the total of your match ratings and how many there were) and potm (Player of the Match awards)
+const EXTRA = ["mins","of","rs","rn","potm"];
+function totOf(comps){ const t = {apps:0,g:0,a:0,cs:0,mins:0,of:0,rs:0,rn:0,potm:0}; Object.values(comps||{}).forEach(c=>{ t.apps+=c.apps; t.g+=c.g; t.a+=c.a; t.cs+=(c.cs||0); EXTRA.forEach(k=>{ t[k] += c[k] || 0; }); }); t.rs = +t.rs.toFixed(1); return t; }
+function mergeComps(a, b){ const out = {}; [a||{}, b||{}].forEach(x=>Object.entries(x).forEach(([k,c])=>{ const o = out[k] ||= {apps:0,g:0,a:0,cs:0,mins:0,of:0,rs:0,rn:0,potm:0,code:c.code||k}; o.apps+=c.apps; o.g+=c.g; o.a+=c.a; o.cs+=(c.cs||0); EXTRA.forEach(e=>{ o[e] += c[e] || 0; }); })); return out; }
 const minsPct = t => t && t.of ? Math.round(t.mins/t.of*100) + "%" : "–";
+const avgRating = t => t && t.rn ? t.rs/t.rn : null;
 const halfOf = () => (S.half===2 ? 2 : 1);
 function submitSeason(){
   const comps = readStatsForm(currentPlan()); if (comps) applyHalf(comps);
@@ -1691,7 +1705,14 @@ function finishSeason(comps, janFrom){
   if (lg && (LL ? lgTop(LL, "g") : lg.g >= Math.round(rnd(20,26)*gScale*.9))) won.push({name:`${T.short} Golden Boot`, kind:"boot"});
   if (lg && (LL ? lgTop(LL, "a") : lg.a >= Math.round(rnd(11,15)*gScale*.9)) && POS[S.player.pos].exp>0) won.push({name:`${T.short} Playmaker`, kind:"medal"});
   if (LL) lgSeasonNote(LL, sim.tier);
-  if (lg && lg.apps>=Math.round(28*gScale) && pf.score>=1.05 && Math.random()<.65) won.push({name:`${T.short} Player of the Season`, kind:"medal"});
+  if (LL){
+    // the season's awards go to the league's best average ratings (league.js)
+    const aw = lgAwards(LL);
+    if (aw.pots && aw.pots.me) won.push({name:`${T.short} Player of the Season`, kind:"medal"});
+    else if (aw.ypots && aw.ypots.me) won.push({name:`${T.short} Young Player of the Season`, kind:"medal"});
+    if (aw.tots.some(p=>p.me)) won.push({name:`${T.short} Team of the Season`, kind:"medal"});
+  }
+  else if (lg && lg.apps>=Math.round(28*gScale) && pf.score>=1.05 && Math.random()<.65) won.push({name:`${T.short} Player of the Season`, kind:"medal"});
   else if (lg && age<=23 && lg.apps>=Math.round(24*gScale) && pf.score>=.92 && Math.random()<.6) won.push({name:`${T.short} Young Player of the Season`, kind:"medal"});
   won.forEach(w=>S.trophies.push({...w, season:sim.season, club:S.club}));
 
@@ -2238,6 +2259,8 @@ function ballonPoints(won, tot, pos, tier, comps, sim, age){
   if (attacker) perf = tot.g*1.1 + tot.a*.8 + (tot.g>=40 ? 5 : 0);
   else if (def) perf = Math.min(32, tot.apps*.35 + (tot.cs||0)*.6 + (tot.g+tot.a)*.9);
   else perf = tot.g*1.3 + tot.a + tot.apps*.4;
+  // a season of great match ratings (twenty or more of them) catches the voters' eye
+  if (tot.rn>=20) perf += clamp((tot.rs/tot.rn - 7)*15, -5, 15);
   let tro = 0;
   won.forEach(w=>{
     if (w.kind==="intl") tro += /World Cup/.test(w.name) ? 26 : /European|Copa/.test(w.name) ? 18 : 7;
@@ -2607,7 +2630,7 @@ function clubPanel(){
       <div><div class="label">Biggest fee they'd pay</div><div class="v">${money(roundTM(budgetOf(c,t)))}</div></div>
       ${SPEND_2026[c]!=null||SPEND_EST[c]!=null?`<div><div class="label">Summer 2026 spend</div><div class="v">${money((SPEND_2026[c]??SPEND_EST[c])*1e6)}${SPEND_2026[c]==null?" (est.)":""}</div></div>`:""}
       <div><div class="label">Manager</div><div class="v">${esc(mgr(c).name)}</div></div>
-      <div><div class="label">His trust in you</div><div class="v">${mgr(c).trust}/100 · ${trustLabel(mgr(c).trust)}${mgr(c).seasons?` (${mgr(c).seasons} season${mgr(c).seasons===1?"":"s"} together)`:""}</div></div>
+      <div><div class="label">His trust in you</div><div class="v">${Math.round(mgr(c).trust)}/100 · ${trustLabel(mgr(c).trust)}${mgr(c).seasons?` (${mgr(c).seasons} season${mgr(c).seasons===1?"":"s"} together)`:""}</div></div>
       <div><div class="label">Your loyalty</div><div class="v">${loyaltyOf(c)}/100 · ${loyaltyLevel(loyaltyOf(c))}</div></div>
     </div>
     <p class="hint" style="margin-top:10px">${clubModel(c).text} ${journey}</p>
@@ -2689,6 +2712,8 @@ function statsTab(part){
       ${showCS?`<div class="total big"><div class="label">Clean sheets</div><div class="v">${total.cs}</div></div>`:""}
       <div class="total"><div class="label">G+A a game</div><div class="v">${per90}</div></div>
       <div class="total"><div class="label">Minutes a season</div><div class="v">${minsAvg}</div></div>
+      <div class="total"><div class="label">Avg rating</div><div class="v">${(r => r ? r.toFixed(2) : "–")(avgRating(S.history.reduce((t,h)=>({rs:t.rs + (h.tot.rs||0), rn:t.rn + (h.tot.rn||0)}), {rs:0, rn:0})))}</div></div>
+      <div class="total"><div class="label">Player of the Match</div><div class="v">${S.history.reduce((n,h)=>n + (h.tot.potm||0), 0)}</div></div>
       <div class="total"><div class="label">Clubs</div><div class="v">${clubs.length}</div></div>
       <div class="total"><div class="label">Trophies</div><div class="v">${S.trophies.length}</div></div>
       <div class="total"><div class="label">Peak value</div><div class="v">${money(tt.peak)}</div></div>
@@ -2728,6 +2753,7 @@ function careerPanels(part){
           <div><span class="label">Age</span><b>${h.age}</b></div>
           <div><span class="label">Apps</span><b>${h.tot.apps}</b></div>
           <div><span class="label">Minutes</span><b>${minsPct(h.tot)}</b></div>
+          <div><span class="label">Rating</span><b>${avgRating(h.tot) ? avgRating(h.tot).toFixed(2) : "–"}</b></div>
           <div><span class="label">Goals</span><b>${h.tot.g}</b></div>
           <div><span class="label">Assists</span><b>${h.tot.a}</b></div>
           <div><span class="label">Wage</span><b class="sm">${h.wage?wageTxt(h.wage):"—"}</b></div>
@@ -2800,9 +2826,9 @@ function renderCareer(){
       <section class="panel card ${cardOpen?"open":""}">
         <div class="card-top">${portrait(pl, club, pl.number)}<div class="card-pos">${pl.pos}</div></div>
         <div class="card-body">
-          <p class="pname">${esc(pl.name)}</p>
+          <p class="pname">${S.history.length ? `<button type="button" class="pname-link" data-act="my-profile" aria-label="Open ${esc(pl.name)}'s career profile">${esc(pl.name)}</button>` : esc(pl.name)}</p>
           <div class="clubline"><span class="swatch" style="--c1:${club.c1};--c2:${club.c2}"></span>${esc(club.n)}${S.loan?`<span class="pill gold">On loan</span>`:""}</div>
-          <div class="card-key">${S.attr?`<span><b>${mcOvr()}</b> OVR</span>`:""}<span><b>${money(S.value)}</b></span><span>Age <b>${S.age}</b></span></div>
+          <div class="card-key">${S.attr?`<span><b>${mcOvr()}</b> OVR</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span><b>${mcSeasonRating().toFixed(2)}</b> avg</span>`:""}<span><b>${money(S.value)}</b></span><span>Age <b>${S.age}</b></span></div>
           <button type="button" class="card-more" data-act="card-more" aria-expanded="${cardOpen}">${cardOpen?"Show less":"Full profile"}</button>
           <div class="card-extra">
           ${S.loan?`<div class="label">On loan from ${esc(S.loan.parent)}</div>`:`<div class="loyal"><span class="label">Loyalty · ${loyaltyLevel(loyaltyOf(S.club))}</span><div class="meter"><span style="width:${loyaltyOf(S.club)}%"></span></div></div>`}
@@ -2818,7 +2844,7 @@ function renderCareer(){
             <div class="fact"><div class="label">Nation${S.intl&&S.intl.caps?` · ${S.intl.caps} caps`:""}</div><div class="v" style="font-size:18px;overflow-wrap:anywhere">${esc(pl.nation||"—")}</div></div>
           </div>
           ${S.release?`<div class="label">Release clause · ${money(S.release)}</div>`:""}
-          <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.attr&&mcBoot()?`<span class="pill">👟 ${esc(shopBootName(mcBoot().k))} +${mcBoot().n}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
+          <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span class="pill gold">Rating ${mcSeasonRating().toFixed(2)}</span>`:""}${S.attr&&mcBoot()?`<span class="pill">👟 ${esc(shopBootName(mcBoot().k))} +${mcBoot().n}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
           <div class="value-box">
             <div><div class="label">Market value</div><div class="value-big">${money(S.value)}</div></div>
             ${last?`<div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))}</div>`:""}
@@ -2903,6 +2929,7 @@ document.addEventListener("click", e=>{
   if (a==="tab"){ tab = b.dataset.k; render(); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
   else if (a==="backup-export"){ exportBackup(); }
   else if (a==="intl-yes" || a==="intl-no"){ const n = (S.notes||[]).find(x=>x.ask && x.ask.id===b.dataset.k); if (n){ n.ask.answer = a==="intl-yes"; save(); render(); } }
+  else if (a==="my-profile"){ tab = "legacy"; profileId = S.id; render(); window.scrollTo({top:0}); }
   else if (a==="card-more"){ cardOpen = !cardOpen; render(); if (!cardOpen) document.querySelector(".board .card")?.scrollIntoView({block:"nearest"}); }
   else if (a==="board-open"){ showBoard = true; render(); window.scrollTo({top:0}); }
   else if (a==="board-close"){ showBoard = false; render(); }

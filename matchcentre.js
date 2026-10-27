@@ -10,8 +10,11 @@ const MC_ATTR = [["fin","Finishing"],["pas","Passing"],["pac","Pace"],["def","De
 // how much each attribute counts towards your overall rating, by position (finishing, passing, pace, defending, stamina)
 const MC_W = {ST:[.45,.12,.25,0,.18], LW:[.28,.24,.32,0,.16], RW:[.28,.24,.32,0,.16], CAM:[.25,.4,.15,.04,.16], CM:[.12,.38,.1,.2,.2],
   CDM:[.04,.3,.1,.36,.2], LB:[0,.2,.32,.33,.15], RB:[0,.2,.32,.33,.15], CB:[0,.14,.16,.55,.15], GK:[0,.12,.08,.7,.1]};
-// share of the team's goals you score and set up when you're as good as your team, calibrated to POS[pos].exp
-const MC_SHARE = {ST:[.32,.16], LW:[.26,.2], RW:[.26,.2], CAM:[.2,.24], CM:[.1,.16], CDM:[.04,.07], LB:[.03,.13], RB:[.03,.13], CB:[.045,.015], GK:[0,.003]};
+// share of the team's goals you score and set up when you're as good as your team: a little more than a teammate of
+// the same quality in your position gets (squads.js shares out the other goals with the same weights)
+const MC_SHARE = {ST:[.27,.11], LW:[.22,.14], RW:[.22,.14], CAM:[.17,.17], CM:[.085,.11], CDM:[.034,.05], LB:[.026,.09], RB:[.026,.09], CB:[.038,.011], GK:[0,.002]};
+// a team that scores less leans on its best players a little more, but your output still follows the team's
+const mcDamp = lf => Math.pow(1.35/lf, .25);
 // how much of your quality goes into attack rather than defence
 const MC_ATT = {ST:.8, LW:.8, RW:.8, CAM:.75, CM:.5, CDM:.3, LB:.3, RB:.3, CB:.15, GK:0};
 // the first round of each domestic cup played after Christmas
@@ -166,6 +169,14 @@ function mcBuild(){
 
 /* ---------- playing a week ---------- */
 function mcInjury(frac){ const list = S.inj && S.inj.season===seasonLabel(S.season) ? S.inj.list : []; return list.find(i=>i.at!=null && frac>=i.at && frac<i.at+i.red) || null; }
+// your average match rating this season: both halves (and both clubs after a January move)
+function mcSeasonRating(){
+  let rs = 0, rn = 0;
+  if (S.h1 && S.h1.comps) Object.values(S.h1.comps).forEach(c=>{ rs += c.rs || 0; rn += c.rn || 0; });
+  if (S.mc && S.mc.key===mcKey() && !(S.h1 && S.mc.half===1)) S.mc.weeks.forEach(w=>w.fx.forEach(f=>{ if (f.res && f.me && f.me.mins && f.me.r!=null){ rs += f.me.r; rn++; } }));
+  return rn ? rs/rn : null;
+}
+const mcRateLabel = r => r>=8.5 ? "World class" : r>=8 ? "Superb" : r>=7.5 ? "Excellent" : r>=7 ? "Very good" : r>=6.5 ? "Solid" : r>=6 ? "Below par" : "Poor";
 function mcFormAvg(){ const f = S.cond.form; return f.length ? f.reduce((s,x)=>s+x, 0)/f.length : 6.6; }
 // how the manager rates your training: the average of the last four weeks' marks, each a drill's score (drills.js), a
 // neutral half mark for a week without one, and a little extra for hard sessions. Good training gets you more game time
@@ -249,7 +260,7 @@ function mcXg(f){
   const tf = mcTeamForm(S.mc.club).f, edge = (tf - mcTeamForm(f.opp).f)*.8;
   const lf = 1.35*Math.exp((base + edge + boost*att + ha - f.oppStr)/20), la = 1.35*Math.exp((f.oppStr - base - edge - boost*(1-att) - ha)/20);
   // your goals and assists are a share of the team's, bigger the sharper your finishing and passing
-  const [gs, as] = MC_SHARE[pos] || MC_SHARE.CM, w = mcWeights(), form = clamp(1 + (fa-6.6)*.1, .85, 1.15), damp = Math.sqrt(1.35/lf);
+  const [gs, as] = MC_SHARE[pos] || MC_SHARE.CM, w = mcWeights(), form = clamp(1 + (fa-6.6)*.1, .85, 1.15), damp = mcDamp(lf);
   const skill = k => clamp(1 + (a[k] - (base + 30*(w[k]-.2)))/20, .5, 1.6);
   return {base, lf, la, t, tf, pG:clamp(gs*t*form*damp*skill("fin"), 0, .7), pA:clamp(as*t*form*damp*skill("pas"), 0, .5)};
 }
@@ -274,7 +285,11 @@ function mcResolve(f, w, live){
     me.r = +clamp(rt, 3.5, 10).toFixed(1);
     c.form = c.form.concat(me.r).slice(-6);
     c.fat = clamp(c.fat + 13*t*(1 - (mcA().sta-55)/150)*(pos==="GK" ? .5 : 1), 0, 100); c.sharp = clamp(c.sharp + 9*t, 0, 100);
-    MC_ATTR.forEach(([k])=>{ a[k] = +(a[k] + mcGrowth(S.age)*.08*t*mcRoom(k)).toFixed(2); });   // matches teach you too
+    // matches teach you too, more when you play well
+    const rf = clamp(me.r - 5.8, .3, 2.2);
+    MC_ATTR.forEach(([k])=>{ a[k] = +(a[k] + mcGrowth(S.age)*.08*t*mcRoom(k)*rf).toFixed(2); });
+    // the manager notices every game: good ratings build his trust over a season, poor ones wear it down
+    if (!S.loan && me.mins>=30){ const Mg = mgr(S.mc.club); Mg.trust = +clamp(Mg.trust + clamp((me.r-6.9)*.6, -1.2, 1.2), 5, 100).toFixed(1); }
     if (me.g>=3) note("good", `Hat-trick against ${f.opp}`, `${me.g} goals in a ${gf}–${ga} ${win?"win":loss?"defeat":"draw"}. Match rating ${me.r}.`);
   }
   const det = sqMatch(f, live && live.ev);   // scorers, everyone's ratings and the Player of the Match
@@ -331,13 +346,15 @@ async function mcAdvance(kind){
 // the half-season's numbers go to the same review as the manual form
 function mcFinishHalf(){
   const M = S.mc; if (!M || !M.done || M.finished) return;
-  const comps = {}; currentPlan().forEach(p=>{ comps[p.code] = {apps:0, g:0, a:0, cs:0, mins:0, of:0, code:p.code}; });
+  const blank = code => ({apps:0, g:0, a:0, cs:0, mins:0, of:0, rs:0, rn:0, potm:0, code});
+  const comps = {}; currentPlan().forEach(p=>{ comps[p.code] = blank(p.code); });
   M.weeks.forEach(w=>w.fx.forEach(f=>{
     if (!f.res || !f.me) return;
-    const o = comps[f.code] ||= {apps:0, g:0, a:0, cs:0, mins:0, of:0, code:f.code};
+    const o = comps[f.code] ||= blank(f.code);
     o.of += 90;
     if (!f.me.mins) return;
     o.apps++; o.g += f.me.g; o.a += f.me.a; if (f.me.cs) o.cs++; o.mins += f.me.mins;
+    if (f.me.r!=null){ o.rs = +(o.rs + f.me.r).toFixed(1); o.rn++; } if (f.potm) o.potm++;
   }));
   M.finished = true;
   tgHalfway();
@@ -432,7 +449,7 @@ function mcPanel(){
         ${now.length ? fx(now) : `<p class="hint">No match this week, just training.</p>`}
         <div class="mc-actions"><button class="btn primary big" data-act="mc-week">Play next week</button><button class="btn" data-act="mc-half">${h===1 ? "Play to January" : "Play to May"}</button></div></div>`}
     <div class="mc-strip">
-      ${stat("Overall", mcOvr(), mcPotLabel())}${stat("Form", c.form.length ? fa.toFixed(1) : "–", mcFormLabel(fa), c.form.length ? (fa-5.6)/2*100 : null)}
+      ${(sr => stat("Rating", sr!=null ? sr.toFixed(2) : "–", sr!=null ? `Season average · ${mcRateLabel(sr)}` : "Season average", sr!=null ? (sr-5.5)/3*100 : null, "rate"))(mcSeasonRating())}${stat("Form", c.form.length ? fa.toFixed(1) : "–", mcFormLabel(fa), c.form.length ? (fa-5.6)/2*100 : null)}
       ${stat("Sharp", Math.round(c.sharp), c.sharp>=75 ? "Match sharp" : c.sharp>=50 ? "Getting there" : "Rusty", c.sharp)}
       ${stat("Fitness", Math.round(100-c.fat), c.fat>75 ? "Exhausted" : c.fat>55 ? "Tired" : "Fresh", 100-c.fat, "trust")}${stat("Picked", Math.round(pS*100)+"%", mcStartLabel(pS), pS*100)}
     </div>

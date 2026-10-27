@@ -111,8 +111,8 @@ function lgPosOf(club){ const L = lgGet(S.mc && S.mc.lgk); return L && L.r ? lgO
 /* ---------- top scorers, assists and ratings ---------- */
 function lgPlayers(L){
   const out = [];
-  L.teams.forEach(club=>{ const ps = L.ps[club]; if (ps) sqSquad(club).forEach((p,i)=>{ const x = ps[i]; if (x && x[0]) out.push({name:p.name, pos:p.pos, club, apps:x[0], g:x[1], a:x[2], avg:x[3]/10/x[0]}); }); });
-  const m = L.me; if (m[0]) out.push({name:S.player.name, pos:S.player.pos, club:L.meClub || S.club, me:true, apps:m[0], g:m[1], a:m[2], avg:m[3]/10/m[0]});
+  L.teams.forEach(club=>{ const ps = L.ps[club]; if (ps) sqSquad(club).forEach((p,i)=>{ const x = ps[i]; if (x && x[0]) out.push({name:p.name, pos:p.pos, age:p.age, club, i, apps:x[0], g:x[1], a:x[2], avg:x[3]/10/x[0]}); }); });
+  const m = L.me; if (m[0]) out.push({name:S.player.name, pos:S.player.pos, age:S.age, club:L.meClub || S.club, me:true, apps:m[0], g:m[1], a:m[2], avg:m[3]/10/m[0]});
   return out;
 }
 // the leaders in goals (g), assists (a) or average rating (avg; regular starters only), with shared ranks
@@ -124,12 +124,23 @@ function lgLeaders(L, k){
 }
 // for the season's awards: are you the league's leader (or joint leader) in goals or assists?
 function lgTop(L, k){ const m = L.me[k==="g" ? 1 : 2]; return m>0 && lgPlayers(L).every(p=>p.me || p[k]<=m); }
+// the season's awards, from the league's average ratings: Player of the Season (over 60% of the games), Young Player of
+// the Season (23 and under, half the games) and the Team of the Season (the best keeper, four defenders, three
+// midfielders and three forwards with half the games)
+const lgGroup = pos => pos==="GK" ? "gk" : ["CB","LB","RB"].includes(pos) ? "def" : ["CDM","CM","CAM"].includes(pos) ? "mid" : "fwd";
+function lgAwards(L){
+  const all = lgPlayers(L), by = (share, ok=()=>true) => all.filter(p=>p.apps>=Math.round(L.G*share) && ok(p)).sort((x,y)=>y.avg-x.avg);
+  const tots = Object.entries({gk:1, def:4, mid:3, fwd:3}).flatMap(([g,n])=>by(.5, p=>lgGroup(p.pos)===g).slice(0, n));
+  return {pots:by(.6)[0], ypots:by(.5, p=>p.age<=23)[0], tots};
+}
 function lgSeasonNote(L, k){
   const g = lgLeaders(L, "g")[0], a = lgLeaders(L, "a")[0], r = lgLeaders(L, "avg")[0], mine = x => lgLeaders(L, x).find(p=>p.me);
   if (!g) return;
   const who = p => p.me ? "you" : `${p.name} (${p.club})`, you = ["g","a"].map(mine);
+  const aw = lgAwards(L), inTots = aw.tots.some(p=>p.me);
   note("info", `${TIERS[k].short}: the season's best`, `Golden Boot: ${who(g)} with ${g.g} goals. Most assists: ${a ? `${who(a)} with ${a.a}` : "nobody"}.`
-    + `${r ? ` Best average rating: ${who(r)}, ${r.avg.toFixed(2)}.` : ""}${you[0] || you[1] ? ` You finished ${[you[0] ? `${ord(you[0].rank)} in the scoring charts` : "", you[1] ? `${ord(you[1].rank)} for assists` : ""].filter(Boolean).join(" and ")}.` : ""}`);
+    + `${aw.pots ? ` Player of the Season: ${who(aw.pots)}, averaging ${aw.pots.avg.toFixed(2)}.` : r ? ` Best average rating: ${who(r)}, ${r.avg.toFixed(2)}.` : ""}`
+    + `${you[0] || you[1] ? ` You finished ${[you[0] ? `${ord(you[0].rank)} in the scoring charts` : "", you[1] ? `${ord(you[1].rank)} for assists` : ""].filter(Boolean).join(" and ")}.` : ""}${inTots ? " You made the Team of the Season." : ""}`);
 }
 
 /* ---------- the table and the leaderboards ---------- */

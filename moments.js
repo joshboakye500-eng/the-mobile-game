@@ -11,7 +11,7 @@ const LV_POOL = {
   ST:{att:["shot:oneonone","shot:box","header","move","takeon","pass"], def:["intercept"]},
   LW:{att:["shot:box","takeon","cross","move","pass"], def:["intercept","tackle"]},
   RW:{att:["shot:box","takeon","cross","move","pass"], def:["intercept","tackle"]},
-  CAM:{att:["shot:box","pass","move","takeon","shot:freekick"], def:["intercept"]},
+  CAM:{att:["shot:box","pass","move","takeon","pass","shot:freekick"], def:["intercept"]},
   CM:{att:["pass","move","shot:long"], def:["intercept","tackle"]},
   CDM:{att:["pass","shot:long"], def:["intercept","tackle","shadow","block"]},
   LB:{att:["cross","takeon","pass"], def:["tackle","shadow","intercept","block"]},
@@ -137,10 +137,11 @@ function lvPlan(f, X){
   if (pos==="GK" && Math.random()<.15){ const s = list.find(m=>m.id==="save"); if (s) s.id = "save:pen"; }   // the odd penalty
   const from = me.st==="sub" ? 92-me.mins : 3, to = me.st==="sub" ? 89 : Math.max(12, me.mins-2);
   list.forEach(m=>{ [m.g, m.v] = m.id.split(":"); m.min = from + Math.floor(Math.random()*(to-from+1)); });
-  // together your moments can't stand for more than your position's share of the match: a striker is in on about half
-  // his team's goals (a bit more here, as the star of the show), a centre-back on very few
+  // together your moments can't stand for more than your position's share of the match (mcXg's pG and pA): a striker
+  // is in on about a third of his team's goals, a centre-back on very few. Played averagely (lvAuto) they give about
+  // what the simulation would; playing them well is how you beat it
   const sum = side => list.filter(m=>m.side===side).reduce((s,m)=>s + LV_EV[m.id], 0), eF = sum("att"), eA = sum("def");
-  const capF = clamp((X.pG + X.pA)*1.25, .06, .7)*X.lf, capD = (LV_DSHARE[pos] ?? .08)*X.t*X.la;
+  const capF = clamp((X.pG + X.pA)*1.1, .06, .7)*X.lf, capD = (LV_DSHARE[pos] ?? .08)*X.t*X.la;
   const qa = eF ? clamp(capF/eF, .2, 1) : 1, qd = eA ? clamp(capD/eA, .2, 1) : 1;
   list.forEach(m=>{ m.q = m.side==="att" ? qa : qd; });
   return {list:list.sort((x,y)=>x.min-y.min), eF:eF*qa, eA:eA*qd};
@@ -190,6 +191,7 @@ const lvDemo = (goal, inner, cap) => lvField(goal, inner + `<rect x="0" y="152" 
 const LV_HELP = {
   intro:{t:"Key moments", steps:["In every match you're picked for, you play the moments that involve you: <b>4</b> if you start, 1 or 2 off the bench. Each one is a quick mini-game.",
     "The rest of the match is simulated around them, so the final score includes what you did. When your team's on top you get more attacking moments; under pressure, more defending.",
+    "Every match ends with a <b>rating</b>. Ratings decide your form, the manager's trust, how fast you grow, your value and the season's awards.",
     "Your attributes, boots, form and sharpness make every mini-game easier. Tap <b>Sim the match</b> on a match's intro to skip it."]},
   shot:{t:"How to shoot", steps:["<b>Tap the goal</b> where you want to shoot. The corners are hardest to save.",
     "A marker slides along the power bar. Tap <b>Shoot!</b> (or the bar) while it's <b>in the green</b>.",
@@ -252,11 +254,11 @@ async function lvHelp(keys, first){
 function lvHelpAll(){ const P = LV_POOL[S.player.pos] || LV_POOL.CM; return ["intro", ...new Set([...P.att, ...P.def].map(id=>id.split(":")[0]))]; }
 
 // gold coins for a match you played: the result, plus your goals and assists, minus own goals
-const LV_COINS = {win:50, draw:10, loss:0, goal:20, assist:15, og:-10};
+const LV_COINS = {win:50, draw:10, loss:0, goal:20, assist:15, og:-10, potm:25};
 function lvCoins(f){
   const r = f.res, me = f.me, res = r.gf>r.ga ? "win" : r.gf===r.ga ? "draw" : "loss", og = me.og || 0;
   const parts = [[{win:"Win", draw:"Draw", loss:"Defeat"}[res], LV_COINS[res]], ...(me.g ? [[`${me.g} goal${me.g>1?"s":""}`, me.g*LV_COINS.goal]] : []),
-    ...(me.a ? [[`${me.a} assist${me.a>1?"s":""}`, me.a*LV_COINS.assist]] : []), ...(og ? [[`${og} own goal${og>1?"s":""}`, og*LV_COINS.og]] : [])];
+    ...(me.a ? [[`${me.a} assist${me.a>1?"s":""}`, me.a*LV_COINS.assist]] : []), ...(og ? [[`${og} own goal${og>1?"s":""}`, og*LV_COINS.og]] : []), ...(f.potm ? [["Player of the Match", LV_COINS.potm]] : [])];
   return {parts, total:parts.reduce((s,p)=>s + p[1], 0)};
 }
 
@@ -309,6 +311,7 @@ async function lvFullTime(st, home, away){
       <div class="lv-ft"><span>${esc(home)}</span><b>${l}–${r}</b><span>${esc(away)}</span></div>
       ${sqScorers(f)}
       <div class="lv-rate"><span class="label">Your rating</span><b class="${me.r>=7.5?"hi":me.r<6?"lo":""}">${me.r ?? "–"}</b><span>${bits.join(" · ") || (me.mins ? "No goal involvement" : "")}</span></div>
+      ${me.r!=null ? `<p class="lv-rate-sub"><b>${mcRateLabel(me.r)}.</b> Season average <b>${mcSeasonRating().toFixed(2)}</b>.</p>` : ""}
       ${f.potm ? `<div class="lv-potm">★ Player of the Match</div>` : f.potmBy ? `<p class="lv-potm-by">Player of the Match: <b>${esc(f.potmBy.n)}</b> (${esc(f.potmBy.c)}), ${f.potmBy.r.toFixed(1)}</p>` : ""}
       ${f.coins!=null ? (()=>{ const C = lvCoins(f); return `<div class="lv-coins"><i class="coin" aria-hidden="true"></i><b>${C.total>=0?"+":""}${C.total}</b><span>${C.parts.map(([l,n])=>`${esc(l)} ${n>=0?"+":""}${n}`).join(" · ")}</span></div>`; })()
         : `<p class="lv-nocoins">Simmed matches don't earn gold coins. Play the key moments to earn them.</p>`}

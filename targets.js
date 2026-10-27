@@ -35,7 +35,7 @@ function tgMake(scale){
   // the team's games: the league, about three per cup and ten in Europe
   const games = compPlan(club).reduce((s,c)=>s + (c.code==="league" ? (T.games || 38) : c.eu ? 10 : 3), 0)*scale, p = mcStartChance();
   const apps = tgNice(games*(p + .55*(1-p))*.95);
-  const lf = 1.35*Math.exp((base-avg)/20), la = 1.35*Math.exp((avg-base)/20), damp = Math.sqrt(1.35/lf);
+  const lf = 1.35*Math.exp((base-avg)/20), la = 1.35*Math.exp((avg-base)/20), damp = mcDamp(lf);
   const skill = k => clamp(1 + (a[k] - (base + 30*(w[k]-.2)))/20, .5, 1.6), [gs, as] = MC_SHARE[pos] || MC_SHARE.CM;
   const gpa = lf*gs*damp*skill("fin")*.85, apa = lf*as*damp*skill("pas")*.85;
   const k = tgOutputKey(pos);
