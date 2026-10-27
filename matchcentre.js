@@ -2,8 +2,9 @@
    Instead of typing in a season's stats, play it week by week: pick a training focus, sim the fixtures, and your
    attributes, form, sharpness and fitness decide whether you start and how you play. Each half-season ends by
    handing its appearances, goals, assists and clean sheets to the same review the manual form uses (applyHalf), so
-   values, offers and the Ballon d'Or work as before. Your club's league points and cup runs come from the fixtures
-   played here (mcLeagueTable, mcCupResult, mcEuroResult), so the final table matches the results you saw.
+   values, offers and the Ballon d'Or work as before. Your league is played out round by round alongside your fixtures
+   (league.js), and your cup runs come from the ties played here (mcCupResult, mcEuroResult), so the final table and
+   the cups match the results you saw.
    Loaded before game.js and only called once the game is running. */
 const MC_ATTR = [["fin","Finishing"],["pas","Passing"],["pac","Pace"],["def","Defending"],["sta","Stamina"]];
 // how much each attribute counts towards your overall rating, by position (finishing, passing, pace, defending, stamina)
@@ -71,12 +72,13 @@ function mcRec(club){
   if (!S.mcRec || S.mcRec.s!==s) S.mcRec = {s, clubs:{}};
   return S.mcRec.clubs[club] ||= {lg:{p:0,w:0,d:0,l:0,gf:0,ga:0}, cups:{}, eu:null, order:null};
 }
-// a club's last five results this season, and what they're worth: −0.9 (losing every week) to +1 (winning every week)
-function mcTeamForm(club){
-  const rec = mcRecIf(club), L = ((rec && rec.form) || []).slice(-5);
-  const ppg = L.length ? L.reduce((s,r)=>s + (r==="W" ? 3 : r==="D" ? 1 : 0), 0)/L.length : 1.4;
+// a club's last five results this season (yours in every competition, anyone else's in the league), and what
+// they're worth: −0.9 (losing every week) to +1 (winning every week)
+function mcFormOf(list){
+  const L = list.slice(-5), ppg = L.length ? L.reduce((s,r)=>s + (r==="W" ? 3 : r==="D" ? 1 : 0), 0)/L.length : 1.4;
   return {L, ppg, f: L.length ? clamp((ppg-1.4)/1.6, -.9, 1)*Math.min(1, L.length/3) : 0};
 }
+function mcTeamForm(club){ const rec = club===S.mc?.club ? mcRecIf(club) : null; return mcFormOf(rec ? rec.form || [] : lgFormList(club)); }
 const mcFormPills = L => L.length ? L.map(r=>`<span class="tf ${r.toLowerCase()}">${r}</span>`).join("") : `<span class="hint">No games yet</span>`;
 function mcRecIf(club){ return S.mcRec && S.mcRec.s===seasonLabel(S.season) ? S.mcRec.clubs[club] : null; }
 function mcOut(r, reached, lostTo, stage){ Object.assign(r, {alive:false, reached, lostTo, stage}); }
@@ -123,13 +125,15 @@ function mcBuild(){
     S.cond.fat = Math.min(S.cond.fat, 15); S.cond.sharp = 60;   // pre-season
     S.attr0 = {s:seasonLabel(S.season), ...S.attr};
   }
-  const rivals = S.world.tiers[t].filter(n=>n!==our);
-  rec.order ||= shuffle(rivals).map(n=>({n, home:Math.random()<.5}));
-  const lg = half===1 ? rec.order : shuffle(rec.order).map(o=>({n:o.n, home:!o.home}));
+  const rivals = S.world.tiers[t].filter(n=>n!==our), L = lgEnsure(t);
+  // the league's rounds for this half, one a week (a league without a table, outside the main divisions, gets a fixture list)
+  let lg, lgr = null;
+  if (L){ lgr = half===1 ? [0, Math.floor(L.G/2)] : [Math.floor(L.G/2), L.G]; lg = []; for (let R=lgr[0];R<lgr[1];R++){ const m = lgMatchOf(L, R, our); lg.push(m && {n:m.opp, home:m.home, rd:R}); } }
+  else { rec.order ||= shuffle(rivals).map(n=>({n, home:Math.random()<.5})); lg = half===1 ? rec.order : shuffle(rec.order).map(o=>({n:o.n, home:!o.home})); }
   const W = Math.max(lg.length, 12), weeks = Array.from({length:W}, ()=>[]);
   const at = (x, f) => weeks[clamp(Math.floor(x*W), 0, W-1)].push(f);
   const top3 = rivals.slice().sort((a,b)=>strOf(b)-strOf(a)).slice(0,3);
-  lg.forEach((o,i)=>weeks[Math.floor(i*W/lg.length)].push({code:"league", opp:o.n, home:o.home, big:top3.includes(o.n)}));
+  lg.forEach((o,i)=>{ if (o) weeks[Math.floor(i*W/lg.length)].push({code:"league", opp:o.n, home:o.home, big:top3.includes(o.n), rd:o.rd}); });
   // cup rounds spread across the half; two-legged ties a week or so apart
   for (const c of cupSpecs(our)){
     if (!codes.has(c.code)) continue;
@@ -156,7 +160,7 @@ function mcBuild(){
   const inj = S.inj && S.inj.season===seasonLabel(S.season) ? S.inj.list : [], lo = half===1 ? 0 : .5;
   inj.forEach(i=>{ if (i.at==null) i.at = +(lo + Math.random()*Math.max(0, 1-lo-i.red)).toFixed(3); });
   S.mc = {key:mcKey(), club:our, half, weeks:weeks.map(fx=>({fx})), wi:0, done:false, from:0,
-    intlTo: half===2 ? Math.round((1-(S.intlAway||1))*W) : 0};
+    intlTo: half===2 ? Math.round((1-(S.intlAway||1))*W) : 0, lgk: L ? t : null, lgr};
   tgEnsure();
 }
 
@@ -236,7 +240,7 @@ function mcXg(f){
   // you lift the team in proportion to how much better you are than it, and how long you're on the pitch
   const boost = clamp((mcOvr()-base)*.25*t + (me.mins ? (fa-6.6)*.5 : 0), -3, 4), att = MC_ATT[pos] ?? .5, ha = f.neutral ? 0 : f.home ? 1.5 : -1.5;
   // a team on a run plays with confidence; one on a losing streak doesn't
-  const tf = mcTeamForm(S.mc.club).f, edge = tf*.8;
+  const tf = mcTeamForm(S.mc.club).f, edge = (tf - mcTeamForm(f.opp).f)*.8;
   const lf = 1.35*Math.exp((base + edge + boost*att + ha - f.oppStr)/20), la = 1.35*Math.exp((f.oppStr - base - edge - boost*(1-att) - ha)/20);
   // your goals and assists are a share of the team's, bigger the sharper your finishing and passing
   const [gs, as] = MC_SHARE[pos] || MC_SHARE.CM, w = mcWeights(), form = clamp(1 + (fa-6.6)*.1, .85, 1.15), damp = Math.sqrt(1.35/lf);
@@ -259,7 +263,7 @@ function mcResolve(f, w, live){
     me.cs = me.mins>=60 && ga===0;
     const d = DEF.includes(pos) || pos==="CDM", win = gf>ga, loss = gf<ga;
     let rt = 6.35 + (mcOvr() - f.oppStr)*.02 + me.g*.95 + me.a*.6 + (me.cs && d ? .7 : 0) + (win ? .3 : loss ? -.3 : 0) - (d && ga>=3 ? .5 : 0)
-      - Math.max(0, c.fat-60)/40*.6 + (c.sharp-60)/40*.35 + (live ? live.bonus + gauss()*.25 : gauss()*.5);
+      - Math.max(0, c.fat-60)/40*.6 + (c.sharp-80)/40*.35 + (live ? live.bonus*.6 + gauss()*.3 : gauss()*.5);   // on the same scale as everyone else's (sqRate)
     if (me.st==="sub") rt = 6.3 + (rt-6.35)*.6;
     me.r = +clamp(rt, 3.5, 10).toFixed(1);
     c.form = c.form.concat(me.r).slice(-6);
@@ -267,7 +271,9 @@ function mcResolve(f, w, live){
     MC_ATTR.forEach(([k])=>{ a[k] = +(a[k] + mcGrowth(S.age)*.08*t*mcRoom(k)).toFixed(2); });   // matches teach you too
     if (me.g>=3) note("good", `Hat-trick against ${f.opp}`, `${me.g} goals in a ${gf}–${ga} ${win?"win":loss?"defeat":"draw"}. Match rating ${me.r}.`);
   }
+  const det = sqMatch(f, live && live.ev);   // scorers, everyone's ratings and the Player of the Match
   mcAfter(f, r, rec, X.base);
+  if (f.code==="league") lgOnResult(f, det);
 }
 // a played fixture moves the league record on, and decides cup and European ties
 function mcAfter(f, r, rec, base){
@@ -304,6 +310,7 @@ async function mcWeek(live=true){
       try{ await lvPlayMatch(f, M.wi); } catch(err){ console.error(err); if (!f.res) mcResolve(f, M.wi); }   // never leave a match half-played
     } else mcResolve(f, M.wi);
   }
+  lgWeekDone(M);
   M.wi++; if (M.wi>=M.weeks.length) M.done = true;
 }
 let mcBusy = false;
@@ -330,6 +337,7 @@ function mcFinishHalf(){
 }
 
 /* ---------- season end: results from the fixtures you played ---------- */
+// a match centre season from before the league was played out (league.js): only your club's row comes from your results
 function mcLeagueTable(rows, our){
   const rec = mcRecIf(our), row = rows.find(r=>r.n===our);
   if (!rec || !row || !rec.lg.p) return;
@@ -386,7 +394,7 @@ function mcFxRow(f, w){
   const opp = f.opp ? `${f.neutral ? "" : f.home ? "" : "at "}${esc(f.opp)}` : "Opponent to be drawn";
   const extra = done && f.agg ? ` · ${f.agg[0]}–${f.agg[1]} on aggregate` : "", pens = done && f.res.pens ? ` · ${f.res.pens==="won" ? "won" : "lost"} on penalties` : "";
   return `<div class="fx ${f.big?"big":""} ${done?"":"todo"}"><span class="fx-d">${mcDate(w, f)}</span>
-    <span class="fx-o">${f.big?"★ ":""}${opp}<small>${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : f.home ? " · home" : ""}${extra}${pens}</small></span>
+    <span class="fx-o">${f.big?"★ ":""}${opp}<small>${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : f.home ? " · home" : ""}${!done && f.code==="league" && lgPosOf(f.opp) ? ` · ${ord(lgPosOf(f.opp))} in the table` : ""}${extra}${pens}</small></span>
     <span class="fx-s ${wdl}">${done ? `${f.res.gf}–${f.res.ga}` : ""}</span>
     ${done ? `<span class="fx-me">${mcMeLine(f)}</span>` : ""}</div>`;
 }
@@ -396,7 +404,7 @@ function mcPanel(){
   const list = []; M.weeks.forEach((wk,w)=>wk.fx.slice().sort((x,y)=>(x.code==="league")-(y.code==="league")).forEach(f=>{ if (!f.skip && (f.res || mcLive(f) || f.code==="league")) list.push([f,w]); }));
   const played = list.filter(([f])=>f.res), next = list.filter(([f])=>!f.res);
   const latest = played.filter(([,w])=>w>=M.from).slice(-6).reverse();
-  const tot = {apps:0, g:0, a:0, cs:0, r:[]}; played.forEach(([f])=>{ if (f.me && f.me.mins){ tot.apps++; tot.g += f.me.g; tot.a += f.me.a; if (f.me.cs) tot.cs++; tot.r.push(f.me.r); } });
+  const tot = {apps:0, g:0, a:0, cs:0, r:[], potm:0}; played.forEach(([f])=>{ if (f.me && f.me.mins){ tot.apps++; tot.g += f.me.g; tot.a += f.me.a; if (f.me.cs) tot.cs++; tot.r.push(f.me.r); if (f.potm) tot.potm++; } });
   const avgR = tot.r.length ? (tot.r.reduce((s,x)=>s+x, 0)/tot.r.length).toFixed(2) : "–";
   const fa = mcFormAvg(), pS = mcStartChance(), injNow = M.done ? null : mcInjury(mcFrac(M.wi));
   const tile = (l, v, sub, pct, cls="") => `<div class="total"><div class="label">${l}</div><div class="v">${v}</div>${sub?`<small>${sub}</small>`:""}${pct!=null?`<div class="meter ${cls}"><span style="width:${clamp(pct,0,100)}%"></span></div>`:""}</div>`;
@@ -435,9 +443,10 @@ function mcPanel(){
       </div>`}
     ${latest.length ? `<h3>Latest results</h3><div class="fxl">${latest.map(([f,w])=>mcFxRow(f,w)).join("")}</div>` : ""}
     ${!M.done && next.length ? `<h3>Coming up</h3><div class="fxl">${next.slice(0,3).map(([f,w])=>mcFxRow(f,w)).join("")}</div>` : ""}
+    ${lgPanel()}
     ${tgPanel()}
     <h3>This half so far</h3>
-    <div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
+    <div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR],["Player of the Match",tot.potm]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
     <h3>Your attributes</h3>
     <div class="attrs">${MC_ATTR.map(([k])=>{ const d = a0 ? Math.round(a[k]-a0[k]) : 0, bt = mcBoot(), bn = bt && bt.k===k ? bt.n : 0;
       return `<div class="attr"><span>${esc(mcAttrName(k))}</span><div class="meter"><span style="width:${Math.min(99, a[k]+bn)}%"></span></div><span class="v">${Math.round(Math.min(99, a[k]+bn))}${bn ? `<small class="boot" title="From your boots">👟+${bn}</small>` : ""}${d ? `<small class="${d>0?"":"neg"}">${d>0?"+":""}${d}</small>` : ""}</span></div>`; }).join("")}</div>

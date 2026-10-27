@@ -34,7 +34,10 @@ Each half-season is a **match centre**: a fixture list for your club (league, cu
   - **Keepers:** saves and penalties (react to the shot), claiming crosses (ring timing) and rushing out (wait for the heavy touch).
 
   Your attributes, boots, form and sharpness set how forgiving each one is. How many attacking or defending moments you get, and how good the chances are, follow how the match is going for your team. The rest of the match is simulated around your moments, so the final score includes what you did. *Play next week* plays one week; *Play to January* plays straight through. To skip a game, tap *Sim the match* on its intro, or *Sim the rest* partway through.
-- **Team form.** Your team's last five results show in the match centre and before each match. A team on a run plays with more confidence, and you get more chances.
+- **Team form.** Your team's last five results show in the match centre and before each match, next to your opponent's. A team on a run plays with more confidence, and you get more chances.
+- **Squads and line-ups.** Every club has a starting XI of made-up players, named for the country it plays in, with shirt numbers and ratings built around the club's strength. Squads change gradually: each player stays a few seasons before someone new arrives. Before each match you see both line-ups on a pitch, each side's average rating and the opponent's key man. You take the place of the player in your position.
+- **The league, week by week.** Your whole league is played out one round a week alongside your fixtures: every club plays every other home and away. After each league match the full-time screen shows the table around you, with the full table, top scorers, assists, average ratings and the round's results a tap away. The same table and leaderboards are in the match centre and under *Club & leagues*. At the end of the season this table is the final one, and the Golden Boot and Playmaker awards go to the league's real leaders.
+- **Scorers and Player of the Match.** Every match shows who scored and set up the goals, and every player gets a match rating on the same scale as yours. The best rating on the pitch is Player of the Match; the match centre counts how often that was you.
 
   The first time a player meets key moments, and each kind of mini-game, a short card with a diagram explains how it works. *How to play* on any match's intro shows them again.
 - **Gold coins.** Every match you play with key moments earns coins: a win is worth 50, a draw 10 and a defeat nothing; each goal adds 20 and each assist 15, and an own goal costs 10. Simmed matches earn nothing. Your total shows next to your name, and the full-time screen breaks down each match. Coins belong to the account, so they carry across careers, and they travel in backup files.
@@ -86,6 +89,8 @@ Players on different phones can't see each other's careers. That would need an o
 | `account.js` | Accounts, the sign-in screen, the Account menu and the install instructions |
 | `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
 | `moments.js` | Key moments: the live match screen and its shot, pass, tackle/block and save mini-games |
+| `squads.js` | Every club's starting XI, the line-ups before a match, scorers, match ratings and Player of the Match |
+| `league.js` | Your league played out week by week: the table, top scorers, assists, ratings and results |
 | `targets.js` | The manager's season targets and your agent's clauses |
 | `shop.js` | The shop: boots and training boosts bought with gold coins |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |

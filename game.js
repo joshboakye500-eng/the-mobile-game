@@ -1009,8 +1009,9 @@ function simSeason(comps){
   const W = S.world;
   const expRank = {};
   for (const k of LEAGUES) W.tiers[k].slice().sort((a,b)=>strOf(b)-strOf(a)).forEach((n,i)=>expRank[n]=i+1);
-  const tables = {}; for (const k of LEAGUES) tables[k] = simLeague(k, {[our]:bL});
-  mcLeagueTable(tables[t], our);   // your club's real results, when you played the season in the match centre
+  // leagues played out week by week in the match centre (league.js) keep their tables; the rest are simulated
+  const tables = {}; for (const k of LEAGUES) tables[k] = lgFinalRows(k) || simLeague(k, {[our]:bL});
+  if (!lgGet(t)) mcLeagueTable(tables[t], our);   // your club's real results, from a match centre season before the league was played out
   const tbl = tables[t], row = tbl.find(r=>r.n===our);
   let leagueGames = T.games;
   const sb = n => strOf(n) + (n===our?bL:0);
@@ -1686,9 +1687,11 @@ function finishSeason(comps, janFrom){
       else if (c.po==="won") won.push({name:`${T.name} play-off final`, kind:"playoff"});
     } else if (c.won) won.push({name:c.name, kind: ["UCL","UEL","UECL"].includes(c.code) ? "europe" : "cup"});
   });
-  const lg = comps.league, gScale = T.games/38;
-  if (lg && lg.g >= Math.round(rnd(20,26)*gScale*.9)) won.push({name:`${T.short} Golden Boot`, kind:"boot"});
-  if (lg && lg.a >= Math.round(rnd(11,15)*gScale*.9) && POS[S.player.pos].exp>0) won.push({name:`${T.short} Playmaker`, kind:"medal"});
+  // the Golden Boot and Playmaker go to the league's real leaders when the league was played out in the match centre
+  const lg = comps.league, gScale = T.games/38, LL = lgGet(sim.tier);
+  if (lg && (LL ? lgTop(LL, "g") : lg.g >= Math.round(rnd(20,26)*gScale*.9))) won.push({name:`${T.short} Golden Boot`, kind:"boot"});
+  if (lg && (LL ? lgTop(LL, "a") : lg.a >= Math.round(rnd(11,15)*gScale*.9)) && POS[S.player.pos].exp>0) won.push({name:`${T.short} Playmaker`, kind:"medal"});
+  if (LL) lgSeasonNote(LL, sim.tier);
   if (lg && lg.apps>=Math.round(28*gScale) && pf.score>=1.05 && Math.random()<.65) won.push({name:`${T.short} Player of the Season`, kind:"medal"});
   else if (lg && age<=23 && lg.apps>=Math.round(24*gScale) && pf.score>=.92 && Math.random()<.6) won.push({name:`${T.short} Young Player of the Season`, kind:"medal"});
   won.forEach(w=>S.trophies.push({...w, season:sim.season, club:S.club}));
@@ -2633,12 +2636,14 @@ function leaguesTab(){
     <p class="hint" style="margin-top:8px">${T.country==="England" ? (k===1 ? `Bottom ${T.down} go down to the Championship.` : `Top ${T.up} go up automatically, ${ord(T.po[0])} to ${ord(T.po[1])} play off for one more place, bottom ${T.down} go down${k===5?" out of the National League":""}.`)
       : `Bottom ${T.down} go down to the ${TIERS[T.second].name}${T.relPO?", and the club just above them plays off to stay up":""}. The best ${TIERS[T.second].name} sides come up to replace them.`}</p>
   </section>
+  ${lgGet(k) && !S.sim ? `<section class="panel"><h2>${seasonLabel(S.season)} so far · matchweek ${lgGet(k).r}</h2>${lgGet(k).r ? lgBox(k, "tab") : `<p class="empty">The first round hasn't been played yet.</p>`}</section>` : ""}
   ${tb?`<section class="panel"><h2>${ls.season} final table</h2>
     <div class="tablewrap"><table class="lt"><thead><tr><th></th><th class="n">#</th><th>Club</th><th class="n">GD</th><th class="n">Pts</th><th>Next season</th></tr></thead><tbody>
     ${tb.map((r,i)=>`<tr class="${r.n===S.club?"me":""}"><td class="z ${zoneOf(k,i+1,tb.length)}"></td><td class="n">${i+1}</td><td>${esc(r.n)}</td><td class="n">${r.gd>0?"+":""}${r.gd}</td><td class="n">${r.pts}</td><td>${status(r.n)}</td></tr>`).join("")}
     </tbody></table></div>
     <div class="legend">${isTop(k)?`<span><i class="z-ucl"></i>Champions League</span><span><i class="z-uel"></i>Europa League</span><span><i class="z-uecl"></i>Conference League</span>`:`<span><i class="z-up"></i>Promotion</span><span><i class="z-po"></i>Play-offs</span>`}<span><i class="z-rel"></i>Relegation</span></div>
-  </section>`:`<section class="panel"><h2>Final table</h2><p class="empty">Tables appear here after your first season.</p></section>`}
+    ${S.sim && lgGet(k) ? `<h3>The season's top players</h3>${lgBox(k, "final")}` : ""}
+  </section>`:lgGet(k) ? "" : `<section class="panel"><h2>Final table</h2><p class="empty">Tables appear here after your first season.</p></section>`}
   <section class="panel"><h2>${tb?"Next season":"This season"} in ${esc(theName(k))}</h2>
     ${newIn.size?`<p class="hint" style="margin-bottom:10px">New this season: ${[...m.inDown.map(x=>`${esc(x.n)} (down from ${esc(theName(x.from))})`), ...m.inUp.map(x=>`${esc(x.n)} (up from ${esc(theName(x.from))})`)].join(", ")}.</p>`:""}
     <div class="clublist">${next.map(n=>`<span class="cl ${n===S.club?"me":""}"><span class="swatch" style="--c1:${meta(n).c1};--c2:${meta(n).c2}"></span>${esc(n)}${newIn.has(n)?` <span class="pill ${m.inDown.some(x=>x.n===n)?"down":"up"}">New</span>`:""}</span>`).join("")}</div>

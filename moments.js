@@ -146,9 +146,9 @@ function lvPlan(f, X){
 }
 // what a moment did: R = {ok, big, small, g (your goal), a (your assist), gf (a team goal), ga (they scored), og (your own goal), bonus}
 function lvApply(st, m, R){
-  if (R.g || R.a || R.gf) st.ev.push({min:m.min, us:true});
+  if (R.g || R.a || R.gf) st.ev.push({min:m.min, us:true, me:R.g ? "g" : R.a ? "a" : ""});
   if (R.g) st.g++; if (R.a) st.a++;
-  if (R.ga || R.og){ st.ev.push({min:m.min, us:false}); if (R.og) st.og++; }
+  if (R.ga || R.og){ st.ev.push({min:m.min, us:false, og:!!R.og}); if (R.og) st.og++; }
   st.bonus += R.bonus || 0;
   st.log.push({min:m.min, txt:R.big + (R.small ? ` · ${R.small}` : ""), good:R.ok});
 }
@@ -274,8 +274,8 @@ async function lvPlayMatch(f, w){
     while ((go = await lvAsk(`<div class="lv-card">
         <div class="lv-eye">${f.big ? "★ " : ""}${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : ""} · ${mcDate(w, f)}</div>
         <div class="lv-teams"><span>${esc(home)}</span><i>v</i><span>${esc(away)}</span></div>
-        ${typeof sqLineups==="function" ? sqLineups(f) : ""}
-        <div class="lv-form"><span>Your team's form</span>${mcFormPills(mcTeamForm(S.mc.club).L)}</div>
+        ${sqLineups(f)}
+        <div class="lv-forms">${[[S.mc.club, "Your team"], [f.opp, f.opp]].map(([n, l])=>`<div class="lv-form"><span>${esc(l)}</span>${mcFormPills(mcTeamForm(n).L)}</div>`).join("")}</div>
         <p>${me.st==="start" ? "You're in the starting line-up." : `You start on the bench and come on around the ${ord(90-me.mins)} minute.`}
           ${plan.list.length} key moment${plan.list.length===1?"":"s"} will come your way${me.st!=="start" ? "" : plan.list.length>=5 ? ": a big chance to shine" : plan.list.length<=3 ? ": a tough one, make them count" : ""}.</p>
         <div class="lv-row"><button type="button" class="btn primary big" data-lv="play" data-lv-focus>Play key moments</button><button type="button" class="btn" data-lv="sim">Sim the match</button></div>
@@ -293,7 +293,7 @@ async function lvPlayMatch(f, w){
         if (auto){ lvApply(st, m, lvAuto(st, m)); st.left--; continue; }
         lvApply(st, m, R); await lvOutcome(st, R); st.left--;
       }
-      mcResolve(f, w, {gf:ev.filter(e=>e.us).length, ga:ev.filter(e=>!e.us).length, g:st.g, a:st.a, og:st.og, bonus:st.bonus});
+      mcResolve(f, w, {gf:ev.filter(e=>e.us).length, ga:ev.filter(e=>!e.us).length, g:st.g, a:st.a, og:st.og, bonus:st.bonus, ev});
       f.coins = lvCoins(f).total; Account.addCoins(f.coins); save();
       if (!lvSeen().coins) await lvHelp(["coins"], true);
     } else mcResolve(f, w);
@@ -303,17 +303,21 @@ async function lvPlayMatch(f, w){
 async function lvFullTime(st, home, away){
   const f = st.f, me = f.me, [l, r] = f.home || f.neutral ? [f.res.gf, f.res.ga] : [f.res.ga, f.res.gf];
   const bits = [me.g ? `${me.g} goal${me.g>1?"s":""}` : "", me.a ? `${me.a} assist${me.a>1?"s":""}` : "", me.og ? `${me.og} own goal${me.og>1?"s":""}` : "", me.cs && (DEF.includes(S.player.pos) || S.player.pos==="CDM") ? "clean sheet" : ""].filter(Boolean);
-  await lvAsk(`<div class="lv-card lv-ftc">
+  const html = `<div class="lv-card lv-ftc">
       <div class="lv-eye">Full time${f.res.pens ? ` · ${f.res.pens==="won"?"won":"lost"} on penalties` : f.agg ? ` · ${f.agg[0]}–${f.agg[1]} on aggregate` : ""}</div>
       <div class="lv-ft"><span>${esc(home)}</span><b>${l}–${r}</b><span>${esc(away)}</span></div>
+      ${sqScorers(f)}
       <div class="lv-rate"><span class="label">Your rating</span><b class="${me.r>=7.5?"hi":me.r<6?"lo":""}">${me.r ?? "–"}</b><span>${bits.join(" · ") || (me.mins ? "No goal involvement" : "")}</span></div>
-      ${f.potm ? `<div class="lv-potm">★ Player of the Match</div>` : ""}
+      ${f.potm ? `<div class="lv-potm">★ Player of the Match</div>` : f.potmBy ? `<p class="lv-potm-by">Player of the Match: <b>${esc(f.potmBy.n)}</b> (${esc(f.potmBy.c)}), ${f.potmBy.r.toFixed(1)}</p>` : ""}
       ${f.coins!=null ? (()=>{ const C = lvCoins(f); return `<div class="lv-coins"><i class="coin" aria-hidden="true"></i><b>${C.total>=0?"+":""}${C.total}</b><span>${C.parts.map(([l,n])=>`${esc(l)} ${n>=0?"+":""}${n}`).join(" · ")}</span></div>`; })()
         : `<p class="lv-nocoins">Simmed matches don't earn gold coins. Play the key moments to earn them.</p>`}
       ${st.log.length ? `<ol class="lv-log">${st.log.map(x=>`<li class="${x.good===true?"good":x.good===false?"bad":""}"><span>${x.min}'</span>${esc(x.txt)}</li>`).join("")}</ol>` : ""}
-      ${typeof sqTableButton==="function" ? sqTableButton(f) : ""}
+      ${lgFullTime(f)}
       <button type="button" class="btn primary big" data-lv="ok" data-lv-focus>Continue</button>
-    </div>`);
+    </div>`;
+  // the league table and the leaderboards, then back to full time
+  while (await lvAsk(html)==="table") await lvAsk(`<div class="lv-card lv-ftc"><div class="lv-eye">${esc(TIERS[S.mc.lgk].name)} · matchweek ${lgGet(S.mc.lgk).r}</div>
+    ${lgBox(S.mc.lgk, "lv")}<button type="button" class="btn primary big" data-lv="ok" data-lv-focus>Back to full time</button></div>`);
 }
 
 /* =========================================================================================

@@ -1,0 +1,191 @@
+/* ================= SQUADS =================
+   Every club has a starting XI of made-up players in a 4-2-3-1: named for the country it plays in (more foreign
+   signings the higher the league), with shirt numbers and ratings built around the club's strength. A squad comes
+   from the club's name and the season (sqSquad), so nothing needs saving: each place in the side keeps its player
+   for a few seasons before someone new arrives, and players get older as the years go by. In your matches you take
+   the place of the player in your position. sqLineups draws both XIs before kick-off; sqMatch shares out the goals,
+   assists and match ratings and picks the Player of the Match.
+   Loaded before game.js; only called once the game is running. */
+const SQ_SLOTS = [["GK",1],["RB",2],["CB",5],["CB",6],["LB",3],["CDM",4],["CM",8],["RW",7],["CAM",10],["LW",11],["ST",9]];
+// where each slot stands on the line-ups pitch, for the side on the left attacking right: [depth, width]
+const SQ_SPOT = [[16,105],[52,178],[48,130],[48,80],[52,32],[86,80],[86,130],[122,176],[118,105],[122,34],[152,105]];
+const SQ_NAMES = {
+  England:["Jack|Harry|George|Charlie|Oliver|James|Jacob|Thomas|Alfie|Joe|Ben|Callum|Kyle|Ryan|Jordan|Lewis|Mason|Reece|Tom|Sam|Danny|Josh|Luke|Adam|Connor|Jamie|Aaron|Marcus|Ollie|Kieran|Jake|Liam|Bradley|Tyler|Nathan",
+    "Smith|Jones|Taylor|Brown|Williams|Wilson|Johnson|Davies|Robinson|Wright|Thompson|Evans|Walker|White|Roberts|Green|Hall|Wood|Jackson|Clarke|Hughes|Edwards|Turner|Hill|Moore|Cooper|Ward|Morris|King|Watson|Harrison|Morgan|Baker|Lewis|Palmer|Mitchell|Bennett|Shaw|Foster|Barnes|Holt|Fletcher|Chambers|Lowe|Parry"],
+  Scotland:["Callum|Lewis|Ross|Scott|Craig|Kyle|Ryan|Jamie|Fraser|Euan|Calum|Liam|Andrew|Stuart|Grant|Kieran|Ewan|Rory|Cameron|Blair|Lennon|Jack",
+    "Campbell|Stewart|MacDonald|Robertson|Thomson|Anderson|Scott|Murray|Reid|Clark|Ross|Paterson|Young|Mitchell|Watson|Fraser|McLean|McKenzie|Morrison|Hamilton|Graham|Kerr|Johnston|Christie|Ferguson|McGregor|Gray|Wallace|Kennedy|Hunter"],
+  Wales:["Rhys|Gareth|Dylan|Owain|Aaron|Ethan|Tom|Joe|Harry|Kieffer|Brennan|Neco|Connor|Daniel", "Jones|Davies|Evans|Thomas|Roberts|Hughes|Lewis|Morgan|Griffiths|Price|Owen|Pritchard|Rees|Powell|Jenkins|Vaughan"],
+  Ireland:["Seán|Conor|Cian|Darragh|Evan|Jamie|Adam|Callum|Dara|Ryan|Shane|Ciarán|Liam|Josh|Mark|Niall", "Murphy|Kelly|O'Brien|Byrne|Ryan|O'Sullivan|Walsh|O'Connor|McCarthy|Doyle|Kennedy|Lynch|Quinn|Brennan|Doherty|Gallagher"],
+  Spain:["Pablo|Javier|Sergio|Alejandro|Daniel|Álvaro|Adrián|Diego|Carlos|Iker|Mario|Raúl|Marcos|Hugo|Rubén|Óscar|Jorge|Iván|Unai|Aitor|Borja|Gonzalo|Pedro|Fernando|Manuel|Andrés|Víctor|Nacho|Dani|Rodrigo",
+    "García|Fernández|González|Rodríguez|López|Martínez|Sánchez|Pérez|Gómez|Martín|Jiménez|Ruiz|Hernández|Díaz|Moreno|Muñoz|Álvarez|Romero|Alonso|Navarro|Torres|Domínguez|Gil|Vázquez|Serrano|Blanco|Molina|Morales|Ortega|Delgado|Castro|Ortiz|Rubio|Marín|Sanz|Iglesias|Medina|Garrido|Cortés"],
+  Germany:["Lukas|Leon|Finn|Jonas|Niklas|Felix|Maximilian|Tim|Jan|Paul|Moritz|Luca|Julian|Tobias|Florian|Kevin|Marco|Sebastian|Philipp|Dennis|Timo|Kai|Nico|Robin|Lars|Benedikt|Malte|Erik|Hannes|Jannik",
+    "Müller|Schmidt|Schneider|Fischer|Weber|Meyer|Wagner|Becker|Schulz|Hoffmann|Schäfer|Koch|Bauer|Richter|Klein|Wolf|Schröder|Neumann|Schwarz|Zimmermann|Braun|Krüger|Hofmann|Hartmann|Lange|Schmitt|Werner|Krause|Meier|Lehmann|Köhler|Herrmann|König|Walter|Mayer|Huber|Kaiser|Fuchs|Peters|Lang"],
+  Italy:["Francesco|Alessandro|Andrea|Lorenzo|Matteo|Gabriele|Leonardo|Riccardo|Davide|Federico|Marco|Luca|Simone|Giorgio|Nicolò|Tommaso|Edoardo|Stefano|Alessio|Daniele|Fabio|Giacomo|Mattia|Pietro|Filippo|Emanuele|Antonio|Michele|Samuele",
+    "Rossi|Russo|Ferrari|Esposito|Bianchi|Romano|Colombo|Ricci|Marino|Greco|Bruno|Gallo|Conti|De Luca|Mancini|Costa|Giordano|Rizzo|Lombardi|Moretti|Barbieri|Fontana|Santoro|Mariani|Rinaldi|Caruso|Ferrara|Galli|Martini|Leone|Longo|Gentile|Martinelli|Vitale|Serra|Coppola|De Santis|Marchetti|Villa"],
+  France:["Lucas|Hugo|Théo|Louis|Nathan|Enzo|Mathis|Tom|Raphaël|Jules|Maxime|Antoine|Clément|Alexandre|Baptiste|Romain|Thomas|Adrien|Quentin|Florian|Benjamin|Bastien|Valentin|Yanis|Moussa|Ibrahim|Rayan|Malik|Karim|Mathéo",
+    "Martin|Bernard|Dubois|Thomas|Robert|Richard|Petit|Durand|Leroy|Moreau|Simon|Laurent|Lefebvre|Michel|Garcia|David|Bertrand|Roux|Vincent|Fournier|Morel|Girard|André|Mercier|Dupont|Lambert|Bonnet|François|Legrand|Garnier|Faure|Rousseau|Blanc|Guérin|Henry|Roussel|Nicolas|Perrin|Morin"],
+  Portugal:["João|Rodrigo|Martim|Tomás|Diogo|Afonso|Duarte|Gonçalo|Pedro|Rafael|Tiago|Francisco|Miguel|Gustavo|André|Rúben|Nuno|Bruno|Ricardo|Hugo|Fábio|Daniel|Luís|Bernardo|Vasco",
+    "Silva|Santos|Ferreira|Pereira|Oliveira|Costa|Rodrigues|Martins|Jesus|Sousa|Fernandes|Gonçalves|Gomes|Lopes|Marques|Alves|Almeida|Ribeiro|Pinto|Carvalho|Teixeira|Moreira|Correia|Mendes|Nunes|Soares|Vieira|Monteiro|Cardoso|Rocha"],
+  Netherlands:["Daan|Sem|Lucas|Levi|Finn|Milan|Jesse|Thijs|Bram|Ruben|Lars|Tim|Stijn|Joey|Kevin|Jasper|Luuk|Sven|Niels|Bas|Wout|Teun|Rick|Ryan|Jurgen",
+    "de Jong|de Vries|van den Berg|van Dijk|Bakker|Janssen|Visser|Smit|Meijer|de Boer|Mulder|de Groot|Bos|Vos|Peters|Hendriks|van Leeuwen|Dekker|Brouwer|de Wit|Dijkstra|Smits|de Graaf|van der Meer|Kok|Jacobs|de Haan|Vermeulen|van den Heuvel|Schouten"],
+  Belgium:["Thibaut|Axel|Youri|Arthur|Jérémy|Charles|Hans|Lois|Maxim|Senne|Arne|Wout", "Peeters|Janssens|Maes|Jacobs|Mertens|Willems|Claes|Goossens|Wouters|De Smet|Dubois|Lambert|Vermeiren"],
+  Denmark:["Rasmus|Mikkel|Andreas|Christian|Jonas|Mathias|Joachim|Kasper|Jesper|Simon|Victor|Mads", "Jensen|Nielsen|Hansen|Pedersen|Andersen|Christensen|Larsen|Sørensen|Rasmussen|Jørgensen|Petersen|Madsen|Kristensen"],
+  Norway:["Martin|Alexander|Sander|Emil|Fredrik|Kristian|Sondre|Henrik|Jonas|Magnus|Ola|Tobias", "Olsen|Berg|Haugen|Lund|Strand|Bakke|Hagen|Johansen|Eriksen|Solberg|Moe|Nygaard"],
+  Sweden:["Viktor|Isak|Anton|Gustav|Oscar|Elias|Hugo|Linus|Albin|Filip|Hampus|Ludwig", "Johansson|Andersson|Karlsson|Nilsson|Eriksson|Larsson|Svensson|Persson|Olsson|Lindberg|Holm|Bergström"],
+  Poland:["Piotr|Jakub|Kamil|Mateusz|Krzysztof|Sebastian|Przemysław|Karol|Bartosz|Jan|Michał|Paweł", "Nowak|Kowalski|Wiśniewski|Wójcik|Kowalczyk|Kamiński|Szymański|Woźniak|Dąbrowski|Kozłowski|Jankowski|Mazur|Krawczyk"],
+  Czechia:["Tomáš|Jakub|Ondřej|Lukáš|Adam|Patrik|Vladimír|David|Matěj|Václav|Antonín|Michal", "Novák|Svoboda|Novotný|Dvořák|Černý|Procházka|Kučera|Veselý|Horák|Němec|Pokorný|Marek|Holeš|Souček"],
+  Croatia:["Luka|Ivan|Mateo|Josip|Marko|Duje|Ante|Mario|Bruno|Domagoj|Nikola|Petar", "Horvat|Kovačević|Babić|Marić|Jurić|Novak|Knežević|Vuković|Matić|Tomić|Pavić|Grgić"],
+  Serbia:["Nikola|Dušan|Sergej|Filip|Andrej|Stefan|Aleksandar|Miloš|Lazar|Uroš|Vanja|Strahinja", "Petrović|Jovanović|Nikolić|Marković|Đorđević|Stojanović|Ilić|Pavlović|Popović|Živković|Lukić|Milenković"],
+  Hungary:["Dominik|Roland|Ádám|Bence|Dániel|Milos|Zsolt|Barnabás|Márton|Attila|Kristóf|Péter", "Nagy|Kovács|Tóth|Szabó|Horváth|Varga|Kiss|Molnár|Németh|Farkas|Balogh|Szalai|Lovrencsics"],
+  Greece:["Giorgos|Kostas|Dimitris|Nikos|Giannis|Christos|Vangelis|Anastasios|Petros|Thanasis|Kyriakos|Manolis", "Papadopoulos|Pappas|Georgiou|Nikolaidis|Konstantinou|Vlachos|Dimitriou|Ioannou|Mavropanos|Tzolis|Bakasetas|Pelkas|Siopis|Kourbelis"],
+  Ukraine:["Oleksandr|Andriy|Mykola|Viktor|Taras|Artem|Heorhiy|Yehor|Vitaliy|Serhiy|Mykhailo|Illia", "Shevchenko|Bondarenko|Kovalenko|Tkachenko|Kravchenko|Melnyk|Boyko|Moroz|Lysenko|Savchenko|Rudenko|Marchenko"],
+  Turkey:["Arda|Kerem|Hakan|Orkun|Ferdi|Mert|Cengiz|Emre|Barış|Kaan|Yusuf|Salih", "Yılmaz|Kaya|Demir|Şahin|Çelik|Yıldız|Yıldırım|Öztürk|Aydın|Özdemir|Arslan|Doğan|Kılıç"],
+  Azerbaijan:["Emin|Ramil|Mahir|Toral|Renat|Elvin|Rahil|Namiq|Ozan|Anatoliy", "Mammadov|Aliyev|Huseynov|Hasanov|Guliyev|Ismayilov|Abdullayev|Rzayev|Sheydayev|Dadashov"],
+  Brazil:["Lucas|Gabriel|Matheus|Vinícius|Rafael|Bruno|Felipe|Thiago|Gustavo|Pedro|Caio|Igor|Danilo|Wesley|Murilo|Renan", "Silva|Santos|Oliveira|Souza|Lima|Pereira|Costa|Ferreira|Almeida|Carvalho|Ribeiro|Araújo|Barbosa|Nascimento|Moura|Rocha"],
+  Argentina:["Santiago|Matías|Nicolás|Facundo|Julián|Franco|Agustín|Joaquín|Valentín|Emiliano|Gonzalo|Ezequiel|Tomás|Lucas", "González|Rodríguez|Fernández|López|Martínez|Gómez|Díaz|Romero|Sosa|Medina|Herrera|Aguirre|Benítez|Ledesma|Ríos|Molina"],
+  Uruguay:["Facundo|Maximiliano|Agustín|Nahitan|Mathías|Sebastián|Rodrigo|Brian|Manuel|Giorgian|Federico|Diego", "Pereyra|Núñez|Olivera|Cáceres|Rodríguez|Bentos|Piquerez|Ugalde|Viña|Coates|Sosa|Pintos"],
+  Colombia:["Juan|Jhon|Andrés|Camilo|Jefferson|Yerry|Duván|Mateus|Kevin|Wílmar|Santiago|Daniel", "Ramírez|Castillo|Vargas|Mejía|Restrepo|Cabrera|Mosquera|Palacios|Valencia|Moreno|Hinestroza|Cuesta"],
+  USA:["Tyler|Brenden|Josh|Tim|Chris|Miles|Cameron|Jordan|Paxton|Caden|Owen|Malik", "Johnson|Miller|Davis|Anderson|Thomas|Jackson|Harris|Martin|Thompson|Robinson|Clark|Lewis|Walker|Young"],
+  Nigeria:["Chidi|Emeka|Victor|Samuel|Ademola|Kelechi|Chukwudi|Ola|Tunde|Ifeanyi|Wilfred|Moses|Uche|Femi", "Okafor|Adeyemi|Nwosu|Eze|Okonkwo|Balogun|Ogunleye|Onyeka|Okoye|Babatunde|Adebayo|Nwachukwu|Obi|Afolabi"],
+  Ghana:["Kwame|Kofi|Yaw|Kwabena|Mohammed|Daniel|Abdul|Joseph|Emmanuel|Osman|Richard|Kojo", "Mensah|Asante|Boateng|Owusu|Addo|Amartey|Agyeman|Ofori|Badu|Antwi|Danso|Fosu|Sarpong|Tetteh"],
+  Senegal:["Moussa|Cheikh|Idrissa|Pape|Abdou|Mamadou|Bamba|Habib|Lamine|Boulaye|Ousmane|Saliou", "Diallo|Ndiaye|Sarr|Diop|Faye|Gueye|Sow|Mendy|Cissé|Diatta|Camara|Niang|Ba|Seck|Fall"],
+  "Ivory Coast":["Serge|Yannick|Wilfried|Franck|Ibrahim|Simon|Odilon|Christian|Jérémie|Hamed|Seko|Karim", "Kouassi|Koné|Bamba|Traoré|Coulibaly|Touré|Kessié|Diomandé|Gbamin|Doumbia|Fofana|Kouamé"],
+  Morocco:["Youssef|Hakim|Sofyan|Bilal|Azzedine|Amine|Ilias|Yassine|Selim|Anass|Zakaria|Oussama", "El Amrani|Benali|Tazi|Bennani|El Fassi|Alaoui|Chraibi|Berrada|Lahlou|Saidi|Haddad|El Mansouri"],
+  Japan:["Takumi|Kaoru|Daichi|Wataru|Ritsu|Hiroki|Ayase|Yuki|Shota|Kenta|Sota|Ryo", "Tanaka|Suzuki|Takahashi|Watanabe|Ito|Yamamoto|Nakamura|Kobayashi|Kato|Yoshida|Yamada|Sasaki|Matsumoto|Inoue"],
+  "South Korea":["Dong-hyun|Seung-woo|Jin-su|Tae-hwan|Sang-ho|Ji-hoon|Young-jae|Hyun-soo|Joon-ho|Woo-jin", "Kim|Lee|Park|Choi|Jung|Kang|Cho|Yoon|Jang|Lim|Han|Oh"]
+};
+// where signings come from: anywhere for the big leagues, closer to home for England's lower divisions
+const SQ_FOREIGN = ["Brazil","Argentina","France","Spain","Portugal","Netherlands","Germany","Belgium","Nigeria","Ghana","Senegal","Ivory Coast","Morocco","Denmark","Norway","Sweden","Poland","Croatia","Serbia","Japan","South Korea","USA","Colombia","Uruguay","Turkey","England","Italy","Scotland","Ireland","Wales"];
+const SQ_NEAR = ["Scotland","Ireland","Wales","Ireland","Nigeria","Ghana","Netherlands","France"];
+const SQ_DOMESTIC = {1:.42, 2:.62, 3:.78, 4:.82, 5:.88, ES:.58, DE:.48, IT:.48, FR:.52, POR:.42, NED:.55, SCO:.52};
+// European opponents from outside the game's leagues, by country (names only, so Austria and Switzerland use German ones)
+const SQ_CLUB_NAT = {"Galatasaray":"Turkey", "Fenerbahçe":"Turkey", "Club Brugge":"Belgium", "Gent":"Belgium", "Anderlecht":"Belgium", "Shakhtar Donetsk":"Ukraine",
+  "Bodø/Glimt":"Norway", "Viking":"Norway", "Slavia Prague":"Czechia", "Sparta Prague":"Czechia", "Slovan Bratislava":"Czechia", "AEK Athens":"Greece", "Olympiacos":"Greece",
+  "Panathinaikos":"Greece", "PAOK":"Greece", "Omonia":"Greece", "LASK":"Germany", "Rapid Wien":"Germany", "Salzburg":"Germany", "Basel":"Germany", "Young Boys":"Germany",
+  "Sabah":"Azerbaijan", "Midtjylland":"Denmark", "Copenhagen":"Denmark", "Ferencváros":"Hungary", "Red Star Belgrade":"Serbia", "Legia Warsaw":"Poland", "Lech Poznań":"Poland",
+  "Jagiellonia":"Poland", "Shamrock Rovers":"Ireland", "Djurgården":"Sweden", "AZ Alkmaar":"Netherlands"};
+const sqCache = new Map();
+
+const sqNames = nat => (SQ_NAMES[nat] || SQ_NAMES.England).map(s=>s.split("|"));
+// the club's country, for its players' names, and how many of them are home-grown
+function sqHome(club){
+  if (SQ_CLUB_NAT[club]) return {home:SQ_CLUB_NAT[club], dom:.55, near:false};
+  const t = ALLKEYS.find(k=>S.world.tiers[k] && S.world.tiers[k].includes(club));
+  if (t==null) return {home:null, dom:0, near:false};
+  return {home:TIERS[t].country, dom:SQ_DOMESTIC[t] ?? .7, near:TIERS[t].country==="England" && TIERS[t].level>=3};
+}
+// the player in one place in a club's side this season: a place keeps its player for 3 to 8 seasons, then a new one arrives
+function sqPlayer(club, i, season, H){
+  const R0 = seeded(hashStr(`${club}|${i}`)), stay = 3 + Math.floor(R0()*6), k = season - 2026 + Math.floor(R0()*stay), gen = Math.floor(k/stay);
+  const R = seeded(hashStr(`${club}|${i}|${gen}`)), one = a => a[Math.floor(R()*a.length)];
+  let nat = H.home;
+  if (!H.home || R()>=H.dom){ const pool = H.near ? SQ_NEAR : SQ_FOREIGN; do { nat = one(pool); } while (nat===H.home); }
+  const [F, L] = sqNames(nat), age = 18 + Math.floor(R()*12) + (k - gen*stay);
+  // most players are a little below the club's level; about one in ten is its star
+  let r = R()<.1 ? 4 + R()*5 : (R() - .6)*10;
+  if (age>30) r -= (age-30)*.8; else if (age<21) r -= (21-age)*1.2;
+  return {i, name:`${one(F)} ${one(L)}`, nat, pos:SQ_SLOTS[i][0], num:R()<.7 ? SQ_SLOTS[i][1] : 12 + Math.floor(R()*28), r:+r.toFixed(1), age, R};
+}
+// a club's XI this season, cached: [{i, name, nat, pos, num, r (rating against the club's strength), age}]
+function sqSquad(club){
+  const key = `${club}|${S.season}`;
+  if (sqCache.has(key)) return sqCache.get(key);
+  const H = sqHome(club), names = new Set(), nums = new Set();
+  const xi = SQ_SLOTS.map((_, i)=>{
+    const p = sqPlayer(club, i, S.season, H), [F, L] = sqNames(p.nat);
+    for (let k=0; names.has(p.name) && k<8; k++) p.name = `${F[Math.floor(p.R()*F.length)]} ${L[Math.floor(p.R()*L.length)]}`;
+    while (nums.has(p.num)) p.num = p.num>=99 ? 12 : p.num + 1;
+    names.add(p.name); nums.add(p.num); delete p.R;
+    return p;
+  });
+  if (sqCache.size>300) sqCache.clear();
+  sqCache.set(key, xi);
+  return xi;
+}
+const sqSlotOf = pos => Math.max(0, SQ_SLOTS.findIndex(s=>s[0]===pos));
+// a player's rating: his club's strength (or a European opponent's) plus his own edge
+const sqRating = (p, base) => Math.round(clamp(base + p.r, 30, 96));
+const sqSurname = n => { const w = String(n).split(" ").slice(1), s = w.join(" "); return s.length>12 ? w[w.length-1] : s; };
+const sqDefends = pos => DEF.includes(pos) || pos==="CDM";
+// who scores (k=0) or sets up (k=1) a goal: weighted by position (MC_SHARE) and quality, never player `not`
+function sqPick(xi, on, k, not){
+  const w = xi.map((p,i)=>on[i] && i!==not ? (MC_SHARE[p.pos] || MC_SHARE.CM)[k]*Math.exp(p.r/14) + .001 : 0);
+  let x = Math.random()*w.reduce((s,v)=>s+v, 0);
+  for (let i=0;i<w.length;i++){ x -= w[i]; if (x<=0 && w[i]>0) return i; }
+  return w.findIndex(v=>v>0);
+}
+// a match rating on the same scale as yours (mcResolve): quality against the opponent, goals, assists, the result,
+// and for defenders clean sheets and heavy defeats
+function sqRate(pos, q, oppQ, g, a, gf, ga){
+  const d = sqDefends(pos);
+  return +clamp(6.35 + (q - oppQ)*.02 + g*.95 + a*.6 + (d && ga===0 ? .7 : 0) + (gf>ga ? .3 : gf<ga ? -.3 : 0) - (d && ga>=3 ? .5 : 0) + gauss()*.5, 3.5, 10).toFixed(1);
+}
+
+/* ---------- your matches ---------- */
+// both XIs on a pitch, the home side on the left attacking right, with you in your place when you start
+function sqLineups(f){
+  const our = S.mc.club, K = lvKits({f}), left = f.home || f.neutral ? our : f.opp, right = left===our ? f.opp : our, u = sqSlotOf(S.player.pos);
+  const you = !!f.me && f.me.st==="start", baseOf = n => n===our ? strOf(our) : f.oppStr;
+  const side = (club, flip) => {
+    const kit = club===our ? K.us : K.them, ink = lvLight(kit) ? "#15171A" : "#FFFFFF";
+    return sqSquad(club).map((p,i)=>{
+      const me = club===our && you && i===u, [x0, y0] = SQ_SPOT[i], x = flip ? 340-x0 : x0, y = flip ? 210-y0 : y0;
+      return `<g transform="translate(${x} ${y})"><circle r="8.5" fill="${kit}" stroke="${me ? "#F5C542" : "rgba(0,0,0,.45)"}" stroke-width="${me ? 2.5 : 1}"/>
+        <text y="3" text-anchor="middle" class="sq-num" fill="${ink}">${me ? esc(String(S.player.number).slice(0,2)) : p.num}</text>
+        <text y="${i===10 ? -12 : 19}" text-anchor="middle" class="sq-name${me ? " me" : ""}">${esc(me ? "You" : sqSurname(p.name))}</text></g>`;
+    }).join("");
+  };
+  const avg = club => { const xi = sqSquad(club); return Math.round(xi.reduce((s,p,i)=>s + (club===our && you && i===u ? mcOvr() : sqRating(p, baseOf(club))), 0)/xi.length); };
+  const key = sqSquad(f.opp).reduce((b,p)=>p.r>b.r ? p : b);
+  return `<details class="sq" open><summary><span>Line-ups</span><span class="sq-avg">${esc(lvAbbr(left))} ${avg(left)} · ${avg(right)} ${esc(lvAbbr(right))}</span></summary>
+    <svg viewBox="0 0 340 210" class="sq-pitch" role="img" aria-label="${esc(`Starting line-ups: ${left} on the left, ${right} on the right`)}">
+      <rect width="340" height="210" rx="10" fill="#195C33"/>${[0,2,4,6,8,10].map(i=>`<rect x="${i*31}" width="31" height="210" fill="#1E6A3B"/>`).join("")}
+      <g fill="none" stroke="rgba(255,255,255,.32)" stroke-width="1.3"><rect x="4" y="4" width="332" height="202" rx="4"/><path d="M170 4v202"/><circle cx="170" cy="105" r="24"/>
+        <rect x="4" y="58" width="38" height="94"/><rect x="298" y="58" width="38" height="94"/></g>
+      ${side(left, false)}${side(right, true)}
+    </svg>
+    <p class="sq-key">${you ? "You're the gold ring. " : f.me && f.me.st==="sub" ? "You start on the bench. " : ""}Their key man: <b>${esc(key.name)}</b> (${key.pos}, rated ${sqRating(key, f.oppStr)}).</p>
+  </details>`;
+}
+// after one of your matches: who scored and set up each goal (with the minutes from your key moments when you played
+// them), everyone's match rating, and the Player of the Match. Returns both sides' [goals, assists, rating] by place in
+// the XI (null for anyone who didn't play), for the league's stats
+function sqMatch(f, ev){
+  const our = S.mc.club, me = f.me, {gf, ga} = f.res, u = sqSlotOf(S.player.pos);
+  const sides = [{club:our, xi:sqSquad(our), q:strOf(our), oq:f.oppStr}, {club:f.opp, xi:sqSquad(f.opp), q:f.oppStr, oq:strOf(our)}];
+  const on = [sides[0].xi.map((p,i)=>!(me.st==="start" && i===u)), sides[1].xi.map(()=>true)];
+  // the goals in order: from the key moments, or at random minutes (yours while you were on the pitch)
+  let evs;
+  if (ev) evs = ev.map(e=>({...e}));
+  else {
+    evs = [...Array(gf)].map(()=>({us:true})).concat([...Array(ga)].map(()=>({us:false})));
+    const ours = shuffle(evs.filter(e=>e.us)), lo = me.st==="sub" ? 91-me.mins : 1, hi = me.st==="start" ? me.mins : 90;
+    ours.slice(0, me.g).forEach(e=>{ e.me = "g"; }); ours.slice(me.g, me.g+me.a).forEach(e=>{ e.me = "a"; });
+    shuffle(evs.filter(e=>!e.us)).slice(0, me.og || 0).forEach(e=>{ e.og = true; });
+    evs.forEach(e=>{ e.min = e.me || e.og ? lo + Math.floor(Math.random()*Math.max(1, hi-lo+1)) : 1 + Math.floor(Math.random()*90); });
+  }
+  evs.sort((a,b)=>a.min-b.min);
+  const tally = sides.map(sd=>sd.xi.map(()=>[0,0]));
+  f.sc = evs.map(e=>{
+    const s = e.us ? 0 : 1, name = i => i<0 ? "You" : sqSurname(sides[s].xi[i].name);
+    if (e.og) return {m:e.min, u:0, s:"You", og:1};
+    const by = e.me==="g" ? -1 : sqPick(sides[s].xi, on[s], 0, -1);
+    const from = e.me==="a" ? -1 : Math.random()<.72 ? sqPick(sides[s].xi, on[s], 1, by) : null;
+    if (by>=0) tally[s][by][0]++;
+    if (from!=null && from>=0) tally[s][from][1]++;
+    return {m:e.min, u:e.us ? 1 : 0, s:name(by), a:from==null ? "" : name(from)};
+  });
+  const rt = sides.map((sd,s)=>sd.xi.map((p,i)=>on[s][i] ? sqRate(p.pos, sd.q + p.r, sd.oq, tally[s][i][0], tally[s][i][1], s ? ga : gf, s ? gf : ga) : null));
+  let best = null;
+  sides.forEach((sd,s)=>sd.xi.forEach((p,i)=>{ const r = rt[s][i]; if (r!=null && (!best || r>best.r)) best = {n:p.name, c:sd.club, r}; }));
+  f.potm = me.mins>0 && me.r!=null && (!best || me.r>=best.r);
+  f.potmBy = f.potm ? null : best;
+  return sides.map((sd,s)=>sd.xi.map((p,i)=>rt[s][i]==null ? null : [tally[s][i][0], tally[s][i][1], rt[s][i]]));
+}
+// the full-time goal list: "Smith 12', You 54'" under each side
+function sqScorers(f){
+  if (!f.sc || !f.sc.length) return "";
+  const line = us => f.sc.filter(g=>!!g.u===us).map(g=>`${esc(g.s)}${g.og ? " (og)" : ""} ${g.m}'`).join(", ");
+  const [l, r] = f.home || f.neutral ? [line(true), line(false)] : [line(false), line(true)];
+  return `<div class="sq-goals"><span>${l}</span><i aria-hidden="true">⚽</i><span>${r}</span></div>`;
+}
