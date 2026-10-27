@@ -622,10 +622,20 @@ html.lv-open,html.lv-open body{overflow:hidden}
 @keyframes lvpulse{from{opacity:.45}to{opacity:1}}
 .lv-pitch{background:linear-gradient(0deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/100% 50%,repeating-linear-gradient(0deg,#1B6236 0 12%,#1F6B3B 12% 24%)}
 .lv-p{position:absolute;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:900}
-.lv-mate{width:46px;height:46px;border:3px solid #fff;background:#F4F7F2;color:#0F1C16;font-size:20px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.35);padding:0}
-.lv-opp{width:26px;height:26px;background:#EF4444;border:2px solid #7F1D1D;transition:left .25s ease,top .25s ease;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,.4)}
-.lv-me{width:44px;height:44px;background:#F5C542;color:#1A1400;font-size:12px;letter-spacing:.04em;box-shadow:0 0 18px rgba(245,197,66,.7)}
-.lv-pball{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px #15171A;transition:left .35s ease-out,top .35s ease-out;pointer-events:none}
+.lv-opp{width:22px;height:22px;border:2px solid rgba(0,0,0,.45);transition:left .25s ease,top .25s ease;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.lv-tap{position:absolute;border:0;background:transparent;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lv-mate,.lv-run-btn{width:54px;height:54px;transform:translate(-50%,-50%);border-radius:50%}
+.lv-mate:focus-visible,.lv-run-btn:focus-visible,.lv-tap:focus-visible{outline:3px solid #F5C542}
+.lv-half{top:0;bottom:0;width:50%}
+.lv-half.l{left:0} .lv-half.r{right:0}
+.lv-lr .btn{flex:1 1 0}
+.lv-ring{position:absolute;width:56px;height:56px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
+.lv-ring.tgt{border:3px solid #F5C542;box-shadow:0 0 14px rgba(245,197,66,.7)}
+.lv-ring.mov{border:3px dashed #fff;transform:translate(-50%,-50%) scale(2.8)}
+.lv-steps-dots{display:inline-flex;gap:4px}
+.lv-steps-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25)}
+.lv-steps-dots i.on{background:#F5C542}
+.lv-potm{font-family:var(--f-display);font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:20px;color:#1A1400;background:linear-gradient(90deg,#F5C542,#FFE08A);border-radius:12px;padding:8px 12px;text-align:center}
 .lv-timer{height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
 .lv-timer span{display:block;height:100%;width:100%;background:linear-gradient(90deg,#F5C542,#FFE08A)}
 .lv-run{background:repeating-linear-gradient(90deg,#1B6236 0 10%,#1F6B3B 10% 20%)}
@@ -707,3 +717,11 @@ button.coins:hover{background:rgba(0,0,0,.5)}
 .pack-t{font-size:13px;color:var(--muted)}
 .pack-t em{font-style:normal;color:var(--up);font-weight:600}
 .pack .btn{width:100%}
+
+/* ---- team form ---- */
+.tf-row{margin-top:10px;gap:6px}
+.tf{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-family:var(--f-display);font-weight:800;font-size:14px;color:#fff;background:var(--muted)}
+.tf.w{background:var(--up)} .tf.d{background:#9CA3AF} .tf.l{background:var(--down)}
+.lv-form{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-family:var(--f-label);text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:rgba(242,246,243,.7)}
+.lv-form span:first-child{margin-right:4px}
+.lv-dg{transition:transform .25s ease}

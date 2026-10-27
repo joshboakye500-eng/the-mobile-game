@@ -28,13 +28,13 @@ Each half-season is a **match centre**: a fixture list for your club (league, cu
 - **Training.** Each week, pick a focus (finishing, passing, pace, defending or shot-stopping, stamina, match prep, or rest) and how hard to train. Hard training grows you faster but tires you and raises the injury risk. Young players grow fast, and over-30s fight decline.
 - **Selection.** Whether you start, come off the bench or sit out depends on the manager's trust, how your overall rating compares with the squad, your form and how tired you are.
 - **Matches.** Fixtures are simulated from your attributes, form, sharpness and fitness. Your goals and assists come out of the team's scorelines. ★ marks the big games.
-- **Key moments.** In every match you're picked for you play the 2–4 moments that involve you, or 1 if you come off the bench:
-  - **Shots:** pick a spot in the goal, then stop the power bar in the green.
-  - **Passes:** tap the teammate who isn't marked before time runs out.
-  - **Tackles and blocks:** tap when the attacker or the ball is in the green.
-  - **Saves (keepers):** watch the shot and dive the right way.
+- **Key moments.** Every match you're picked for is played as quick mini-games for the moments that involve you. A starter gets about 4: more against weaker teams and when your team is in form, fewer against the best (keepers the other way round). Off the bench you get 1 or 2. There are 13 mini-games, drawn by position:
+  - **Attack:** shots (one-on-ones, in the box, long range, free kicks over a wall), headers (tap as the rings meet), passes (pick the free man), take-ons (read the defender and go the other way), crosses (pick the free runner on his spot), and a three-step **attacking move** that ends in a shot or a square ball for an assist.
+  - **Defence:** tackles and blocks (timing), interceptions (read the passer's eyes) and shadowing your man (stay in his lane).
+  - **Keepers:** saves and penalties (react to the shot), claiming crosses (ring timing) and rushing out (wait for the heavy touch).
 
-  Your attributes, form and sharpness set how forgiving each one is, and better opponents have better keepers. The rest of the match is simulated around your moments, so the final score includes what you did. *Play next week* plays one week; *Play to January* plays straight through, match after match. To skip a game, tap *Sim the match* on its intro, or *Sim the rest* partway through.
+  Your attributes, boots, form and sharpness set how forgiving each one is. How many attacking or defending moments you get, and how good the chances are, follow how the match is going for your team. The rest of the match is simulated around your moments, so the final score includes what you did. *Play next week* plays one week; *Play to January* plays straight through. To skip a game, tap *Sim the match* on its intro, or *Sim the rest* partway through.
+- **Team form.** Your team's last five results show in the match centre and before each match. A team on a run plays with more confidence, and you get more chances.
 
   The first time a player meets key moments, and each kind of mini-game, a short card with a diagram explains how it works. *How to play* on any match's intro shows them again.
 - **Gold coins.** Every match you play with key moments earns coins: a win is worth 50, a draw 10 and a defeat nothing; each goal adds 20 and each assist 15, and an own goal costs 10. Simmed matches earn nothing. Your total shows next to your name, and the full-time screen breaks down each match. Coins belong to the account, so they carry across careers, and they travel in backup files.

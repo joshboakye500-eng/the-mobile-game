@@ -71,6 +71,13 @@ function mcRec(club){
   if (!S.mcRec || S.mcRec.s!==s) S.mcRec = {s, clubs:{}};
   return S.mcRec.clubs[club] ||= {lg:{p:0,w:0,d:0,l:0,gf:0,ga:0}, cups:{}, eu:null, order:null};
 }
+// a club's last five results this season, and what they're worth: −0.9 (losing every week) to +1 (winning every week)
+function mcTeamForm(club){
+  const rec = mcRecIf(club), L = ((rec && rec.form) || []).slice(-5);
+  const ppg = L.length ? L.reduce((s,r)=>s + (r==="W" ? 3 : r==="D" ? 1 : 0), 0)/L.length : 1.4;
+  return {L, ppg, f: L.length ? clamp((ppg-1.4)/1.6, -.9, 1)*Math.min(1, L.length/3) : 0};
+}
+const mcFormPills = L => L.length ? L.map(r=>`<span class="tf ${r.toLowerCase()}">${r}</span>`).join("") : `<span class="hint">No games yet</span>`;
 function mcRecIf(club){ return S.mcRec && S.mcRec.s===seasonLabel(S.season) ? S.mcRec.clubs[club] : null; }
 function mcOut(r, reached, lostTo, stage){ Object.assign(r, {alive:false, reached, lostTo, stage}); }
 function mcCupRec(rec, c, half){
@@ -228,11 +235,13 @@ function mcXg(f){
   const base = strOf(S.mc.club), pos = S.player.pos, a = mcA(), me = f.me, t = me.mins/90, fa = mcFormAvg();
   // you lift the team in proportion to how much better you are than it, and how long you're on the pitch
   const boost = clamp((mcOvr()-base)*.25*t + (me.mins ? (fa-6.6)*.5 : 0), -3, 4), att = MC_ATT[pos] ?? .5, ha = f.neutral ? 0 : f.home ? 1.5 : -1.5;
-  const lf = 1.35*Math.exp((base + boost*att + ha - f.oppStr)/20), la = 1.35*Math.exp((f.oppStr - base - boost*(1-att) - ha)/20);
+  // a team on a run plays with confidence; one on a losing streak doesn't
+  const tf = mcTeamForm(S.mc.club).f, edge = tf*.8;
+  const lf = 1.35*Math.exp((base + edge + boost*att + ha - f.oppStr)/20), la = 1.35*Math.exp((f.oppStr - base - edge - boost*(1-att) - ha)/20);
   // your goals and assists are a share of the team's, bigger the sharper your finishing and passing
   const [gs, as] = MC_SHARE[pos] || MC_SHARE.CM, w = mcWeights(), form = clamp(1 + (fa-6.6)*.1, .85, 1.15), damp = Math.sqrt(1.35/lf);
   const skill = k => clamp(1 + (a[k] - (base + 30*(w[k]-.2)))/20, .5, 1.6);
-  return {base, lf, la, t, pG:clamp(gs*t*form*damp*skill("fin"), 0, .7), pA:clamp(as*t*form*damp*skill("pas"), 0, .5)};
+  return {base, lf, la, t, tf, pG:clamp(gs*t*form*damp*skill("fin"), 0, .7), pA:clamp(as*t*form*damp*skill("pas"), 0, .5)};
 }
 function mcPlay(f, w, specs){ if (mcSetup(f, w, specs)) mcResolve(f, w); }
 // the result, simulated or (live) built from the key moments you played
@@ -263,6 +272,7 @@ function mcResolve(f, w, live){
 // a played fixture moves the league record on, and decides cup and European ties
 function mcAfter(f, r, rec, base){
   const {gf, ga} = f.res, pts = gf>ga ? 3 : gf===ga ? 1 : 0;
+  (rec.form ||= []).push(pts===3 ? "W" : pts===1 ? "D" : "L"); if (rec.form.length>10) rec.form.shift();
   if (f.code==="league"){ const L = rec.lg; L.p++; L.gf += gf; L.ga += ga; if (pts===3) L.w++; else if (pts===1) L.d++; else L.l++; return; }
   r.games++;
   if (f.eu && f.ri===-1){ r.pts += pts; r.gp++; if (r.gp>=EURO[f.code].phase) mcEuPhaseEnd(r, EURO[f.code]); return; }
@@ -401,6 +411,7 @@ function mcPanel(){
     <p class="hint" style="margin-top:8px">${M.done ? `All ${W} weeks played.` : `Week ${M.wi+1} of ${W} · ${mcDate(M.wi)}.`} Pick a training focus, then tap <strong>Play next week</strong>.</p>
     <p class="hint" style="margin-top:4px">In every match you're picked for, you play your key moments: ${S.player.pos==="GK" ? "saves" : DEF.includes(S.player.pos) ? "tackles, blocks and the odd chance" : "shots, passes and the odd tackle"}. Your attributes, form, sharpness and fitness decide whether the manager picks you and how forgiving they are.</p>
     <div class="meter" style="margin-top:8px"><span style="width:${Math.round(M.wi/W*100)}%"></span></div>
+    <div class="row tf-row"><span class="label">Team form</span>${mcFormPills(mcTeamForm(M.club).L)}</div>
     ${injNow ? `<p class="ref bad" style="margin-top:12px"><strong>Injured: ${esc(injNow.name)}.</strong> You'll miss games until you're fit again. Training this week is rehab.</p>` : ""}
     ${!M.done && M.wi<M.intlTo ? `<p class="ref" style="margin-top:12px">Away on international duty for the first ${M.intlTo} weeks of the half.</p>` : ""}
     <div class="mc-tiles">
