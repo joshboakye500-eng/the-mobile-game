@@ -62,22 +62,18 @@ function shopHTML(){
     <div class="dlg-head"><i class="coin big" aria-hidden="true"></i><div style="min-width:0"><h2 id="shopDlgTitle">Shop</h2><p class="hint">You have <b>${have.toLocaleString()}</b> gold coins · <button type="button" class="linkbtn" data-shop="get">Get more</button></p></div>
       <button type="button" class="dlg-x" data-shop="close" aria-label="Close">×</button></div>
     ${shopMsg ? `<p class="ref" role="status" style="margin:0">${esc(shopMsg)}</p>` : ""}
-    <section><h3>Boots</h3><p class="hint">Boots are yours to keep, in every career. Wear one pair at a time: its boost counts in every match, from whether you're picked to how forgiving the mini-games are.</p>
-      <div class="shop-grid">${boots}</div></section>
-    <section><h3>Training boosts</h3>
-      ${boosts.length ? `<div class="shop-grid">${boosts.map(b=>`<div class="shop-card"><div class="shop-top"><b>${b.t}</b></div><p>${b.d}</p>
+    ${subTabs("shop", [["boots", "Boots", `<p class="hint">Yours to keep in every career. Wear one pair at a time: its boost counts in every match.</p>
+      <div class="shop-grid">${boots}</div>`],
+    ["boosts", "Training", boosts.length ? `<div class="shop-grid">${boosts.map(b=>`<div class="shop-card"><div class="shop-top"><b>${b.t}</b></div><p>${b.d}</p>
         <div class="row"><button type="button" class="btn small ${!b.off && have>=b.cost ? "primary" : ""}" data-shop="boost" data-k="${b.id}" ${!b.off && have>=b.cost ? "" : "disabled"}>${b.off || `Buy · <i class="coin" aria-hidden="true"></i> ${b.cost}`}</button></div></div>`).join("")}</div>`
-      : `<p class="hint">Training boosts work during a season in the match centre. Start or carry on your career to use them.</p>`}
-    </section>
-    <section id="shopCoins"><h3>Buy coins</h3>
-      <p class="hint">Or earn them by playing key moments: win 50, draw 10, each goal 20, each assist 15, own goal −10.</p>
+      : `<p class="hint">Training boosts work during a season in the match centre. Start or carry on your career to use them.</p>`],
+    ["coins", "Coins", `<p class="hint">Or earn them by playing key moments: win 50, draw 10, each goal 20, each assist 15, own goal −10.</p>
       ${SHOP_PAYMENTS ? "" : `<p class="ref" style="margin:0 0 10px"><strong>Payments aren't set up yet,</strong> so coin packs are free while the game's being tested. Tap one and the coins are yours.</p>`}
       <div class="shop-grid packs">${SHOP_PACKS.map((P,i)=>`<div class="shop-card pack ${P.tag?"hot":""}">
         ${P.tag ? `<span class="pack-tag">${P.tag}</span>` : ""}
         <span class="stack" aria-hidden="true">${'<i class="coin"></i>'.repeat(i+1)}</span>
         <b class="pack-n">${P.coins.toLocaleString()}</b><span class="pack-t">${P.t}${P.bonus ? ` · <em>${P.bonus} extra</em>` : ""}</span>
-        <button type="button" class="btn small primary" data-shop="pack" data-k="${P.id}" aria-label="Buy ${P.coins} coins for ${P.price}">${P.price}${SHOP_PAYMENTS ? "" : " · Free now"}</button></div>`).join("")}</div>
-    </section>
+        <button type="button" class="btn small primary" data-shop="pack" data-k="${P.id}" aria-label="Buy ${P.coins} coins for ${P.price}">${P.price}${SHOP_PAYMENTS ? "" : " · Free now"}</button></div>`).join("")}</div>`]])}
   </div>`;
 }
 function shopOpen(){
@@ -111,7 +107,7 @@ document.addEventListener("click", e=>{
   else if (a==="wear"){ const L = Account.locker(); L.on = k || null; Account.setLocker(L); shopMsg = k ? `Now wearing ${shopBootName(k)}.` : "Boots off."; }
   else if (a==="boost") shopBuyBoost(k);
   else if (a==="pack") return shopBuyPack(k);
-  else if (a==="get") return document.getElementById("shopCoins")?.scrollIntoView({behavior:"smooth", block:"start"});
+  else if (a==="get") SUB.shop = "coins";
   shopRepaint();
 });
 document.getElementById("shopDlg")?.addEventListener("click", e=>{ if (e.target.id==="shopDlg") shopClose(); });

@@ -531,26 +531,23 @@ function boardPanel(){
   const pool = k==="cs" ? hall.filter(r=>DEF.includes(r.pos)) : hall;
   const rows = pool.slice().sort((a,b)=>(b[k]||0)-(a[k]||0) || b.apps-a.apps).slice(0,10);
   const col = (key, v) => `<td class="n ${key===k?"sorted":""}">${v}</td>`;
-  return `<section class="panel">
+  return subTabs("legacy", [["hall", "Hall of fame", `<section class="panel">
     <h2>Legacy</h2>
-    <p class="hint">Every career you've played on this account, saved and compared. ${hall.length} career${hall.length===1?"":"s"} on record. Tap a stat to re-rank the top 10, and tap a player to open their profile.</p>
-    <div class="chips" role="group" aria-label="Rank by">${BOARD.map(([key,l])=>`<button class="chip ${key===k?"on":""}" data-act="board" data-k="${key}" aria-pressed="${key===k}">${l}</button>`).join("")}</div>
+    <p class="hint">Every career on this account: ${hall.length} on record. Pick a stat to rank them, or tap a player for their profile.</p>
+    <div class="chips scrollx" role="group" aria-label="Rank by">${BOARD.map(([key,l])=>`<button class="chip ${key===k?"on":""}" data-act="board" data-k="${key}" aria-pressed="${key===k}">${l}</button>`).join("")}</div>
     ${rows.length ? `<ol class="lb">${rows.map((r,i)=>`<li class="${S&&r.id===S.id?"me":""}" data-act="profile" data-k="${esc(r.id)}" tabindex="0" role="button" aria-label="Open ${esc(r.name)}'s profile">
         <span class="lb-pos">${i+1}</span>
         <span class="lb-who"><strong>${esc(r.name)}</strong><small>${esc(r.pos)} · ${esc(r.nation||"—")} · ${r.seasons} season${r.seasons===1?"":"s"} · ${r.status==="Retired"?"Retired":"Now at "+esc(r.club)}</small></span>
         <span class="lb-val">${fmt(r[k]||0)}</span>
         <span class="lb-sub">${r.apps} apps · ${r.goals} G · ${r.assists} A${DEF.includes(r.pos)?` · ${r.cs??0} CS`:""} · ${r.trophies} 🏆${r.bdor?` · ${r.bdor} Ballon d'Or`:""}</span>
       </li>`).join("")}</ol>` : `<p class="empty">${k==="cs"?"Clean sheets only count for goalkeepers and defenders. Play a career as one and it'll appear here.":"No careers yet. Finish a season and it'll appear here."}</p>`}
-  </section>
-  ${rows.length>1?`<section class="panel">
+  </section>`], rows.length>1 && ["h2h", "Head to head", `<section class="panel">
     <h2>Head to head</h2>
     <p class="hint">The same top ${rows.length}, side by side.</p>
     <div class="tablewrap"><table class="h2h"><thead><tr><th>#</th><th>Player</th><th>Seasons</th><th class="n">Apps</th><th class="n">Goals</th><th class="n">Assists</th><th class="n">CS</th><th class="n">Club trophies</th><th class="n">Leagues</th><th class="n">Europe</th><th class="n">Ballon d'Or</th><th class="n">Peak value</th><th class="n">Earnings</th></tr></thead><tbody>
       ${rows.map((r,i)=>`<tr class="${S&&r.id===S.id?"me":""}"><td>${i+1}</td><td><strong>${esc(r.name)}</strong> <span class="hint">${esc(r.pos)}</span><br><span class="hint">${esc((r.clubList||[r.club]).join(" · "))}</span></td><td>${r.seasons}${r.ages?` <span class="hint">(${r.ages})</span>`:""}</td>${col("apps",r.apps)}${col("goals",r.goals)}${col("assists",r.assists)}${col("cs",DEF.includes(r.pos)?(r.cs??0):"—")}${col("trophies",r.trophies)}${col("leagues",r.leagues??"—")}${col("europe",r.europe??"—")}${col("bdor",r.bdor?`${r.bdor} won`:r.bestBdor?ord(r.bestBdor):"—")}${col("peak",money(r.peak))}${col("earnings",gbp(r.earnings))}</tr>`).join("")}
     </tbody></table></div>
-  </section>`:""}
-  ${backupPanel()}
-  <section class="panel">
+  </section>`], ["saves", "Saves", backupPanel()], ["bdor", "Ballon d'Or", `<section class="panel">
     <h2>Ballon d'Or: what it takes</h2>
     <p class="hint">The voting is modelled on real top-30 lists. Your goals and assists (or games and clean sheets for defenders) earn points, trophies earn more: the Champions League most, then a big-five league title, then the Europa League and domestic cups. Leagues outside the big five count for less. Around 20 goals and assists with nothing won won't get you nominated. To win it you also need the trophies and numbers of the last ten winners below.</p>
     <div class="tablewrap"><table style="min-width:520px"><thead><tr><th>Year</th><th>Winner</th><th>Club</th><th>That season</th></tr></thead><tbody>
@@ -561,9 +558,9 @@ function boardPanel(){
       <li>Midfielders: 45+ games and 12+ goals and assists. Defenders and keepers: 48+ games.</li>
       <li>Trophies: the Champions League (midfielders and defenders need another trophy with it), or a league title plus another trophy. A forward who wins the league with 40+ goals also qualifies.</li>
     </ul>
-  </section>`;
+  </section>`]]);
 }
-let S = null, draft = null, flash = "", tab = "season", migratedNote = "", reviewIdx = null, leagueView = null;
+let S = null, draft = null, flash = "", tab = "season", migratedNote = "", reviewIdx = null, leagueView = null, cardOpen = false;
 function load(){ try{ const raw = localStorage.getItem(KEY); if (raw) S = JSON.parse(raw);}catch(e){} }
 function save(){
   if (!S) return;
@@ -2628,11 +2625,8 @@ function leaguesTab(){
   const status = n => m.up.some(x=>x.n===n) ? `<span class="up-t">▲ ${esc(TIERS[m.up.find(x=>x.n===n).to].short)}</span>` : m.down.some(x=>x.n===n) ? `<span class="down-t">▼ ${esc(TIERS[m.down.find(x=>x.n===n).to].short)}</span>` : "";
   const next = S.world.tiers[k].slice().sort((a,b)=>strOf(b)-strOf(a));
   const newIn = new Set([...m.inUp, ...m.inDown].map(x=>x.n));
-  return `<section class="panel">
-    <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">Leagues</h2>
-      <div class="field" style="min-width:220px"><label for="leagueSel">League</label><select id="leagueSel">${opts}</select></div>
-    </div>
+  return `<section class="panel lg-pick">
+    <div class="field"><label for="leagueSel">League</label><select id="leagueSel">${opts}</select></div>
     <p class="hint" style="margin-top:8px">${T.country==="England" ? (k===1 ? `Bottom ${T.down} go down to the Championship.` : `Top ${T.up} go up automatically, ${ord(T.po[0])} to ${ord(T.po[1])} play off for one more place, bottom ${T.down} go down${k===5?" out of the National League":""}.`)
       : `Bottom ${T.down} go down to the ${TIERS[T.second].name}${T.relPO?", and the club just above them plays off to stay up":""}. The best ${TIERS[T.second].name} sides come up to replace them.`}</p>
   </section>
@@ -2644,14 +2638,14 @@ function leaguesTab(){
     <div class="legend">${isTop(k)?`<span><i class="z-ucl"></i>Champions League</span><span><i class="z-uel"></i>Europa League</span><span><i class="z-uecl"></i>Conference League</span>`:`<span><i class="z-up"></i>Promotion</span><span><i class="z-po"></i>Play-offs</span>`}<span><i class="z-rel"></i>Relegation</span></div>
     ${S.sim && lgGet(k) ? `<h3>The season's top players</h3>${lgBox(k, "final")}` : ""}
   </section>`:lgGet(k) ? "" : `<section class="panel"><h2>Final table</h2><p class="empty">Tables appear here after your first season.</p></section>`}
-  <section class="panel"><h2>${tb?"Next season":"This season"} in ${esc(theName(k))}</h2>
+  <details class="panel ss-panel"><summary><h2>${tb?"Next season":"This season"} in ${esc(theName(k))}</h2></summary>
     ${newIn.size?`<p class="hint" style="margin-bottom:10px">New this season: ${[...m.inDown.map(x=>`${esc(x.n)} (down from ${esc(theName(x.from))})`), ...m.inUp.map(x=>`${esc(x.n)} (up from ${esc(theName(x.from))})`)].join(", ")}.</p>`:""}
     <div class="clublist">${next.map(n=>`<span class="cl ${n===S.club?"me":""}"><span class="swatch" style="--c1:${meta(n).c1};--c2:${meta(n).c2}"></span>${esc(n)}${newIn.has(n)?` <span class="pill ${m.inDown.some(x=>x.n===n)?"down":"up"}">New</span>`:""}</span>`).join("")}</div>
     <p class="hint" style="margin-top:10px">Sorted by current squad strength.</p>
-  </section>`;
+  </details>`;
 }
-function statsTab(){
-  if (!S.history.length) return `<section class="panel"><h2>Statistics</h2><p class="empty">Your numbers appear here after your first season, split by club and by competition.</p></section>`;
+function statsTab(part){
+  if (!S.history.length) return part==="totals" ? `<section class="panel"><h2>Statistics</h2><p class="empty">Your numbers appear here after your first season, split by club and by competition.</p></section>` : "";
   const showCS = DEF.includes(S.player.pos);
   const blank = () => ({apps:0,g:0,a:0,cs:0});
   const add = (x,c) => { x.apps+=c.apps; x.g+=c.g; x.a+=c.a; x.cs+=(c.cs||0); };
@@ -2679,7 +2673,7 @@ function statsTab(){
   };
   const head = first => `<thead><tr><th>${first}</th><th class="n">Apps</th><th class="n">Goals</th><th class="n">Assists</th><th class="n">G+A</th>${showCS?`<th class="n">Clean sheets</th>`:""}</tr></thead>`;
   const per90 = total.apps ? ((total.g+total.a)/total.apps).toFixed(2) : "0.00", tt = totals();
-  return `
+  if (part==="totals") return `
   <section class="panel">
     <h2>Career totals</h2>
     <div class="totals four">
@@ -2693,14 +2687,16 @@ function statsTab(){
       <div class="total"><div class="label">Peak value</div><div class="v">${money(tt.peak)}</div></div>
       <div class="total"><div class="label">Earned</div><div class="v">${gbp(S.earnings)}</div></div>
     </div>
-  </section>
+  </section>`;
+  if (part==="clubs") return `
   <section class="panel">
     <h2>By club</h2>
     <div class="tablewrap"><table class="rt" style="min-width:560px"><thead><tr><th>Club</th><th>Seasons</th><th class="n">Apps</th><th class="n">Goals</th><th class="n">Assists</th><th class="n">G+A</th>${showCS?`<th class="n">CS</th>`:""}<th class="n">Trophies</th></tr></thead><tbody>
       ${clubs.map(c=>{ const m = meta(c.club); return `<tr><td class="lead"><span class="row" style="gap:8px;flex-wrap:nowrap"><span class="swatch" style="--c1:${m.c1};--c2:${m.c2}"></span>${esc(c.club)}${c.loans?`<span class="pill gold">Loan</span>`:""}</span></td><td class="sea">${c.first===c.last?c.first:`${c.first}–${c.last.slice(-2)}`} · ${c.seasons} season${c.seasons===1?"":"s"}</td><td class="n" data-l="Apps">${c.tot.apps}</td><td class="n" data-l="Goals">${c.tot.g}</td><td class="n" data-l="Assists">${c.tot.a}</td><td class="n" data-l="G+A">${c.tot.g+c.tot.a}</td>${showCS?`<td class="n" data-l="Clean sh.">${c.tot.cs}</td>`:""}<td class="n" data-l="Trophies">${c.trophies}</td></tr>`; }).join("")}
       <tr class="totalrow"><td class="lead">Total</td><td class="sea">${total.seasons} season${total.seasons===1?"":"s"}</td><td class="n" data-l="Apps">${total.apps}</td><td class="n" data-l="Goals">${total.g}</td><td class="n" data-l="Assists">${total.a}</td><td class="n" data-l="G+A">${total.g+total.a}</td>${showCS?`<td class="n" data-l="Clean sh.">${total.cs}</td>`:""}<td class="n" data-l="Trophies">${S.trophies.length}</td></tr>
     </tbody></table></div>
-  </section>
+  </section>`;
+  return `
   <section class="panel">
     <h2>By competition</h2>
     <div class="tablewrap"><table class="rt" style="min-width:460px">${head("Competition")}<tbody>${compRows(total.comps)}</tbody></table></div>
@@ -2709,7 +2705,7 @@ function statsTab(){
       <div class="tablewrap"><table class="rt" style="min-width:460px">${head("Competition")}<tbody>${compRows(c.comps)}${(()=>{ const v=c.tot; return `<tr class="totalrow"><td class="lead">Total</td><td class="n" data-l="Apps">${v.apps}</td><td class="n" data-l="Goals">${v.g}</td><td class="n" data-l="Assists">${v.a}</td><td class="n" data-l="G+A">${v.g+v.a}</td>${showCS?`<td class="n" data-l="Clean sh.">${v.cs}</td>`:""}</tr>`; })()}</tbody></table></div></details>`).join("")}</div>
   </section>`;
 }
-function careerPanels(){
+function careerPanels(part){
   const hist = S.history.slice().reverse();
   const cards = hist.map((h,i)=>{
     const m = meta(h.club), dv = h.after - h.before;
@@ -2739,19 +2735,44 @@ function careerPanels(){
       </div>
     </details>`; }).join("");
   const moves = S.log.slice().reverse().map(m=>`<li><span class="label">${esc(m.season)}</span><span>${esc(m.text)}</span><strong>${m.fee==null?"":m.fee?money(m.fee):"Free"}</strong></li>`).join("");
-  return `
-  <section class="panel chart"><h2>Market value</h2>${chart()}</section>
+  if (part==="value") return `<section class="panel chart"><h2>Market value</h2>${chart()}</section>`;
+  if (part==="seasons") return `
   <section class="panel">
     <h2>Season by season</h2>
     ${cards?`<div class="seasons">${cards}</div><p class="hint" style="margin-top:10px">Tap a season to see how far the team went in each cup and your numbers in every competition.</p>`:`<p class="empty">No seasons played yet.</p>`}
-  </section>
+  </section>`;
+  return `
   <section class="panel">
     <h2>Transfers & contracts</h2>
     ${moves?`<ol class="tl-list moves">${moves}</ol>`:`<p class="empty">No moves yet.</p>`}
   </section>`;
 }
+// a tab's sections as sub-views behind a strip of buttons: every view is rendered, and a tap shows one without
+// re-rendering the page (SUB remembers the choice for next time)
+const SUB = {};
+function subTabs(g, views){
+  views = views.filter(Boolean);
+  const cur = views.some(v=>v[0]===SUB[g]) ? SUB[g] : views[0][0];
+  return `<div class="subtabs" role="group" aria-label="Show">${views.map(([k,l])=>`<button type="button" data-sub="${g}" data-sub-k="${k}" aria-pressed="${k===cur}">${l}</button>`).join("")}</div>
+    ${views.map(([k,,html])=>`<div class="subview" data-sub="${g}" data-k="${k}" ${k===cur ? "" : "hidden"}>${html}</div>`).join("")}`;
+}
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-sub-k]"); if (!b) return;
+  const g = b.dataset.sub, k = b.dataset.subK; SUB[g] = k;
+  document.querySelectorAll(`[data-sub="${g}"][data-sub-k]`).forEach(x=>x.setAttribute("aria-pressed", x.dataset.subK===k));
+  document.querySelectorAll(`.subview[data-sub="${g}"]`).forEach(v=>{ v.hidden = v.dataset.k!==k; });
+});
 function compName(k){ return {league:"League", fa:"FA Cup", lc:"League Cup", eflt:"EFL Trophy", fat:"FA Trophy", ...cupNames, UCL:"UCL", UEL:"UEL", UECL:"UECL"}[k] || k; }
 
+function statsBody(){
+  return subTabs("stats", [["career", "Career", statsTab("totals") + careerPanels("value")], ["seasons", "Seasons", careerPanels("seasons")],
+    S.history.length && ["clubs", "Clubs", statsTab("clubs") + statsTab("comps")], ["intl", "Country", intlPanel()], ["moves", "Moves", careerPanels("moves")]]);
+}
+// the league first (in season, the table as it stands); the club, and on phones the pyramid, behind the second button
+function clubBody(t){
+  return subTabs("club", [["league", "League", leaguesTab()],
+    ["club", "Club", clubPanel() + `<section class="panel pyr-m"><h3>${TIERS[t].country==="England"?"Where you are in the pyramid":"Playing abroad"}</h3>${pyramid(t)}</section>`]]);
+}
 function renderCareer(){
   const club = meta(S.club), t = tierOf(S.club), pl = S.player;
   const last = S.history[S.history.length-1], diff = last ? last.after - last.before : 0;
@@ -2762,17 +2783,20 @@ function renderCareer(){
   const unread = S.notes.length - S.notesSeen;
   if (!["season","inbox","stats","club","cabinet","legacy"].includes(tab)) tab = {review:"inbox", leagues:"club", career:"stats"}[tab] || "season";
   const tabs = [["season","Season","Season"],["inbox","Inbox","Inbox"],["stats","Statistics","Stats"],["club","Club & leagues","Club"],["cabinet","Trophies","Trophies"],["legacy","Legacy","Legacy"]];
-  const body = tab==="season" ? action : tab==="inbox" ? inboxPanel() : tab==="stats" ? statsTab() + intlPanel() + careerPanels() : tab==="club" ? clubPanel() + leaguesTab() : tab==="legacy" ? boardPanel() : cabinetPanel();
+  const body = tab==="season" ? action : tab==="inbox" ? inboxPanel() : tab==="stats" ? statsBody() : tab==="club" ? clubBody(t) : tab==="legacy" ? boardPanel() : cabinetPanel();
   if (tab==="inbox" && unread>0){ setTimeout(()=>{ S.notesSeen = S.notes.length; save(); }, 0); }
   $("#app").innerHTML = `
   ${flash?`<p class="ref" role="status" style="margin:0 0 18px">${esc(flash)}</p>`:""}
   <div class="board">
     <div class="col">
-      <section class="panel card">
+      <section class="panel card ${cardOpen?"open":""}">
         <div class="card-top">${portrait(pl, club, pl.number)}<div class="card-pos">${pl.pos}</div></div>
         <div class="card-body">
           <p class="pname">${esc(pl.name)}</p>
           <div class="clubline"><span class="swatch" style="--c1:${club.c1};--c2:${club.c2}"></span>${esc(club.n)}${S.loan?`<span class="pill gold">On loan</span>`:""}</div>
+          <div class="card-key">${S.attr?`<span><b>${mcOvr()}</b> OVR</span>`:""}<span><b>${money(S.value)}</b></span><span>Age <b>${S.age}</b></span></div>
+          <button type="button" class="card-more" data-act="card-more" aria-expanded="${cardOpen}">${cardOpen?"Show less":"Full profile"}</button>
+          <div class="card-extra">
           ${S.loan?`<div class="label">On loan from ${esc(S.loan.parent)}</div>`:`<div class="loyal"><span class="label">Loyalty · ${loyaltyLevel(loyaltyOf(S.club))}</span><div class="meter"><span style="width:${loyaltyOf(S.club)}%"></span></div></div>`}
           ${S.phase!=="retired"?`<div class="loyal"><span class="label">Manager trust · ${trustLabel(mgr().trust)}</span><div class="meter trust"><span style="width:${mgr().trust}%"></span></div></div>`:""}
           <div class="facts">
@@ -2791,9 +2815,10 @@ function renderCareer(){
             <div><div class="label">Market value</div><div class="value-big">${money(S.value)}</div></div>
             ${last?`<div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))}</div>`:""}
           </div>
+          </div>
         </div>
       </section>
-      <section class="panel"><h3>${TIERS[t].country==="England"?"Where you are in the pyramid":"Playing abroad"}</h3>${pyramid(t)}</section>
+      <section class="panel pyr-side"><h3>${TIERS[t].country==="England"?"Where you are in the pyramid":"Playing abroad"}</h3>${pyramid(t)}</section>
     </div>
     <div class="col">
       <div class="tabs" role="tablist">${tabs.map(([k,l,sh])=>`<button class="tab" role="tab" aria-selected="${tab===k}" data-act="tab" data-k="${k}" aria-label="${l}">${TAB_IC[k]}<span class="t-l">${l}</span><span class="t-s">${sh}</span>${k==="cabinet"&&S.trophies.length?`<span class="count">${S.trophies.length}</span>`:""}${k==="inbox"&&unread>0&&tab!=="inbox"?`<span class="count">${unread}</span>`:""}${k==="season"&&S.phase!=="retired"&&tab!=="season"?`<span class="count">!</span>`:""}</button>`).join("")}</div>
@@ -2870,6 +2895,7 @@ document.addEventListener("click", e=>{
   if (a==="tab"){ tab = b.dataset.k; render(); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
   else if (a==="backup-export"){ exportBackup(); }
   else if (a==="intl-yes" || a==="intl-no"){ const n = (S.notes||[]).find(x=>x.ask && x.ask.id===b.dataset.k); if (n){ n.ask.answer = a==="intl-yes"; save(); render(); } }
+  else if (a==="card-more"){ cardOpen = !cardOpen; render(); if (!cardOpen) document.querySelector(".board .card")?.scrollIntoView({block:"nearest"}); }
   else if (a==="board-open"){ showBoard = true; render(); window.scrollTo({top:0}); }
   else if (a==="board-close"){ showBoard = false; render(); }
   else if (a==="board"){ boardKey = b.dataset.k; render(); }

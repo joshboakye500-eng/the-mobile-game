@@ -25,6 +25,8 @@ To try it before merging, pick this work's branch in step 3 instead of `main`, t
 
 Each half-season is a **match centre**: a fixture list for your club (league, cups and Europe), played week by week.
 
+The Season screen keeps it short: this week's match and the play buttons at the top, then your key numbers and this week's training, then tabs for recent results, the league table, your targets, your attributes and the full fixture list. *Stats*, *Club & leagues*, *Legacy* and the shop are split into tabs the same way, and on phones the header and your player card fold down to a single row (tap *Full profile* for the whole card).
+
 - **Training.** Each week, pick a focus (finishing, passing, pace, defending or shot-stopping, stamina, match prep, or rest) and how hard to train. Hard training grows you faster but tires you and raises the injury risk. Young players grow fast, and over-30s fight decline.
 - **Selection.** Whether you start, come off the bench or sit out depends on the manager's trust, how your overall rating compares with the squad, your form and how tired you are.
 - **Matches.** Fixtures are simulated from your attributes, form, sharpness and fitness. Your goals and assists come out of the team's scorelines. ★ marks the big games.

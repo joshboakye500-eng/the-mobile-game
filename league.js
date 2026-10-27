@@ -176,14 +176,12 @@ document.addEventListener("click", e=>{
   const next = tmp.firstElementChild; box.replaceWith(next);
   next.querySelector(`[data-lgtab="${lgTab}"]`)?.focus({preventScroll:true});
 });
-// the match centre's look at the league: where you are, five rows of the table, and the rest behind a tap
+// the match centre's league view: where you are, then the table and the leaderboards
 function lgPanel(){
-  const k = S.mc.lgk, L = lgGet(k); if (!L || !L.r) return "";
+  const k = S.mc.lgk, L = lgGet(k); if (!L) return "";
   const order = lgOrder(L), at = order.indexOf(S.club), t = L.tab[S.club], g = lgLeaders(L, "g"), top = g[0], me = g.find(p=>p.me);
-  return `<h3>${esc(TIERS[k].name)} · matchweek ${L.r}</h3>
-    ${at>=0 ? `<p class="hint" style="margin-bottom:8px">${ord(at+1)} of ${order.length} with ${lgPts(t)} point${lgPts(t)===1 ? "" : "s"} from ${t[0]} game${t[0]===1 ? "" : "s"}.${top ? ` Top scorer: ${top.me ? "you" : `${esc(top.name)} (${esc(top.club)})`}, ${top.g}.` : ""}${me && !top.me ? ` You're ${ord(me.rank)} with ${me.g}.` : ""}</p>` : ""}
-    ${lgTableHTML(L, k, true)}
-    <details class="ss lg-more"><summary><div class="ss-head"><span class="ss-club">Full table, top scorers and ratings</span></div></summary><div class="ss-body">${lgBox(k, "panel")}</div></details>`;
+  return `<p class="hint" style="margin-bottom:10px">${esc(TIERS[k].name)}${L.r ? `, matchweek ${L.r}` : ""}.${at>=0 && t[0] ? ` You're ${ord(at+1)} with ${lgPts(t)} point${lgPts(t)===1 ? "" : "s"} from ${t[0]} game${t[0]===1 ? "" : "s"}.` : ""}${top ? ` Top scorer: ${top.me ? "you" : `${esc(top.name)} (${esc(top.club)})`}, ${top.g}.` : ""}${me && !top.me ? ` You're ${ord(me.rank)} with ${me.g}.` : ""}</p>
+    ${lgBox(k, "panel")}`;
 }
 // the full-time screen's look at the table after a league match, with a button for the rest
 function lgFullTime(f){
