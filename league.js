@@ -151,7 +151,7 @@ function lgLegend(k){
 function lgTableHTML(L, k, mini){
   const order = lgOrder(L), n = order.length, at = order.indexOf(S.club), from = clamp(at-2, 0, Math.max(0, n-5));
   const rows = order.map((c,i)=>[c,i]).slice(mini ? from : 0, mini ? from+5 : n);
-  const sw = c => `<span class="swatch" style="--c1:${meta(c).c1};--c2:${meta(c).c2}"></span>`;
+  const sw = c => clubBadge(c, 18);
   return `<div class="tablewrap"><table class="lt lg-t${mini ? " mini" : ""}"><thead><tr><th></th><th class="n">#</th><th>Club</th><th class="n">P</th>${mini ? "" : `<th class="n">W</th><th class="n">D</th><th class="n">L</th>`}<th class="n">GD</th><th class="n">Pts</th>${mini ? "" : `<th class="lg-fc">Form</th>`}</tr></thead><tbody>
     ${rows.map(([c,i])=>{ const t = L.tab[c], gd = t[4]-t[5], mv = L.prev && L.prev[c] ? L.prev[c]-(i+1) : 0;
       return `<tr class="${c===S.club ? "me" : ""}"><td class="z ${zoneOf(k, i+1, n)}"></td><td class="n">${i+1}</td>
@@ -162,7 +162,7 @@ function lgTableHTML(L, k, mini){
 }
 function lgLeadersHTML(L, k){
   const list = lgLeaders(L, k), mine = list.findIndex(p=>p.me), min = Math.max(3, Math.round(L.r*.4));
-  const row = p => `<li class="${p.me ? "me" : ""}"><span class="lg-rk">${p.rank}</span><span class="swatch" style="--c1:${meta(p.club).c1};--c2:${meta(p.club).c2}"></span>
+  const row = p => `<li class="${p.me ? "me" : ""}"><span class="lg-rk">${p.rank}</span>${clubBadge(p.club, 22)}
     <span class="lg-who"><b>${esc(p.name)}${p.me ? " (you)" : ""}</b><small>${esc(p.club)} · ${p.pos} · ${p.apps} game${p.apps===1 ? "" : "s"}</small></span><span class="lg-v">${k==="avg" ? p.avg.toFixed(2) : p[k]}</span></li>`;
   if (!list.length) return `<p class="empty">${k==="avg" ? `Ratings show once players have ${min} games.` : "Nobody yet."}</p>`;
   return `<ol class="lg-lead">${list.slice(0, 10).map(row).join("")}${mine>=10 ? `<li class="lg-gap" aria-hidden="true">⋯</li>${row(list[mine])}` : ""}</ol>
@@ -170,7 +170,7 @@ function lgLeadersHTML(L, k){
 }
 function lgResultsHTML(L){
   if (!L.last) return `<p class="empty">No results yet.</p>`;
-  return `<p class="label" style="margin:0 0 6px">Matchweek ${L.last.r+1}</p><ul class="lg-res">${L.last.res.map(([h,a,hg,ag])=>`<li class="${h===S.club || a===S.club ? "me" : ""}"><span>${esc(h)}</span><b>${hg}–${ag}</b><span>${esc(a)}</span></li>`).join("")}</ul>`;
+  return `<p class="label" style="margin:0 0 6px">Matchweek ${L.last.r+1}</p><ul class="lg-res">${L.last.res.map(([h,a,hg,ag])=>`<li class="${h===S.club || a===S.club ? "me" : ""}"><span>${clubBadge(h, 16)} ${esc(h)}</span><b>${hg}–${ag}</b><span>${esc(a)} ${clubBadge(a, 16)}</span></li>`).join("")}</ul>`;
 }
 // the table with tabs for the leaderboards and the latest results; "final" leaves the table out (it's shown above it)
 function lgBox(k, mode){

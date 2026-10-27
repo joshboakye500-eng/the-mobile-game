@@ -908,3 +908,29 @@ details.ss-panel[open]>summary{margin-bottom:14px}
 .pname-link{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px;text-decoration-color:color-mix(in srgb,var(--accent) 70%,transparent)}
 .lb-go{float:right;font-weight:700;color:var(--euro)}
 .lb li.me .lb-go{color:inherit}
+
+/* ---- club badges, the next-match card and goal celebrations ---- */
+.crest{display:inline-block;flex:none;vertical-align:middle;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.clubline .crest,.cl .crest,.ss-head .crest,.clubsplit summary .crest{margin-right:2px}
+.clubhead .crest{width:84px;height:auto;filter:drop-shadow(0 6px 14px rgba(0,0,0,.3))}
+.lg-club .crest{margin-right:1px}
+.lg-res li span{display:flex;align-items:center;gap:6px;min-width:0}
+.lg-res li span:last-child{justify-content:flex-end}
+.fx-n{display:flex;align-items:center;gap:7px;min-width:0}
+.fx-n span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mc-vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;padding:4px 0}
+.mc-side{display:grid;justify-items:center;text-align:center;gap:4px;min-width:0}
+.mc-side b{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:19px;line-height:1;overflow-wrap:anywhere}
+.mc-side small{font-size:12px;color:var(--muted)}
+.mc-v{font-family:var(--f-display);font-weight:900;font-size:22px;color:var(--muted)}
+.mc-vs-sub{text-align:center;font-size:13px;color:var(--muted)}
+.crest-q{display:grid;place-items:center;width:46px;height:53px;border-radius:12px 12px 22px 22px;border:2px dashed var(--line);font-family:var(--f-display);font-weight:900;font-size:24px;color:var(--muted)}
+.lv-teams span{display:flex;align-items:center;gap:12px}
+.lv-ft span{display:grid;justify-items:start;gap:8px}
+.lv-ft span:last-child{justify-items:end}
+.lv-ft em{font-style:normal}
+.lv-res.goal{background:radial-gradient(circle at 50% 45%,rgba(245,197,66,.28),rgba(3,8,6,.6) 70%)}
+.lv-burst{position:absolute;left:50%;top:42%;width:0;height:0;pointer-events:none}
+.lv-burst i{position:absolute;left:-3px;top:-5px;width:7px;height:11px;border-radius:2px;background:var(--c);opacity:0;animation:lvburst 1.15s cubic-bezier(.15,.7,.3,1) var(--d) forwards}
+@keyframes lvburst{0%{opacity:1;transform:translate(0,0) rotate(0) scale(.5)}75%{opacity:1}100%{opacity:0;transform:translate(var(--x),calc(var(--y) + 70px)) rotate(var(--r)) scale(1)}}
+@media (prefers-reduced-motion:reduce){.lv-burst{display:none}}

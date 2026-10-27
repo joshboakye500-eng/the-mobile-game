@@ -767,13 +767,6 @@ function portrait(pl, club, num){
   <path d="M80 56 A23 27 0 0 1 100 46" stroke="#FFE9B0" stroke-opacity=".35" stroke-width="1.4" fill="none" stroke-linecap="round"/>
   </svg>`;
 }
-function crest(m){
-  const ini = m.n.replace(/&/g,"").split(/\s+/).filter(w=>!/^(FC|AFC|of|the)$/i.test(w)).map(w=>w[0]).join("").slice(0,3).toUpperCase();
-  return `<svg viewBox="0 0 84 96" role="img" aria-label="${esc(m.n)} badge"><path d="M42 3 80 14v30c0 26-17 41-38 49C21 85 4 70 4 44V14z" fill="${m.c1}" stroke="${m.c2}" stroke-width="4"/>
-  <path d="M4 40h76" stroke="${m.c2}" stroke-width="10" opacity=".9"/>
-  <text x="42" y="73" text-anchor="middle" font-family="Big Shoulders Display, Impact, sans-serif" font-weight="900" font-size="24" fill="${m.c2}" stroke="${isLight(m.c1)?"#00000033":"#00000055"}" stroke-width=".5">${esc(ini)}</text>
-  <text x="42" y="47" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="9" fill="${m.c1}">EST. ${esc(m.founded||"")}</text></svg>`;
-}
 // original trophy designs: each competition gets its own shape, metal, plinth colour and engraving
 let tid = 0;
 const METALS = {
@@ -2618,7 +2611,7 @@ function clubPanel(){
   const lastSim = lt ? {...ls, tier:lt, poWinner: lt===ls.tier ? ls.poWinner : null} : null;
   const tbl = lastSim ? ls.tables[lt] : null;
   return `<section class="panel">
-    <div class="clubhead">${crest(m)}<div><div class="cn">${esc(c)}</div><div class="label">${esc(m.nick||"")}${m.nick?" · ":""}${TIERS[t].name}</div></div></div>
+    <div class="clubhead">${clubBadge(c, 84)}<div><div class="cn">${esc(c)}</div><div class="label">${esc(m.nick||"")}${m.nick?" · ":""}${TIERS[t].name}</div></div></div>
     ${m.bio?`<p style="max-width:65ch">${esc(m.bio)}</p>`:`<p class="hint">Your own club, founded in 2026. Its history starts with you.</p>`}
     <div class="kv">
       <div><div class="label">Founded</div><div class="v">${esc(m.founded||"—")}</div></div>
@@ -2658,14 +2651,14 @@ function leaguesTab(){
   ${lgGet(k) && !S.sim ? `<section class="panel"><h2>${seasonLabel(S.season)} so far · matchweek ${lgGet(k).r}</h2>${lgGet(k).r ? lgBox(k, "tab") : `<p class="empty">The first round hasn't been played yet.</p>`}</section>` : ""}
   ${tb?`<section class="panel"><h2>${ls.season} final table</h2>
     <div class="tablewrap"><table class="lt"><thead><tr><th></th><th class="n">#</th><th>Club</th><th class="n">GD</th><th class="n">Pts</th><th>Next season</th></tr></thead><tbody>
-    ${tb.map((r,i)=>`<tr class="${r.n===S.club?"me":""}"><td class="z ${zoneOf(k,i+1,tb.length)}"></td><td class="n">${i+1}</td><td>${esc(r.n)}</td><td class="n">${r.gd>0?"+":""}${r.gd}</td><td class="n">${r.pts}</td><td>${status(r.n)}</td></tr>`).join("")}
+    ${tb.map((r,i)=>`<tr class="${r.n===S.club?"me":""}"><td class="z ${zoneOf(k,i+1,tb.length)}"></td><td class="n">${i+1}</td><td><span class="lg-club">${clubBadge(r.n, 18)}<span class="lg-cn">${esc(r.n)}</span></span></td><td class="n">${r.gd>0?"+":""}${r.gd}</td><td class="n">${r.pts}</td><td>${status(r.n)}</td></tr>`).join("")}
     </tbody></table></div>
     <div class="legend">${isTop(k)?`<span><i class="z-ucl"></i>Champions League</span><span><i class="z-uel"></i>Europa League</span><span><i class="z-uecl"></i>Conference League</span>`:`<span><i class="z-up"></i>Promotion</span><span><i class="z-po"></i>Play-offs</span>`}<span><i class="z-rel"></i>Relegation</span></div>
     ${S.sim && lgGet(k) ? `<h3>The season's top players</h3>${lgBox(k, "final")}` : ""}
   </section>`:lgGet(k) ? "" : `<section class="panel"><h2>Final table</h2><p class="empty">Tables appear here after your first season.</p></section>`}
   <details class="panel ss-panel"><summary><h2>${tb?"Next season":"This season"} in ${esc(theName(k))}</h2></summary>
     ${newIn.size?`<p class="hint" style="margin-bottom:10px">New this season: ${[...m.inDown.map(x=>`${esc(x.n)} (down from ${esc(theName(x.from))})`), ...m.inUp.map(x=>`${esc(x.n)} (up from ${esc(theName(x.from))})`)].join(", ")}.</p>`:""}
-    <div class="clublist">${next.map(n=>`<span class="cl ${n===S.club?"me":""}"><span class="swatch" style="--c1:${meta(n).c1};--c2:${meta(n).c2}"></span>${esc(n)}${newIn.has(n)?` <span class="pill ${m.inDown.some(x=>x.n===n)?"down":"up"}">New</span>`:""}</span>`).join("")}</div>
+    <div class="clublist">${next.map(n=>`<span class="cl ${n===S.club?"me":""}">${clubBadge(n, 18)}${esc(n)}${newIn.has(n)?` <span class="pill ${m.inDown.some(x=>x.n===n)?"down":"up"}">New</span>`:""}</span>`).join("")}</div>
     <p class="hint" style="margin-top:10px">Sorted by current squad strength.</p>
   </details>`;
 }
@@ -2724,7 +2717,7 @@ function statsTab(part){
   <section class="panel">
     <h2>By club</h2>
     <div class="tablewrap"><table class="rt" style="min-width:560px"><thead><tr><th>Club</th><th>Seasons</th><th class="n">Apps</th><th class="n">Goals</th><th class="n">Assists</th><th class="n">G+A</th>${showCS?`<th class="n">CS</th>`:""}<th class="n">Trophies</th></tr></thead><tbody>
-      ${clubs.map(c=>{ const m = meta(c.club); return `<tr><td class="lead"><span class="row" style="gap:8px;flex-wrap:nowrap"><span class="swatch" style="--c1:${m.c1};--c2:${m.c2}"></span>${esc(c.club)}${c.loans?`<span class="pill gold">Loan</span>`:""}</span></td><td class="sea">${c.first===c.last?c.first:`${c.first}–${c.last.slice(-2)}`} · ${c.seasons} season${c.seasons===1?"":"s"}</td><td class="n" data-l="Apps">${c.tot.apps}</td><td class="n" data-l="Goals">${c.tot.g}</td><td class="n" data-l="Assists">${c.tot.a}</td><td class="n" data-l="G+A">${c.tot.g+c.tot.a}</td>${showCS?`<td class="n" data-l="Clean sh.">${c.tot.cs}</td>`:""}<td class="n" data-l="Trophies">${c.trophies}</td></tr>`; }).join("")}
+      ${clubs.map(c=>{ const m = meta(c.club); return `<tr><td class="lead"><span class="row" style="gap:8px;flex-wrap:nowrap">${clubBadge(c.club, 20)}${esc(c.club)}${c.loans?`<span class="pill gold">Loan</span>`:""}</span></td><td class="sea">${c.first===c.last?c.first:`${c.first}–${c.last.slice(-2)}`} · ${c.seasons} season${c.seasons===1?"":"s"}</td><td class="n" data-l="Apps">${c.tot.apps}</td><td class="n" data-l="Goals">${c.tot.g}</td><td class="n" data-l="Assists">${c.tot.a}</td><td class="n" data-l="G+A">${c.tot.g+c.tot.a}</td>${showCS?`<td class="n" data-l="Clean sh.">${c.tot.cs}</td>`:""}<td class="n" data-l="Trophies">${c.trophies}</td></tr>`; }).join("")}
       <tr class="totalrow"><td class="lead">Total</td><td class="sea">${total.seasons} season${total.seasons===1?"":"s"}</td><td class="n" data-l="Apps">${total.apps}</td><td class="n" data-l="Goals">${total.g}</td><td class="n" data-l="Assists">${total.a}</td><td class="n" data-l="G+A">${total.g+total.a}</td>${showCS?`<td class="n" data-l="Clean sh.">${total.cs}</td>`:""}<td class="n" data-l="Trophies">${S.trophies.length}</td></tr>
     </tbody></table></div>
   </section>`;
@@ -2733,7 +2726,7 @@ function statsTab(part){
     <h2>By competition</h2>
     <div class="tablewrap"><table class="rt" style="min-width:460px">${head("Competition")}<tbody>${compRows(total.comps)}</tbody></table></div>
     <h3>Each club, competition by competition</h3>
-    <div class="col" style="gap:10px">${clubs.map(c=>`<details class="clubsplit"><summary><span class="swatch" style="--c1:${meta(c.club).c1};--c2:${meta(c.club).c2}"></span>${esc(c.club)}<span class="hint cs-sum">${c.tot.apps} apps · ${c.tot.g} goals · ${c.tot.a} assists</span></summary>
+    <div class="col" style="gap:10px">${clubs.map(c=>`<details class="clubsplit"><summary>${clubBadge(c.club, 18)}${esc(c.club)}<span class="hint cs-sum">${c.tot.apps} apps · ${c.tot.g} goals · ${c.tot.a} assists</span></summary>
       <div class="tablewrap"><table class="rt" style="min-width:460px">${head("Competition")}<tbody>${compRows(c.comps)}${(()=>{ const v=c.tot; return `<tr class="totalrow"><td class="lead">Total</td><td class="n" data-l="Apps">${v.apps}</td><td class="n" data-l="Goals">${v.g}</td><td class="n" data-l="Assists">${v.a}</td><td class="n" data-l="G+A">${v.g+v.a}</td>${showCS?`<td class="n" data-l="Clean sh.">${v.cs}</td>`:""}</tr>`; })()}</tbody></table></div></details>`).join("")}</div>
   </section>`;
 }
@@ -2748,7 +2741,7 @@ function careerPanels(part){
     const inj = (h.injuries||[]).filter(x=>x.tier!=="small");
     return `<details class="ss" ${i===0?"open":""}>
       <summary>
-        <div class="ss-head"><span class="ss-yr">${h.season}</span><span class="swatch" style="--c1:${m.c1};--c2:${m.c2}"></span><span class="ss-club">${esc(h.club)}</span>${h.loan?`<span class="pill gold">Loan</span>`:""}<span class="ss-fin">${esc(fin)}</span></div>
+        <div class="ss-head"><span class="ss-yr">${h.season}</span>${clubBadge(h.club, 20)}<span class="ss-club">${esc(h.club)}</span>${h.loan?`<span class="pill gold">Loan</span>`:""}<span class="ss-fin">${esc(fin)}</span></div>
         <div class="ss-stats">
           <div><span class="label">Age</span><b>${h.age}</b></div>
           <div><span class="label">Apps</span><b>${h.tot.apps}</b></div>
@@ -2827,7 +2820,7 @@ function renderCareer(){
         <div class="card-top">${portrait(pl, club, pl.number)}<div class="card-pos">${pl.pos}</div></div>
         <div class="card-body">
           <p class="pname">${S.history.length ? `<button type="button" class="pname-link" data-act="my-profile" aria-label="Open ${esc(pl.name)}'s career profile">${esc(pl.name)}</button>` : esc(pl.name)}</p>
-          <div class="clubline"><span class="swatch" style="--c1:${club.c1};--c2:${club.c2}"></span>${esc(club.n)}${S.loan?`<span class="pill gold">On loan</span>`:""}</div>
+          <div class="clubline">${clubBadge(club.n, 20)}${esc(club.n)}${S.loan?`<span class="pill gold">On loan</span>`:""}</div>
           <div class="card-key">${S.attr?`<span><b>${mcOvr()}</b> OVR</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span><b>${mcSeasonRating().toFixed(2)}</b> avg</span>`:""}<span><b>${money(S.value)}</b></span><span>Age <b>${S.age}</b></span></div>
           <button type="button" class="card-more" data-act="card-more" aria-expanded="${cardOpen}">${cardOpen?"Show less":"Full profile"}</button>
           <div class="card-extra">

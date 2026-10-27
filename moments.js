@@ -62,27 +62,43 @@ const lvEase = (st, attr) => clamp((attr - st.f.oppStr)/40 + (S.cond.sharp-60)/4
 // light kit? (this file loads before game.js, so it can't use isLight while drawing the instruction diagrams)
 function lvLight(hex){ const h = s => parseInt(String(hex).slice(s, s+2), 16) || 0; return (h(1)*299 + h(3)*587 + h(5)*114)/1000 > 150; }
 function lvNear(x, y){ const h = s => [1,3,5].map(i=>parseInt(String(s).slice(i,i+2),16)||0), a = h(x), b = h(y); return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]) < 110; }
-// both kits, kept apart when they clash
+// both kits, kept apart when they clash; each kit's second colour goes on its collars, cuffs and shorts (LV_TRIM)
+const LV_TRIM = {}, LV_SKIN = ["#F1C9A5","#D9A37A","#B57D52","#8A5A3B","#5C3A24"], LV_HAIR = ["#17130F","#2B1B12","#4A2E1A","#17130F","#B5872F","#0E0B09"];
 function lvKits(st){
   const us = meta(S.mc.club), them = meta(st.f.opp);
-  let t = them.c1; if (lvNear(us.c1, t)) t = them.c2 && !lvNear(us.c1, them.c2) ? them.c2 : (lvLight(us.c1) ? "#1F2937" : "#E5E7EB");
+  let t = them.c1, tt = them.c2;
+  if (lvNear(us.c1, t)){ if (them.c2 && !lvNear(us.c1, them.c2)){ t = them.c2; tt = them.c1; } else { t = lvLight(us.c1) ? "#1F2937" : "#E5E7EB"; tt = null; } }
+  LV_TRIM[us.c1] = us.c2; LV_TRIM[t] = tt;
   return {us:us.c1, them:t};
 }
-// a player seen from above or the front: (x, y) is where his feet are
+// a player seen from above or the front: (x, y) is where his feet are. Shirt and socks in the kit colour, shorts and
+// trim in its second; skin and hair vary with where he stands, and you (o.ring) look like your player
 function lvMan(x, y, kit, o={}){
-  const trim = lvLight(kit) ? "#15171A" : "#FFFFFF";
+  let trim = o.trim || LV_TRIM[kit];
+  if (!trim || lvNear(trim, kit)) trim = lvLight(kit) ? "#1F2937" : "#F3F4F6";
+  const v = Math.abs(Math.round(x*7 + y*13)), you = !!o.ring && typeof S!=="undefined" && S && S.player;
+  const skin = o.skin || (you ? LV_SKIN[S.player.skin ?? 1] : LV_SKIN[v % LV_SKIN.length]) || LV_SKIN[1];
+  const hair = you ? (S.player.hair==="none" ? null : HAIRC[S.player.hairColour] || LV_HAIR[0]) : LV_HAIR[v % LV_HAIR.length];
   return `<g ${o.id?`id="${o.id}"`:""} transform="translate(${x} ${y}) scale(${o.s||1})">
     <ellipse cy="1" rx="10" ry="3.2" fill="rgba(0,0,0,.35)"/>
     ${o.ring ? `<circle cy="-16" r="19" fill="none" stroke="${o.ring}" stroke-width="2.5" opacity=".9"/>` : ""}
-    <path d="M-4 -2v-10M4 -2v-10" stroke="#15171A" stroke-width="4.2" stroke-linecap="round"/>
-    <path d="M-8 -26q8-4 16 0v12h-16z" fill="${kit}" stroke="rgba(0,0,0,.35)" stroke-width=".8"/>
+    <path d="M-3.8 -12V-3M3.8 -12V-3" stroke="${skin}" stroke-width="3.3" stroke-linecap="round"/>
+    <path d="M-3.8 -7.4V-2.6M3.8 -7.4V-2.6" stroke="${kit}" stroke-width="3.8" stroke-linecap="round"/>
+    <path d="M-6.6 -.8h4.4M2.2 -.8h4.4" stroke="#0E1012" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M-7.8 -18.4h15.6l.9 6.6h-6.6l-1.9-1.7-1.9 1.7h-6.6z" fill="${trim}" stroke="rgba(0,0,0,.25)" stroke-width=".6"/>
     <path d="M-8 -25l-5 8M8 -25l5 8" stroke="${kit}" stroke-width="4.2" stroke-linecap="round"/>
-    <circle cy="-31" r="5.6" fill="${o.skin||"#C68E5E"}"/>
-    ${o.num!=null ? `<text y="-16.5" text-anchor="middle" font-size="8.5" font-weight="800" fill="${trim}" font-family="Barlow Condensed,sans-serif">${o.num}</text>` : ""}
+    <path d="M-12.2 -18.4l-.8 1.4M12.2 -18.4l.8 1.4" stroke="${trim}" stroke-width="4.4" stroke-linecap="round"/>
+    <circle cx="-13.6" cy="-15.3" r="1.8" fill="${skin}"/><circle cx="13.6" cy="-15.3" r="1.8" fill="${skin}"/>
+    <path d="M-8 -26q8-4 16 0v8h-16z" fill="${kit}" stroke="rgba(0,0,0,.35)" stroke-width=".8"/>
+    <path d="M2.6 -27.7q3.1.5 5.4 1.7v8h-5.4z" fill="#000" opacity=".13"/>
+    <path d="M-3.2 -27.6q3.2 2 6.4 0" fill="none" stroke="${trim}" stroke-width="1.5"/>
+    <circle cy="-31" r="5.6" fill="${skin}"/>
+    ${hair ? `<path d="M-5.6 -31.4a5.6 5.6 0 0 1 11.2 0q-2.3-2.4-5.6-2.4q-3.3 0-5.6 2.4z" fill="${hair}"/>` : ""}
+    ${o.num!=null ? `<text y="-19.6" text-anchor="middle" font-size="7.6" font-weight="800" fill="${lvLight(kit) ? "#15171A" : "#FFFFFF"}" font-family="Barlow Condensed,sans-serif">${o.num}</text>` : ""}
     ${o.label ? `<text y="-42" text-anchor="middle" font-size="9" font-weight="700" fill="#FFE9A8" font-family="Barlow Condensed,sans-serif" letter-spacing=".5">${o.label}</text>` : ""}
   </g>`;
 }
-const lvBallSvg = (id, x, y, r=5) => `<g id="${id}" transform="translate(${x} ${y})"><ellipse cy="${r*.9}" rx="${r}" ry="${r*.35}" fill="rgba(0,0,0,.35)"/><circle r="${r}" fill="#fff" stroke="#15171A" stroke-width="1.1"/><path d="M${-r*.4} ${-r*.3}l${r*.4}-${r*.3} ${r*.4} ${r*.3}-${r*.15} ${r*.45}h-${r*.5}z" fill="#15171A"/></g>`;
+const lvBallSvg = (id, x, y, r=5) => `<g id="${id}" transform="translate(${x} ${y})"><ellipse cy="${r*.9}" rx="${r}" ry="${r*.35}" fill="rgba(0,0,0,.35)"/><circle r="${r}" fill="#fff" stroke="#15171A" stroke-width="1.1"/><path d="M${-r*.4} ${-r*.3}l${r*.4}-${r*.3} ${r*.4} ${r*.3}-${r*.15} ${r*.45}h-${r*.5}z" fill="#15171A"/><circle cx="${-r*.35}" cy="${-r*.45}" r="${r*.28}" fill="#fff" opacity=".8"/></g>`;
 // a pitch from above: attacking the goal at the top, or defending yours at the bottom ("side" puts the goal on the right)
 function lvField(goal, inner=""){
   const box = goal==="top" ? `<rect x="90" y="5" width="120" height="44"/><rect x="124" y="5" width="52" height="16"/><path d="M120 49a30 30 0 0 0 60 0"/>`
@@ -90,25 +106,42 @@ function lvField(goal, inner=""){
     : goal==="side" ? `<rect x="236" y="40" width="59" height="100"/><rect x="273" y="66" width="22" height="48"/>` : `<circle cx="150" cy="90" r="24"/><path d="M150 5v170"/>`;
   const net = goal==="top" ? `<rect x="133" y="0" width="34" height="6" fill="rgba(255,255,255,.8)"/>` : goal==="bottom" ? `<rect x="133" y="174" width="34" height="6" fill="rgba(255,255,255,.8)"/>`
     : goal==="side" ? `<rect x="293" y="74" width="7" height="32" fill="rgba(255,255,255,.8)"/>` : "";
-  return `<svg viewBox="0 0 300 180" aria-hidden="true"><rect width="300" height="180" fill="#195C33"/>
+  // mown stripes, a little grass texture, the lines, and the floodlights fading towards the corners
+  return `<svg viewBox="0 0 300 180" aria-hidden="true"><defs><radialGradient id="lvVg" cx="50%" cy="45%" r="72%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".34"/></radialGradient>
+      <pattern id="lvGr" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M1 6.5 2.4 4M4.6 3.5 6 1" stroke="#fff" stroke-opacity=".05" stroke-width="1"/></pattern></defs>
+    <rect width="300" height="180" fill="#195C33"/>
     ${[0,2,4,6,8].map(i=>goal==="side" ? `<rect x="${i*30}" width="30" height="180" fill="#1E6A3B"/>` : `<rect y="${i*18}" width="300" height="18" fill="#1E6A3B"/>`).join("")}
-    <g fill="none" stroke="rgba(255,255,255,.42)" stroke-width="1.5"><rect x="5" y="5" width="290" height="170"/>${box}</g>${net}${inner}</svg>`;
+    <rect width="300" height="180" fill="url(#lvGr)"/>
+    <g fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"><rect x="5" y="5" width="290" height="170"/>${box}</g>${net}
+    <rect width="300" height="180" fill="url(#lvVg)"/>${inner}</svg>`;
 }
-// the goal from the front, with the keeper (and, for free kicks, a wall)
-function lvGoalSvg(kc, wall){
+// the crowd in the stands behind the goal: heads in three rows, some in each team's colours
+function lvCrowd(){
+  const R = seeded(77), cols = ["#26332D","#33413A","#1E2A25","#3D4A43"], k = S && S.mc ? [meta(S.mc.club).c1] : [];
+  return `<g opacity=".55">${[0,1,2,3].map(r=>[...Array(33)].map((_,i)=>{ const c = R()<.16 && k.length ? k[0] : cols[Math.floor(R()*cols.length)];
+    return `<circle cx="${(i*9.4 + (r%2)*4.7 + R()*2).toFixed(1)}" cy="${(14 + r*20 + R()*3).toFixed(1)}" r="${(3.6 + R()*1.2).toFixed(1)}" fill="${c}"/><rect x="${(i*9.4 + (r%2)*4.7 - 4.5).toFixed(1)}" y="${(18 + r*20).toFixed(1)}" width="9" height="9" rx="3" fill="${c}"/>`; }).join("")).join("")}</g>`;
+}
+// the goal from the front, with the keeper (you, when me is set) and, for free kicks, a wall
+function lvGoalSvg(kc, wall, me){
+  const skin = me ? LV_SKIN[S.player.skin ?? 1] : "#D9A37A", hair = me ? (S.player.hair==="none" ? null : HAIRC[S.player.hairColour]) : "#1A120D";
   return `<svg viewBox="0 0 300 180" aria-hidden="true">
     <defs><pattern id="lvNet" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1"/></pattern>
       <radialGradient id="lvLight" cx="50%" cy="0%" r="80%"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".22"/><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"/></radialGradient></defs>
-    <rect width="300" height="180" fill="#08180F"/><rect width="300" height="180" fill="url(#lvLight)"/>
-    <g fill="rgba(255,255,255,.05)">${[...Array(28)].map((_,i)=>`<circle cx="${6+i*11}" cy="${8+(i%3)*5}" r="2.2"/>`).join("")}</g>
+    <rect width="300" height="180" fill="#08180F"/>
+    ${lvCrowd()}<rect width="300" height="180" fill="url(#lvLight)"/>
+    <rect y="100" width="300" height="24" fill="#0B1A12"/>${[0,1,2,3,4,5].map(i=>`<text x="${25+i*50}" y="116" text-anchor="middle" font-family="Big Shoulders Display, Impact, sans-serif" font-weight="900" font-size="10" letter-spacing="1" fill="${i%2 ? "#F5C542" : "#7FD7C4"}" opacity=".38">PYRAMID</text>`).join("")}
     <rect y="124" width="300" height="56" fill="#1D6537"/><path d="M0 146h300M0 168h300" stroke="rgba(255,255,255,.06)" stroke-width="11"/>
-    <rect x="30" y="20" width="240" height="104" fill="url(#lvNet)"/>
+    <path d="M30 20 16 32v92h14zM270 20l14 12v92h-14z" fill="url(#lvNet)" opacity=".7"/><path d="M30 20 16 32v92M270 20l14 12v92" fill="none" stroke="rgba(244,247,242,.5)" stroke-width="1.5"/>
+    <rect x="30" y="20" width="240" height="104" fill="#06120B" opacity=".55"/><rect x="30" y="20" width="240" height="104" fill="url(#lvNet)"/>
     <path d="M30 124V20h240v104" fill="none" stroke="#F4F7F2" stroke-width="5" stroke-linejoin="round"/>
     <path d="M0 124h300" stroke="rgba(255,255,255,.55)" stroke-width="2"/>
-    <g id="lvKp" transform="translate(150 84)"><path d="M-10 -8L-26 -24M10 -8L26 -24" stroke="${kc}" stroke-width="7" stroke-linecap="round"/><rect x="-11" y="-14" width="22" height="32" rx="8" fill="${kc}" stroke="rgba(0,0,0,.35)"/>
-      <circle cy="-22" r="7.5" fill="#D9A37A"/><path d="M-6 18v20M6 18v20" stroke="#15171A" stroke-width="7" stroke-linecap="round"/></g>
+    <g id="lvKp" transform="translate(150 84)"><path d="M-10 -8L-26 -24M10 -8L26 -24" stroke="${kc}" stroke-width="7" stroke-linecap="round"/><circle cx="-27.5" cy="-25.5" r="4.6" fill="#C8F04A" stroke="rgba(0,0,0,.35)"/><circle cx="27.5" cy="-25.5" r="4.6" fill="#C8F04A" stroke="rgba(0,0,0,.35)"/>
+      <path d="M-6 16v20M6 16v20" stroke="${skin}" stroke-width="6.5" stroke-linecap="round"/><path d="M-6 26v12M6 26v12" stroke="${kc}" stroke-width="7" stroke-linecap="round"/><path d="M-9.5 39.5h6M3.5 39.5h6" stroke="#0E1012" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M-11 10h22l1 9h-10l-2-2-2 2h-10z" fill="#1F2937"/>
+      <rect x="-11" y="-14" width="22" height="27" rx="8" fill="${kc}" stroke="rgba(0,0,0,.35)"/><path d="M3 -13.5q6 1 8 4v22h-8z" fill="#000" opacity=".14"/>
+      <circle cy="-22" r="7.5" fill="${skin}"/>${hair ? `<path d="M-7.5 -23a7.5 7.5 0 0 1 15 0q-3-3-7.5-3t-7.5 3z" fill="${hair}"/>` : ""}</g>
     ${wall ? [126,142,158,174].map(x=>lvMan(x, 152, wall, {s:1.15})).join("") : ""}
-    <g id="lvBall" transform="translate(150 166)"><circle r="7" fill="#fff" stroke="#15171A" stroke-width="1.4"/><path d="M-3 -2l3-2 3 2-1 3h-4z" fill="#15171A"/></g>
+    <g id="lvBall" transform="translate(150 166)"><circle r="7" fill="#fff" stroke="#15171A" stroke-width="1.4"/><path d="M-3 -2l3-2 3 2-1 3h-4z" fill="#15171A"/><circle cx="-2.6" cy="-3.2" r="1.8" fill="#fff" opacity=".85"/></g>
   </svg>`;
 }
 const lvMove = (id, x, y, rot=0, sc=1) => lv$(id)?.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${sc.toFixed(2)})`);
@@ -167,8 +200,14 @@ function lvAuto(st, m){
   return og ? {ok:false, big:"Simmed", small:"Own goal", og:1, bonus:-.4} : {ok:false, big:"Simmed", small:"They scored", ga:1, bonus:-.25};
 }
 // after each moment: the outcome over the pitch, then on to the next
+// a goal you scored or set up: confetti in your club's colours
+function lvBurst(){
+  const k = meta(S.mc.club), cols = [k.c1, k.c2 || "#FFFFFF", "#F5C542", "#FFFFFF"];
+  return `<div class="lv-burst" aria-hidden="true">${[...Array(28)].map((_,i)=>{ const a = Math.random()*Math.PI*2, d = 70 + Math.random()*120;
+    return `<i style="--x:${(Math.cos(a)*d).toFixed(0)}px;--y:${(Math.sin(a)*d*.7 - 40).toFixed(0)}px;--r:${Math.round(Math.random()*720 - 360)}deg;--c:${cols[i%4]};--d:${(Math.random()*.2).toFixed(2)}s"></i>`; }).join("")}</div>`;
+}
 function lvOutcome(st, R){
-  lv$(".lv-stage").insertAdjacentHTML("beforeend", `<div class="lv-res ${R.ok?"good":"bad"}"><span>${esc(R.big)}</span>${R.small?`<small>${esc(R.small)}</small>`:""}</div>`);
+  lv$(".lv-stage").insertAdjacentHTML("beforeend", `<div class="lv-res ${R.ok?"good":"bad"} ${R.g || R.a ? "goal" : ""}"><span>${esc(R.big)}</span>${R.small?`<small>${esc(R.small)}</small>`:""}${R.g || R.a ? lvBurst() : ""}</div>`);
   // some mini-games (take-ons) have their own buttons instead of a main one: swap those for it
   let act = lv$(".lv-act"); if (!act){ act = document.createElement("button"); act.type = "button"; lv$(".lv-in").appendChild(act); }
   lv$(".lv-lr")?.remove(); act.hidden = false;
@@ -276,7 +315,7 @@ async function lvPlayMatch(f, w){
     let go;
     while ((go = await lvAsk(`<div class="lv-card">
         <div class="lv-eye">${f.big ? "★ " : ""}${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : ""} · ${mcDate(w, f)}</div>
-        <div class="lv-teams"><span>${esc(home)}</span><i>v</i><span>${esc(away)}</span></div>
+        <div class="lv-teams"><span>${clubBadge(home, 34)}${esc(home)}</span><i>v</i><span>${clubBadge(away, 34)}${esc(away)}</span></div>
         ${sqLineups(f)}
         <div class="lv-forms">${[[S.mc.club, "Your team"], [f.opp, f.opp]].map(([n, l])=>`<div class="lv-form"><span>${esc(l)}</span>${mcFormPills(mcTeamForm(n).L)}</div>`).join("")}</div>
         <p>${me.st==="start" ? "You're in the starting line-up." : `You start on the bench and come on around the ${ord(90-me.mins)} minute.`}
@@ -308,7 +347,7 @@ async function lvFullTime(st, home, away){
   const bits = [me.g ? `${me.g} goal${me.g>1?"s":""}` : "", me.a ? `${me.a} assist${me.a>1?"s":""}` : "", me.og ? `${me.og} own goal${me.og>1?"s":""}` : "", me.cs && (DEF.includes(S.player.pos) || S.player.pos==="CDM") ? "clean sheet" : ""].filter(Boolean);
   const html = `<div class="lv-card lv-ftc">
       <div class="lv-eye">Full time${f.res.pens ? ` · ${f.res.pens==="won"?"won":"lost"} on penalties` : f.agg ? ` · ${f.agg[0]}–${f.agg[1]} on aggregate` : ""}</div>
-      <div class="lv-ft"><span>${esc(home)}</span><b>${l}–${r}</b><span>${esc(away)}</span></div>
+      <div class="lv-ft"><span>${clubBadge(home, 44)}<em>${esc(home)}</em></span><b>${l}–${r}</b><span>${clubBadge(away, 44)}<em>${esc(away)}</em></span></div>
       ${sqScorers(f)}
       <div class="lv-rate"><span class="label">Your rating</span><b class="${me.r>=7.5?"hi":me.r<6?"lo":""}">${me.r ?? "–"}</b><span>${bits.join(" · ") || (me.mins ? "No goal involvement" : "")}</span></div>
       ${me.r!=null ? `<p class="lv-rate-sub"><b>${mcRateLabel(me.r)}.</b> Season average <b>${mcSeasonRating().toFixed(2)}</b>.</p>` : ""}
@@ -709,7 +748,7 @@ function lvGameSave(st, m){
     : pick([{t:"One-on-one!", s:"He's through. Watch the ball and dive the right way."}, {t:"Shot from the edge of the box", s:"Watch the ball and dive the right way: tap that side of the goal."}]);
   return new Promise(res=>{
     lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">${T.t}</h2><p class="lv-s">${T.s}</p>
-      <div class="lv-stage">${lvGoalSvg(kit.us)}
+      <div class="lv-stage">${lvGoalSvg(kit.us, null, true)}
         <div class="lv-thirds">${["l","c","r"].map(z=>`<button type="button" class="lv-tap" data-z="${z}" aria-label="Dive ${{l:"left",c:"centre",r:"right"}[z]}"></button>`).join("")}</div>
         <span class="lv-cue">${pen ? "Penalty" : "Here he comes"}…</span></div>
       <button type="button" class="btn big lv-act" disabled>Watch the ball</button>`);

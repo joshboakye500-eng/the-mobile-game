@@ -25,7 +25,9 @@ To try it before merging, pick this work's branch in step 3 instead of `main`, t
 
 Each half-season is a **match centre**: a fixture list for your club (league, cups and Europe), played week by week.
 
-The Season screen keeps it short: this week's match and the play buttons at the top, then your key numbers and this week's training, then tabs for recent results, the league table, your targets, your attributes and the full fixture list. *Stats*, *Club & leagues*, *Legacy* and the shop are split into tabs the same way, and on phones the header and your player card fold down to a single row (tap *Full profile* for the whole card).
+Every club has its own badge, drawn from its colours, in the tables, fixture lists, the match centre and on the match screens. Players wear their club's kit (shirt, shorts and socks), the goal has a crowd and advertising boards behind it, and a goal you score or set up ends in a burst of confetti in your club's colours.
+
+The Season screen keeps it short: this week's match (both badges, the competition and the ground) and the play buttons at the top, then your key numbers and this week's training, then tabs for recent results, the league table, your targets, your attributes and the full fixture list. *Stats*, *Club & leagues*, *Legacy* and the shop are split into tabs the same way, and on phones the header and your player card fold down to a single row (tap *Full profile* for the whole card).
 
 - **Training.** Each week, pick a focus (finishing, passing, pace, defending or shot-stopping, stamina, match prep, or rest) and how hard to train. Hard training grows you faster but tires you and raises the injury risk. Young players grow fast, and over-30s fight decline.
 - **Training drills.** Once a week you can do a drill for your training focus: shooting practice, a passing drill, sprint starts for pace, a tackling drill (shot-stopping for keepers), a beep test for stamina, or free kicks for match prep. They're quicker, easier versions of the match mini-games, plus two of their own. The better the session, the more that attribute grows on top of the week's training: a perfect score adds about the same again, and even players near their peak gain a little. Free kicks sharpen you instead.
@@ -100,6 +102,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `squads.js` | Every club's starting XI, the line-ups before a match, scorers, match ratings and Player of the Match |
 | `league.js` | Your league played out week by week: the table, top scorers, assists, ratings and results |
 | `drills.js` | Weekly training drills: easier mini-games that grow your attributes and earn you game time |
+| `crests.js` | Every club's badge, drawn from its colours |
 | `targets.js` | The manager's season targets and your agent's clauses |
 | `shop.js` | The shop: boots and training boosts bought with gold coins |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |

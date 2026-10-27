@@ -419,9 +419,18 @@ function mcFxRow(f, w){
   const opp = f.opp ? `${f.neutral ? "" : f.home ? "" : "at "}${esc(f.opp)}` : "Opponent to be drawn";
   const extra = done && f.agg ? ` · ${f.agg[0]}–${f.agg[1]} on aggregate` : "", pens = done && f.res.pens ? ` · ${f.res.pens==="won" ? "won" : "lost"} on penalties` : "";
   return `<div class="fx ${f.big?"big":""} ${done?"":"todo"}"><span class="fx-d">${mcDate(w, f)}</span>
-    <span class="fx-o">${f.big?"★ ":""}${opp}<small>${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : f.home ? " · home" : ""}${!done && f.code==="league" && lgPosOf(f.opp) ? ` · ${ord(lgPosOf(f.opp))} in the table` : ""}${extra}${pens}</small></span>
+    <span class="fx-o"><span class="fx-n">${f.opp ? clubBadge(f.opp, 20) : ""}<span>${f.big?"★ ":""}${opp}</span></span><small>${esc(mcCompLabel(f))}${f.code!=="league" ? " · " + esc(f.round) + (f.leg ? `, leg ${f.leg}` : "") : f.home ? " · home" : ""}${!done && f.code==="league" && lgPosOf(f.opp) ? ` · ${ord(lgPosOf(f.opp))} in the table` : ""}${extra}${pens}</small></span>
     <span class="fx-s ${wdl}">${done ? `${f.res.gf}–${f.res.ga}` : ""}</span>
     ${done ? `<span class="fx-me">${mcMeLine(f)}</span>` : ""}</div>`;
+}
+// this week's main match, big: both badges, where they are in the table, the competition and the ground
+function mcHero(f, w){
+  const our = S.mc.club, [h, a] = !f.opp || f.home || f.neutral ? [our, f.opp] : [f.opp, our];
+  const side = n => n ? `<div class="mc-side">${clubBadge(n, 46)}<b>${esc(n)}</b>${f.code==="league" && lgPosOf(n) ? `<small>${ord(lgPosOf(n))} in the table</small>` : ""}</div>`
+    : `<div class="mc-side"><span class="crest-q" aria-hidden="true">?</span><b>To be drawn</b></div>`;
+  const ground = f.neutral ? "Neutral venue" : f.opp ? meta(h).ground : "";
+  return `<div class="mc-vs">${side(h)}<span class="mc-v">v</span>${side(a)}</div>
+    <p class="mc-vs-sub">${f.big ? "★ " : ""}${esc(mcCompLabel(f))}${f.code!=="league" ? ` · ${esc(f.round)}${f.leg ? `, leg ${f.leg}` : ""}` : ""} · ${mcDate(w, f)}${ground ? ` · ${esc(ground)}` : ""}</p>`;
 }
 function mcPanel(){
   if (!S.mc || S.mc.key!==mcKey()) { mcBuild(); save(); }
@@ -446,7 +455,7 @@ function mcPanel(){
     ${M.done ? `<div class="mc-next"><p><strong>${h===1 ? "That's the first half of the season done." : "That's the season done."}</strong> ${tot.apps} appearances, ${tot.g} goals and ${tot.a} assists${showCS?`, ${tot.cs} clean sheets`:""}, average rating ${avgR}.</p>
         <button class="btn primary big" data-act="mc-finish">${h===1 ? "Go to the January window" : "See how the season ended"}</button></div>`
     : `<div class="mc-next"><div class="mc-next-h"><span class="label">This week · ${mcDate(M.wi)}</span>${now.some(([f])=>f.big) ? `<span class="pill gold">★ Big game</span>` : ""}</div>
-        ${now.length ? fx(now) : `<p class="hint">No match this week, just training.</p>`}
+        ${now.length ? (main => mcHero(...main) + (now.length>1 ? fx(now.filter(x=>x!==main)) : ""))(now.find(([f])=>f.code==="league") || now[0]) : `<p class="hint">No match this week, just training.</p>`}
         <div class="mc-actions"><button class="btn primary big" data-act="mc-week">Play next week</button><button class="btn" data-act="mc-half">${h===1 ? "Play to January" : "Play to May"}</button></div></div>`}
     <div class="mc-strip">
       ${(sr => stat("Rating", sr!=null ? sr.toFixed(2) : "–", sr!=null ? `Season average · ${mcRateLabel(sr)}` : "Season average", sr!=null ? (sr-5.5)/3*100 : null, "rate"))(mcSeasonRating())}${stat("Form", c.form.length ? fa.toFixed(1) : "–", mcFormLabel(fa), c.form.length ? (fa-5.6)/2*100 : null)}
