@@ -942,3 +942,29 @@ details.ss-panel[open]>summary{margin-bottom:14px}
 .win-act{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
 details.nego-d summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--euro);padding:4px 0}
 details.nego-d[open] summary{margin-bottom:8px}
+.lg-lead li[data-pl]{cursor:pointer}
+.lg-lead li[data-pl]:hover,.lg-lead li[data-pl]:focus-visible{border-color:var(--ink);outline:none}
+.pl-top{display:flex;gap:14px;align-items:center}
+.pl-ovr{display:grid;place-items:center;min-width:72px;padding:8px 10px;border-radius:14px;background:var(--accent);color:var(--accent-ink)}
+.pl-ovr b{font-family:var(--f-display);font-weight:900;font-size:38px;line-height:1}
+.pl-ovr span{font-family:var(--f-label);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.pl-top .pills{flex:1;min-width:0}
+.pl-card .totals.pl-four{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.pl-card .pl-four .total{padding:8px 10px}
+.pl-card .pl-four .label{font-size:11px}
+/* the squad list: name on the first line, position and the season's numbers under it, in the header's columns */
+.sq-list li,.sq-hd{grid-template-columns:26px minmax(0,1fr) 20px 20px 36px 32px;column-gap:6px}
+.sq-list li{grid-template-areas:"rk nm nm nm nm v" "rk sb g a av v";row-gap:1px}
+.sq-list .lg-who{display:contents}
+.sq-list .lg-rk{grid-area:rk}
+.sq-list .lg-who b{grid-area:nm}
+.sq-list .lg-who small{grid-area:sb}
+.sq-list .sq-g{grid-area:g}
+.sq-list .sq-a{grid-area:a}
+.sq-list .sq-av{grid-area:av}
+.sq-list .lg-v{grid-area:v;font-size:20px;text-align:right}
+.sq-hd{display:grid;padding:0 11px 6px;font-family:var(--f-label);font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sq-hd span:nth-child(n+3),.sq-n{text-align:center}
+.sq-hd span:last-child{text-align:right}
+.sq-n{font-size:13px;font-variant-numeric:tabular-nums}
+.sq-p{cursor:pointer}

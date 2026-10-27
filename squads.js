@@ -84,7 +84,7 @@ function sqPlayer(club, i, season, H){
   // most players are a little below the club's level; about one in ten is its star
   let r = R()<.1 ? 4 + R()*5 : (R() - .6)*10;
   if (age>30) r -= (age-30)*.8; else if (age<21) r -= (21-age)*1.2;
-  return {i, name:`${one(F)} ${one(L)}`, nat, pos:SQ_SLOTS[i][0], num:R()<.7 ? SQ_SLOTS[i][1] : 12 + Math.floor(R()*28), r:+r.toFixed(1), age, R};
+  return {i, name:`${one(F)} ${one(L)}`, nat, pos:SQ_SLOTS[i][0], num:R()<.7 ? SQ_SLOTS[i][1] : 12 + Math.floor(R()*28), r:+r.toFixed(1), age, since:season - (k - gen*stay), R};
 }
 // a club's XI this season, cached: [{i, name, nat, pos, num, r (rating against the club's strength), age}]
 function sqSquad(club){
@@ -130,7 +130,7 @@ function sqLineups(f){
     const kit = club===our ? K.us : K.them, ink = lvLight(kit) ? "#15171A" : "#FFFFFF";
     return sqSquad(club).map((p,i)=>{
       const me = club===our && you && i===u, [x0, y0] = SQ_SPOT[i], x = flip ? 340-x0 : x0, y = flip ? 210-y0 : y0;
-      return `<g transform="translate(${x} ${y})"><circle r="8.5" fill="${kit}" stroke="${me ? "#F5C542" : "rgba(0,0,0,.45)"}" stroke-width="${me ? 2.5 : 1}"/>
+      return `<g transform="translate(${x} ${y})" class="sq-p" data-pl="${esc(me ? "me" : `${club}|${i}`)}" data-str="${baseOf(club)}"><circle r="8.5" fill="${kit}" stroke="${me ? "#F5C542" : "rgba(0,0,0,.45)"}" stroke-width="${me ? 2.5 : 1}"/>
         <text y="3" text-anchor="middle" class="sq-num" fill="${ink}">${me ? esc(String(S.player.number).slice(0,2)) : p.num}</text>
         <text y="${i===10 ? -12 : 19}" text-anchor="middle" class="sq-name${me ? " me" : ""}">${esc(me ? "You" : sqSurname(p.name))}</text></g>`;
     }).join("");
@@ -144,7 +144,7 @@ function sqLineups(f){
         <rect x="4" y="58" width="38" height="94"/><rect x="298" y="58" width="38" height="94"/></g>
       ${side(left, false)}${side(right, true)}
     </svg>
-    <p class="sq-key">${you ? "You're the gold ring. " : f.me && f.me.st==="sub" ? "You start on the bench. " : ""}Their key man: <b>${esc(key.name)}</b> (${key.pos}, rated ${sqRating(key, f.oppStr)}).</p>
+    <p class="sq-key">${you ? "You're the gold ring. " : f.me && f.me.st==="sub" ? "You start on the bench. " : ""}Tap a player for their card. Their key man: <b>${esc(key.name)}</b> (${key.pos}, rated ${sqRating(key, f.oppStr)}).</p>
   </details>`;
 }
 // after one of your matches: who scored and set up each goal (with the minutes from your key moments when you played
@@ -188,4 +188,50 @@ function sqScorers(f){
   const line = us => f.sc.filter(g=>!!g.u===us).map(g=>`${esc(g.s)}${g.og ? " (og)" : ""} ${g.m}'`).join(", ");
   const [l, r] = f.home || f.neutral ? [line(true), line(false)] : [line(false), line(true)];
   return `<div class="sq-goals"><span>${l}</span><i aria-hidden="true">⚽</i><span>${r}</span></div>`;
+}
+
+/* ---------- player cards ---------- */
+// a player's card: rating, age, nationality, years at the club and the league season so far. Any element with
+// data-pl="club|place in the XI" (or "me") opens one: the leaderboards, the squad list and the line-ups (whose
+// data-str carries the strength of a European opponent from outside the game's leagues)
+function sqLeague(club){ return S.lg && S.lg.s===seasonLabel(S.season) ? Object.entries(S.lg.L).find(([,L])=>L.ps[club] || L.tab[club]) || null : null; }
+function sqCard(club, i, base = strOf(club)){
+  const me = club==="me", p = me ? null : sqSquad(club)[i], c = me ? S.club : club, lk = sqLeague(c);
+  const L = lk && lk[1], x = !L ? null : me ? L.me : L.ps[club] && L.ps[club][i];
+  const find = me ? q=>q.me : q=>q.club===club && q.i===i, rank = k => L ? (lgLeaders(L, k).find(find) || {}).rank : null;
+  const tile = (l, v) => `<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`;
+  const name = me ? S.player.name : p.name, pos = me ? S.player.pos : p.pos, top = [["g", "in the scoring charts"], ["a", "for assists"], ["avg", "for average rating"]].map(([k,t])=>[rank(k), t]).filter(([r])=>r && r<=20);
+  return `<div class="dlg-in pl-card">
+    <div class="dlg-head">${clubBadge(c, 40)}<div style="min-width:0"><h2 id="plDlgTitle">${esc(name)}</h2><p class="hint">${esc(c)} · #${esc(me ? S.player.number : p.num)} · ${esc(POS[pos] ? POS[pos].label : pos)}</p></div>
+      <button type="button" class="dlg-x" data-pl-close aria-label="Close">×</button></div>
+    <div class="pl-top"><div class="pl-ovr"><b>${me ? (S.attr ? mcOvr() : "–") : sqRating(p, base)}</b><span>Rating</span></div>
+      <div class="pills"><span class="pill">${esc(me ? S.player.nation || "No nation" : p.nat)}</span><span class="pill">Age ${me ? S.age : p.age}</span>${me ? "" : `<span class="pill">At the club since ${seasonLabel(p.since)}</span>`}</div></div>
+    <section><h3>${L ? `${esc(TIERS[lk[0]].name)} this season` : "This season"}</h3>
+    ${x && x[0] ? `<div class="totals pl-four">${tile("Games", x[0])}${tile("Goals", x[1])}${tile("Assists", x[2])}${tile("Avg", (x[3]/10/x[0]).toFixed(2))}</div>
+      <p class="hint" style="margin:10px 0 0">${top.map(([r,t])=>`${ord(r)} ${t}`).join(" · ") || "Not in the league's top 20 for goals, assists or ratings yet."}</p>`
+    : `<p class="hint" style="margin:0">${L ? "No league games this season yet." : "Only your own league is played out week by week, so there are no season numbers here."}</p>`}</section>
+  </div>`;
+}
+function sqOpen(key, str){
+  const d = document.getElementById("plDlg"); if (!d) return;
+  const [club, i] = key==="me" ? ["me", 0] : [key.slice(0, key.lastIndexOf("|")), +key.slice(key.lastIndexOf("|")+1)];
+  d.innerHTML = sqCard(club, i, str ? +str : undefined);
+  if (d.showModal){ if (!d.open) d.showModal(); } else d.setAttribute("open", "");
+}
+document.addEventListener("click", e=>{ const t = e.target.closest && e.target.closest("[data-pl]"); if (t) sqOpen(t.dataset.pl, t.dataset.str); });
+document.addEventListener("keydown", e=>{ const t = (e.key==="Enter" || e.key===" ") && e.target.closest && e.target.closest("[data-pl]"); if (t){ e.preventDefault(); sqOpen(t.dataset.pl, t.dataset.str); } });
+document.getElementById("plDlg")?.addEventListener("click", e=>{ if (e.target.id==="plDlg" || e.target.closest("[data-pl-close]")) e.currentTarget.close(); });
+// your club's XI under Club & leagues: ratings and this season's league numbers, you first; a tap opens a player's card
+function sqSquadPanel(){
+  const club = S.club, lk = sqLeague(club), L = lk && lk[1];
+  const row = (key, num, name, sub, rt, x, me) => { const n = x && x[0], avg = n ? (x[3]/10/x[0]).toFixed(2) : "–";
+    return `<li class="${me ? "me" : ""}" data-pl="${esc(key)}" tabindex="0" role="button" aria-label="${esc(`${name}${me ? " (you)" : ""}, ${sub}, rated ${rt}${n ? `: ${x[1]} goals, ${x[2]} assists, average rating ${avg}` : ""}. Open card`)}">
+    <span class="lg-rk">${esc(num)}</span><span class="lg-who"><b>${esc(name)}${me ? " (you)" : ""}</b><small>${esc(sub)}</small></span>
+    <span class="sq-n sq-g">${n ? x[1] : "–"}</span><span class="sq-n sq-a">${n ? x[2] : "–"}</span><span class="sq-n sq-av">${avg}</span><span class="lg-v">${rt}</span></li>`; };
+  return `<section class="panel"><h2>${esc(club)} squad</h2>
+    <p class="hint" style="margin-bottom:12px">Ratings, and this season's league goals, assists and average match rating. When you start, you replace the player in your position. Tap a player for their card.</p>
+    <div class="sq-hd" aria-hidden="true"><span>#</span><span>Player</span><span>G</span><span>A</span><span>Avg</span><span>Rtg</span></div>
+    <ol class="lg-lead sq-list">${row("me", S.player.number, S.player.name, `${S.player.pos} · ${S.age} · ${S.player.nation || "–"}`, S.attr ? mcOvr() : "–", L && L.me, true)}
+      ${sqSquad(club).map((p,i)=>row(`${club}|${i}`, p.num, p.name, `${p.pos} · ${p.age} · ${p.nat}`, sqRating(p, strOf(club)), L && L.ps[club] && L.ps[club][i])).join("")}</ol>
+  </section>`;
 }

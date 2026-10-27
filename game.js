@@ -2799,7 +2799,7 @@ function statsBody(){
 }
 // the league first (in season, the table as it stands); the club, and on phones the pyramid, behind the second button
 function clubBody(t){
-  return subTabs("club", [["league", "League", leaguesTab()],
+  return subTabs("club", [["league", "League", leaguesTab()], S.phase!=="retired" && ["squad", "Squad", sqSquadPanel()],
     ["club", "Club", clubPanel() + `<section class="panel pyr-m"><h3>${TIERS[t].country==="England"?"Where you are in the pyramid":"Playing abroad"}</h3>${pyramid(t)}</section>`]]);
 }
 function renderCareer(){
