@@ -934,3 +934,11 @@ details.ss-panel[open]>summary{margin-bottom:14px}
 .lv-burst i{position:absolute;left:-3px;top:-5px;width:7px;height:11px;border-radius:2px;background:var(--c);opacity:0;animation:lvburst 1.15s cubic-bezier(.15,.7,.3,1) var(--d) forwards}
 @keyframes lvburst{0%{opacity:1;transform:translate(0,0) rotate(0) scale(.5)}75%{opacity:1}100%{opacity:0;transform:translate(var(--x),calc(var(--y) + 70px)) rotate(var(--r)) scale(1)}}
 @media (prefers-reduced-motion:reduce){.lv-burst{display:none}}
+.offer .club{display:flex;align-items:center;gap:10px}
+.offer .club span{min-width:0;overflow-wrap:anywhere}
+.win-sum{display:flex;align-items:center;gap:12px;margin-top:4px}
+.win-sum .hint{margin-top:4px}
+.win-val{justify-content:space-between;margin-top:12px}
+.win-act{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+details.nego-d summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--euro);padding:4px 0}
+details.nego-d[open] summary{margin-bottom:8px}

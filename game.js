@@ -565,6 +565,7 @@ function boardPanel(){
   </section>`]]);
 }
 let S = null, draft = null, flash = "", tab = "season", migratedNote = "", reviewIdx = null, leagueView = null, cardOpen = false;
+const negoOpen = new Set();   // offer cards whose negotiation is open, kept open between rounds of talks
 function load(){ try{ const raw = localStorage.getItem(KEY); if (raw) S = JSON.parse(raw);}catch(e){} }
 function save(){
   if (!S) return;
@@ -2059,6 +2060,7 @@ function winterPanel(){
   </section>`;
 }
 function decideWinter(kind, key){
+  negoOpen.clear();
   const P = S.pending, label = seasonLabel(S.season);
   if (kind==="sign"){
     const o = getOffer(key), from = S.club;
@@ -2081,6 +2083,7 @@ function decideWinter(kind, key){
   save(); render(); window.scrollTo({top:0, behavior:"smooth"});
 }
 function decide(kind, key){
+  negoOpen.clear();
   if (S.phase==="winter") return decideWinter(kind, key);
   const P = S.pending, done = seasonLabel(S.season);
   if (kind==="sign"){
@@ -2469,7 +2472,7 @@ function offerCard(o, key){
   const m = meta(o.club);
   return `<article class="offer ${o.status==="withdrawn"?"gone":""}" style="--c1:${m.c1}">
     <div class="pills">${pill}${eu}${o.triggered?`<span class="pill gold">Clause triggered</span>`:""}${o.status==="agreed"?`<span class="pill gold">Terms agreed</span>`:""}</div>
-    <div class="club">${esc(o.club)}</div>
+    <div class="club">${clubBadge(o.club, 30)}<span>${esc(o.club)}</span></div>
     <div class="label">${TIERS[o.tier].name}</div>
     <dl>
       ${isRenew?"":`<dt>Fee</dt><dd>${o.fee?money(o.fee):"Free transfer"}</dd>`}
@@ -2479,13 +2482,14 @@ function offerCard(o, key){
       ${isRenew?"":`<dt>Role</dt><dd>${o.role}</dd>`}
     </dl>
     ${o.msg?`<div class="msg">${esc(o.msg)}</div>`:""}
-    ${o.status==="open"?`<div class="nego">
+    ${o.status==="open"?`<button class="btn small primary" data-act="sign" data-k="${key}">Accept as is</button>
+      <details class="nego-d" ${negoOpen.has(String(key))?"open":""}><summary>Negotiate · ${o.patience} round${o.patience===1?"":"s"} of talks left</summary>
+      <div class="nego">
         <div class="field"><label for="ask-${key}">Ask for (£/wk)</label><input id="ask-${key}" type="number" min="0" step="50" inputmode="numeric" value="${roundWage(o.wage*1.15)}"></div>
         <div class="field"><label for="yrs-${key}">Years</label><select id="yrs-${key}">${[1,2,3,4,5].map(y=>`<option ${y===o.years?"selected":""}>${y}</option>`).join("")}</select></div>
         <div class="field" style="grid-column:1/-1"><label for="cl-${key}">Release clause (€m, blank for none)</label><input id="cl-${key}" type="number" min="0" step="0.5" inputmode="decimal" value="${o.clause?Math.round(o.clause/1e5)/10:""}" placeholder="${o.policy==="none"?"This club won't include one":"e.g. "+Math.round(o.minClause*1.1/1e6*10)/10}"></div>
       </div>
-      <div class="row"><button class="btn small" data-act="nego" data-k="${key}">Negotiate</button><button class="btn small primary" data-act="sign" data-k="${key}">Accept as is</button></div>
-      <div class="hint">${o.patience} round${o.patience===1?"":"s"} of talks left</div>`
+      <div class="row" style="margin-top:8px"><button class="btn small" data-act="nego" data-k="${key}">Put these terms to them</button></div></details>`
     : o.status==="agreed" ? `<button class="btn primary" data-act="sign" data-k="${key}">Sign ${isRenew?"new deal":"for "+esc(o.club)}</button>` : ""}
   </article>`;
 }
@@ -2493,17 +2497,31 @@ function windowPanel(){
   const P = S.pending, last = S.history[S.history.length-1];
   const diff = last.after - last.before, pct = last.before? Math.round(diff/last.before*100) : 0, f = P.f;
   const fx = v => "×" + v.toFixed(2);
-  const free = S.years<=0;
-  return `<section class="panel pop win-summer" id="actionPanel">
-    <div class="win-tag">☀ Summer transfer window</div>
-    ${P.tour?`<div class="ref" style="margin:4px 0 14px"><strong>${esc(P.tour.name)}:</strong> ${esc(P.tour.nation)} · ${esc(P.tour.result==="Winners"?"champions":P.tour.result.toLowerCase())} · you played ${P.tour.apps} game${P.tour.apps===1?"":"s"} with ${P.tour.g} goal${P.tour.g===1?"":"s"} and ${P.tour.a} assist${P.tour.a===1?"":"s"}.</div>`:""}
-    ${S.sim?seasonResults(S.sim, last):""}
-    <h2 style="margin-top:22px">${last.season} report</h2>
-    ${P.won.length?`<div class="cabinet" style="margin-bottom:16px">${P.won.map(w=>`<div class="tro">${trophyIcon(w.kind, w.name)}<div class="tn">${esc(w.name)}</div><div class="ts">New in the cabinet</div></div>`).join("")}</div>`:""}
-    <div class="row" style="justify-content:space-between;margin-bottom:14px">
-      <div><div class="label">New market value</div><div class="value-big">${money(last.after)}</div></div>
-      <div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))} (${pct>0?"+":""}${pct}%)</div>
-    </div>
+  const free = S.years<=0, sim = S.sim, lg = sim && sim.comps.find(c=>c.code==="league");
+  const offers = [P.offers.renewal, ...P.offers.list].filter(Boolean), loans = P.offers.loans || [];
+  // the season in a few lines: where the club finished, your value, anything you won
+  const head = `<div class="win-tag">☀ Summer transfer window</div>
+    <div class="win-sum">${clubBadge(last.club, 46)}<div><h2 style="margin:0">${last.season} · ${esc(last.club)}</h2>
+      <p class="hint">${lg ? `${esc(lg.out)}. ${esc(lg.outcome)}.` : ""}</p></div></div>
+    <div class="row win-val"><div><div class="label">New market value</div><div class="value-big">${money(last.after)}</div></div>
+      <div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))} (${pct>0?"+":""}${pct}%)</div></div>
+    ${P.won.length ? `<div class="pills" style="margin-top:10px">${P.won.map(w=>`<span class="pill gold">🏆 ${esc(w.name)}</span>`).join("")}</div>` : ""}
+    ${P.tour?`<div class="ref" style="margin-top:12px"><strong>${esc(P.tour.name)}:</strong> ${esc(P.tour.nation)} · ${esc(P.tour.result==="Winners"?"champions":P.tour.result.toLowerCase())} · you played ${P.tour.apps} game${P.tour.apps===1?"":"s"} with ${P.tour.g} goal${P.tour.g===1?"":"s"} and ${P.tour.a} assist${P.tour.a===1?"":"s"}.</div>`:""}`;
+  const offersView = `
+    ${P.loanEnded?`<p class="ref" style="margin-bottom:10px"><strong>Loan over.</strong> Your season at ${esc(P.loanEnded)} is done and you're back at ${esc(S.club)}.</p>`:""}
+    ${P.injuries&&P.injuries.filter(i=>i.tier!=="small").length?`<p class="ref" style="margin-bottom:10px"><strong>Injury-hit season.</strong> ${P.injuries.filter(i=>i.tier!=="small").map(i=>esc(i.name)).join(", ")}. Clubs have taken it into account.</p>`:""}
+    ${P.loanAsk?`<p class="ref bad" style="margin-bottom:10px"><strong>${esc(S.club)} want you to go out on loan.</strong> After ${S.badStreak} seasons without kicking on, they want you playing regularly at a lower level. Staying isn't an option this summer: pick a loan or a permanent move.</p>`
+      : P.listed?`<p class="ref bad" style="margin-bottom:10px"><strong>${esc(S.club)} have transfer-listed you</strong> after ${S.badStreak} poor seasons in a row. Staying isn't an option: sign for someone or go out on loan. Clubs know you're available, so fees are lower.</p>`
+      : P.sale==="cashin"?`<p class="ref" style="margin-bottom:10px"><strong>${esc(S.club)} are ready to sell you.</strong> They'll listen to offers and won't offer a new deal. You can still stay and see out your contract. Details are in your inbox.</p>`
+      : P.sale==="makeway"?`<p class="ref" style="margin-bottom:10px"><strong>${esc(S.club)} want to move you on</strong> to make room for younger players. You can stay, but only on a short deal with lower wages. Details are in your inbox.</p>`
+      : P.stoodBy?`<p class="ref" style="margin-bottom:10px"><strong>${esc(S.club)} are standing by you.</strong> A poor season, but your loyalty (${loyaltyOf(S.club)}/100, ${loyaltyLevel(loyaltyOf(S.club)).toLowerCase()}) has bought you time.</p>`
+      : P.warn?`<p class="ref" style="margin-bottom:10px"><strong>The manager isn't happy.</strong> That was a poor season. Another one like it and ${esc(S.club)} will push you out.</p>`:""}
+    <p class="hint">${free?(TIERS[tierOf(S.club)].pool && TIERS[tierOf(S.club)].country!=="England" ? `<strong>${esc(S.club)} went down, so your relegation clause lets you leave for free.</strong> Pick a new club.` : `<strong>Your contract has run out.</strong> You're a free agent, so clubs can sign you without a fee.`):`You earn ${wageTxt(S.wage)} with ${S.years} year${S.years===1?"":"s"} left at ${esc(S.club)}.`} Accept an offer as it is, or negotiate for a higher wage, a different length or a release clause. Push too hard and a club walks away.</p>
+    ${P.offers.demand!=null?`<div class="row" style="margin-top:10px;gap:14px"><span class="label">Demand for you</span><div class="meter" style="flex:1;min-width:120px;max-width:260px"><span style="width:${Math.round(P.offers.demand*100)}%"></span></div><strong>${P.offers.demand>.8?"Very high":P.offers.demand>.6?"High":P.offers.demand>.4?"Moderate":P.offers.demand>.2?"Low":"Very low"} · ${P.offers.list.length} club${P.offers.list.length===1?"":"s"} interested</strong></div>`:""}
+    ${S.release&&S.years>0?`<p class="hint" style="margin-top:6px">Your release clause is ${money(S.release)}. Any club that pays it can talk to you directly.</p>`:""}
+    ${offers.length ? `<div class="offers" style="margin-top:12px">${P.offers.renewal?offerCard(P.offers.renewal,"renew"):""}${P.offers.list.map((o,i)=>offerCard(o,i)).join("")}</div>` : `<p class="empty" style="margin-top:12px">No offers this summer.</p>`}`;
+  const reportView = `${sim?seasonResults(sim, last):""}
+    ${P.won.length?`<h3>New in the cabinet</h3><div class="cabinet" style="margin-bottom:16px">${P.won.map(w=>`<div class="tro">${trophyIcon(w.kind, w.name)}<div class="tn">${esc(w.name)}</div><div class="ts">${last.season}</div></div>`).join("")}</div>`:""}
     <h3>How the valuation was built</h3>
     <div class="factors">
       <div class="factor"><div class="label">${TIERS[last.tier].short} base</div><div class="v">${money(f.base)}</div></div>
@@ -2514,27 +2532,11 @@ function windowPanel(){
       <div class="factor"><div class="label">Team season</div><div class="v">${fx(f.team)}</div></div>
       <div class="factor"><div class="label">Your output</div><div class="v">${fx(f.perf)}</div></div>
     </div>
-    <p class="hint" style="margin-top:8px">Like Transfermarkt, the new figure moves 70% of the way from your old value toward this season's estimate, so one freak season doesn't rewrite everything.</p>
-
-    <h2 style="margin-top:22px">Transfer window</h2>
-    ${P.loanEnded?`<p class="ref" style="margin-bottom:10px"><strong>Loan over.</strong> Your season at ${esc(P.loanEnded)} is done and you're back at ${esc(S.club)}.</p>`:""}
-    ${P.injuries&&P.injuries.filter(i=>i.tier!=="small").length?`<p class="ref" style="margin-bottom:10px"><strong>Injury-hit season.</strong> ${P.injuries.filter(i=>i.tier!=="small").map(i=>esc(i.name)).join(", ")}. Clubs have taken it into account.</p>`:""}
-    ${P.loanAsk?`<p class="ref bad" style="margin-bottom:10px"><strong>${esc(S.club)} want you to go out on loan.</strong> After ${S.badStreak} seasons without kicking on, they want you playing regularly at a lower level. Staying isn't an option this summer: pick a loan or a permanent move.</p>`
-      : P.listed?`<p class="ref bad" style="margin-bottom:10px"><strong>${esc(S.club)} have transfer-listed you</strong> after ${S.badStreak} poor seasons in a row. Staying isn't an option: sign for someone or go out on loan. Clubs know you're available, so fees are lower.</p>`
-      : P.sale==="cashin"?`<p class="ref" style="margin-bottom:10px"><strong>${esc(S.club)} are ready to sell you.</strong> They'll listen to offers and won't offer a new deal. You can still stay and see out your contract. Details are in your inbox.</p>`
-      : P.sale==="makeway"?`<p class="ref" style="margin-bottom:10px"><strong>${esc(S.club)} want to move you on</strong> to make room for younger players. You can stay, but only on a short deal with lower wages. Details are in your inbox.</p>`
-      : P.stoodBy?`<p class="ref" style="margin-bottom:10px"><strong>${esc(S.club)} are standing by you.</strong> A poor season, but your loyalty (${loyaltyOf(S.club)}/100, ${loyaltyLevel(loyaltyOf(S.club)).toLowerCase()}) has bought you time.</p>`
-      : P.warn?`<p class="ref" style="margin-bottom:10px"><strong>The manager isn't happy.</strong> That was a poor season. Another one like it and ${esc(S.club)} will push you out.</p>`:""}
-    <p class="hint">${free?(TIERS[tierOf(S.club)].pool && TIERS[tierOf(S.club)].country!=="England" ? `<strong>${esc(S.club)} went down, so your relegation clause lets you leave for free.</strong> Pick a new club.` : `<strong>Your contract has run out.</strong> You're a free agent, so clubs can sign you without a fee.`):`You earn ${wageTxt(S.wage)} with ${S.years} year${S.years===1?"":"s"} left at ${esc(S.club)}.`} Negotiate before you sign: ask for a higher wage or a different contract length. Push too hard and a club walks away.</p>
-    ${P.offers.demand!=null?`<div class="row" style="margin-top:10px;gap:14px"><span class="label">Demand for you</span><div class="meter" style="flex:1;min-width:120px;max-width:260px"><span style="width:${Math.round(P.offers.demand*100)}%"></span></div><strong>${P.offers.demand>.8?"Very high":P.offers.demand>.6?"High":P.offers.demand>.4?"Moderate":P.offers.demand>.2?"Low":"Very low"} · ${P.offers.list.length} club${P.offers.list.length===1?"":"s"} interested</strong></div>`:""}
-    ${S.release&&S.years>0?`<p class="hint" style="margin-top:6px">Your release clause is ${money(S.release)}. Any club that pays it can talk to you directly.</p>`:""}
-    <div class="offers" style="margin-top:12px">
-      ${P.offers.renewal?offerCard(P.offers.renewal,"renew"):""}
-      ${P.offers.list.map((o,i)=>offerCard(o,i)).join("")}
-    </div>
-    ${(P.offers.loans||[]).length?`<h3>Loan offers · one season, ${esc(S.club)} keep your contract and pay your wage</h3>
-      <div class="offers">${P.offers.loans.map((o,i)=>loanCard(o,i)).join("")}</div>`:""}
-    <div class="row" style="margin-top:16px">
+    <p class="hint" style="margin-top:8px">Like Transfermarkt, the new figure moves 70% of the way from your old value toward this season's estimate, so one freak season doesn't rewrite everything.</p>`;
+  return `<section class="panel pop win-summer" id="actionPanel">
+    ${head}
+    ${subTabs("window", [["offers", `Offers (${offers.length})`, offersView], loans.length && ["loans", `Loans (${loans.length})`, `<p class="hint" style="margin-bottom:10px">One season away. ${esc(S.club)} keep your contract and pay your wage.</p><div class="offers">${loans.map((o,i)=>loanCard(o,i)).join("")}</div>`], ["season", "Season report", reportView]])}
+    <div class="row win-act">
       ${[...P.offers.list, P.offers.renewal].filter(Boolean).every(o=>o.status==="withdrawn")?`<button class="btn primary" data-act="reoffer">Get my agent to find new offers</button>`:""}
       ${!free && !P.listed && !P.loanAsk?`<button class="btn" data-act="stay">Stay and see out my contract</button>`:(!P.offers.renewal?`<span class="hint">${esc(S.club)} haven't offered a new deal.${free&&!P.offers.list.length?` No other club has made an offer either: retire, or ask your agent to keep looking.`:""}</span>`:"")}
       ${S.age>=31||(free&&!P.offers.list.length)?`<button class="btn" data-act="retire">Retire</button>`:""}
@@ -2547,7 +2549,7 @@ function loanCard(o, i){
   const abroad = T.country!==TIERS[tierOf(S.club)].country ? `<span class="pill">${T.country}</span>` : "";
   return `<article class="offer" style="--c1:${m.c1}">
     <div class="pills"><span class="pill gold">Loan</span>${abroad}</div>
-    <div class="club">${esc(o.club)}</div>
+    <div class="club">${clubBadge(o.club, 30)}<span>${esc(o.club)}</span></div>
     <div class="label">${T.name}</div>
     <dl><dt>Length</dt><dd>One season</dd><dt>Role</dt><dd>Guaranteed starter</dd><dt>Wage</dt><dd>${wageTxt(S.wage)}, paid by ${esc(S.club)}</dd></dl>
     <button class="btn primary" data-act="loan" data-k="${i}">Go on loan to ${esc(o.club)}</button>
@@ -2930,7 +2932,7 @@ document.addEventListener("click", e=>{
   else if (a==="profile"){ profileId = b.dataset.k; render(); document.querySelector("#app")?.scrollIntoView({block:"start"}); }
   else if (a==="profile-close"){ profileId = null; render(); }
   else if (a==="reoffer"){ S.pending.offers = genOffers({score:Math.max(.2,S.pending.pf.score*.8)}, {listed:S.pending.listed}); S.pending.offers.renewal = null; save(); render(); }
-  else if (a==="nego") negotiate(b.dataset.k);
+  else if (a==="nego"){ negoOpen.add(String(b.dataset.k)); negotiate(b.dataset.k); }
   else if (a==="sign") decide("sign", b.dataset.k);
   else if (a==="stay"||a==="retire") decide(a);
   else if (a==="loan") decide("loan", b.dataset.k);
