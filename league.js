@@ -203,15 +203,17 @@ function lgFullTime(f){
 
 /* ---------- the roll of honour ---------- */
 // each season's champions in every league, and where the league was played out week by week its Golden Boot and
-// Player of the Season: S.honours = [{s, ch:{league key: champions}, lb:{league key: [[name, club, goals, you?],
-// [name, club, average rating, you?]]}}], the latest 40 seasons
+// Player of the Season, and the English cups' winners when they were played out (cups.js): S.honours = [{s, ch:{league
+// key: champions}, lb:{league key: [[name, club, goals, you?, born], [name, club, average rating, you?, born]]},
+// cp:{cup code: winners}}], the latest 40 seasons
 function lgHonours(sim){
-  const row = {s:sim.season, ch:{}}, who = p => p.me ? S.player.name : p.name;
+  const row = {s:sim.season, ch:{}}, who = p => p.me ? S.player.name : p.name, born = p => p.me ? null : S.season - p.age;
   LEAGUES.forEach(k=>{ const tb = sim.tables[k]; if (tb && tb[0]) row.ch[k] = tb[0].n; });
+  if (S.cups && S.cups.s===sim.season && !S.cups.off) Object.entries(S.cups.C).forEach(([k, C])=>{ if (C && C.win) (row.cp ||= {})[k] = C.win; });
   if (S.lg && S.lg.s===sim.season) Object.entries(S.lg.L).forEach(([k, L])=>{
     if (L.r < L.G) return;
     const g = lgLeaders(L, "g")[0], p = lgAwards(L).pots;
-    (row.lb ||= {})[k] = [g ? [who(g), g.club, g.g, !!g.me] : null, p ? [who(p), p.club, +p.avg.toFixed(2), !!p.me] : null];
+    (row.lb ||= {})[k] = [g ? [who(g), g.club, g.g, !!g.me, born(g)] : null, p ? [who(p), p.club, +p.avg.toFixed(2), !!p.me, born(p)] : null];
   });
   const H = S.honours ||= []; if (H.length && H[H.length-1].s===row.s) H.pop();
   H.push(row); if (H.length>40) H.splice(0, H.length-40);
@@ -221,8 +223,10 @@ function lgHonoursHTML(k){
   const line = (l, x, v) => x ? `<small class="${x[3] ? "me" : ""}">${l}: ${esc(x[0])} (${esc(x[1])}), ${v(x[2])}</small>` : "";
   return `<details class="panel ss-panel"><summary><h2>Roll of honour</h2></summary>
     <ol class="lg-hon">${H.map(h=>{ const lb = h.lb && h.lb[k];
+      const cups = h.cp && TIERS[k].country==="England" ? ["fa", "lc", ...(k===3 || k===4 ? ["eflt"] : k===5 ? ["fat"] : [])].filter(c=>h.cp[c]) : [];
       return `<li class="${h.ch[k]===S.club ? "me" : ""}"><span class="label">${esc(h.s)}</span><span class="lg-hon-c">${clubBadge(h.ch[k], 18)}<b>${esc(h.ch[k])}</b></span>
-        ${lb ? line("Golden Boot", lb[0], g=>`${g} goal${g===1 ? "" : "s"}`) + line("Player of the Season", lb[1], r=>r.toFixed(2)) : ""}</li>`; }).join("")}</ol>
+        ${lb ? line("Golden Boot", lb[0], g=>`${g} goal${g===1 ? "" : "s"}`) + line("Player of the Season", lb[1], r=>r.toFixed(2)) : ""}
+        ${cups.length ? `<small>${cups.map(c=>`${CP_NAMES[c]}: ${esc(h.cp[c])}`).join(" · ")}</small>` : ""}</li>`; }).join("")}</ol>
     <p class="hint" style="margin-top:8px">Champions every season of your career. The Golden Boot and Player of the Season are there for seasons when you played in this league.</p>
   </details>`;
 }

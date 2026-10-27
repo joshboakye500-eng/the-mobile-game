@@ -983,17 +983,16 @@ function compPlan(club){
 function cupSpecs(our){
   const t = tierOf(our), T = TIERS[t], W = S.world, plan = compPlan(our), out = [];
   if (T.country==="England"){
-    const faRounds = ["4th Qualifying Round","1st Round","2nd Round","3rd Round","4th Round","5th Round","Quarter-final","Semi-final","Final"];
-    out.push({code:"fa", name:"FA Cup", rounds:faRounds, entry:plan.find(p=>p.code==="fa").entry,
+    out.push({code:"fa", name:"FA Cup", rounds:CP_ROUNDS.fa, entry:plan.find(p=>p.code==="fa").entry,
       oppFor:i=> i<=2 ? domesticOpp([3,4,5],1,our) : i<=4 ? domesticOpp([1,2,3,4,5], i-1, our) : domesticOpp([1,2], i-3, our)});
     const pl = plan.find(p=>p.code==="lc");
-    if (pl) out.push({code:"lc", name:"League Cup", rounds:["1st Round","2nd Round","3rd Round","4th Round","Quarter-final","Semi-final","Final"], entry:pl.entry,
+    if (pl) out.push({code:"lc", name:"League Cup", rounds:CP_ROUNDS.lc, entry:pl.entry,
         legs:i=>i===5?2:1, oppFor:i=>domesticOpp(i<2?[2,3,4]:i<3?[1,2,3,4]:[1,2], i<3?2:i-1, our)});
-    if (t===3||t===4) out.push({code:"eflt", name:"EFL Trophy", rounds:["Group stage","Round of 32","Round of 16","Quarter-final","Semi-final","Final"], entry:0, group:true,
+    if (t===3||t===4) out.push({code:"eflt", name:"EFL Trophy", rounds:CP_ROUNDS.eflt, entry:0, group:true,
         oppFor:()=>domesticOpp([3,4],1,our)});
     if (t===5){
       const pool = W.tiers[5].concat(W.tiers[6]).filter(n=>n!==our);
-      out.push({code:"fat", name:"FA Trophy", rounds:["3rd Round","4th Round","5th Round","Quarter-final","Semi-final","Final"], entry:0,
+      out.push({code:"fat", name:"FA Trophy", rounds:CP_ROUNDS.fat, entry:0,
         oppFor:i=>shuffle(pool).slice(0,1+Math.floor(i/2)).map(n=>({n,str:strOf(n)})).sort((a,b)=>b.str-a.str)[0]});
     }
   } else {
@@ -1050,6 +1049,7 @@ function simSeason(comps){
   const reprieved = t===5 && row.pos > tbl.length-TIERS[5].down;
 
   // cups and Europe: from the match centre's fixtures when you played the season there, otherwise driven by your stats
+  cpFinishAll();   // the English cups played out in full in the match centre get their winners (cups.js)
   const out = cupSpecs(our).map(c=>mcCupResult(our, c) || runCup({...c, my:my(c.code), need:need(c.code)}));
   const euCode = W.europe[our];
   if (euCode) out.push(mcEuroResult(our, euCode) || runEurope(euCode, my(euCode), need(euCode), our));
@@ -1822,6 +1822,7 @@ function finishSeason(comps, janFrom){
     if (parts.length) note("info", "Promotion and relegation round-up", parts.join(" ")); }
   // the season goes into the roll of honour, and the other clubs do their summer business
   lgHonours(sim);
+  cpSeasonNote();
   sqNewsNote(sqWindow(S.season + 1));
   (S.notes ||= []).push({season:sim.season, kind:"club", title:`${sim.season} season review`, text:"The papers, the fans, the manager and the club have had their say. Open to read it.", rev:sim.season});
   if (loanEnded) note("info", "Loan finished", `Your season at ${loanEnded} is over and you're back at ${S.club}.`);

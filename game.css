@@ -783,8 +783,8 @@ button.coins:hover{background:rgba(0,0,0,.5)}
 .lg-more{margin-top:10px}
 
 /* ---- shorter screens: sub-view tabs, the match centre hub, and a compact header and player card on phones ---- */
-.subtabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;padding:4px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.subtabs button{font-family:var(--f-label);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:13px;padding:9px 4px;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subtabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.subtabs button{flex:1 0 auto;font-family:var(--f-label);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:13px;padding:9px 8px;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .subtabs button:hover{color:var(--ink)}
 .subtabs button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
 .subview{display:flex;flex-direction:column;gap:18px;min-width:0}
@@ -862,7 +862,7 @@ details.ss-panel[open]>summary{margin-bottom:14px}
   .mc-st small{display:none}
   .mc-st{padding:7px 6px}
   .mc-st b{font-size:20px}
-  .subtabs button{font-size:12px;letter-spacing:.03em;padding:9px 2px}
+  .subtabs button{font-size:12px;letter-spacing:.03em;padding:9px 6px}
 }
 .chips.scrollx{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .chips.scrollx::-webkit-scrollbar{display:none}
@@ -987,3 +987,18 @@ details.nego-d[open] summary{margin-bottom:8px}
 .lg-hon-c b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lg-hon small{font-size:12px;color:var(--muted)}
 .lg-hon small.me{color:var(--ink);font-weight:700}
+.pl-path{margin:-6px 0 0;font-size:13px}
+.pl-path span{color:var(--muted);font-size:12px}
+.pl-hon{margin-top:-6px}
+/* the match centre's Cups view: one cup at a time, compact scorer rows */
+.cp-head{display:flex;gap:8px;margin-bottom:6px}
+.cp-head .pill{text-transform:none;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cp-top li{padding:5px 10px}
+.cp-top .lg-rk{font-size:16px}
+.cp-top .lg-who{display:flex;align-items:baseline;gap:6px}
+.cp-top .lg-who b{flex:0 1 auto;min-width:0}
+.cp-top .lg-who small{flex:1 1 0}
+.cp-top .lg-v{font-size:18px}
+.cp-res summary{cursor:pointer;font-weight:700;padding:6px 0}
+.cp-res .lg-res{margin-top:6px}
+.lg-res li small{grid-column:1/-1;text-align:center;font-size:11px;color:var(--muted)}

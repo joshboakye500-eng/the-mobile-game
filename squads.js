@@ -87,7 +87,7 @@ function sqOver(club, i, season){ const L = S.xf && S.xf.slots[`${club}|${i}`]; 
 function sqPlayer(club, i, season, H){
   const t = sqTime(club, i), k = season - 2026 + t.off, gen = Math.floor(k/t.stay), ov = sqOver(club, i, season);
   if (ov && ov.p){ const q = ov.p, age = q.age + season - ov.since;
-    return {i, name:q.name, nat:q.nat, pos:SQ_SLOTS[i][0], num:q.num, r:+(q.ab + sqAgeAdj(age) - strOf(club)).toFixed(1), age, since:ov.since, from:q.from, fee:q.fee, mv:true}; }
+    return {i, name:q.name, nat:q.nat, pos:SQ_SLOTS[i][0], num:q.num, r:+(q.ab + sqAgeAdj(age) - strOf(club)).toFixed(1), age, since:ov.since, from:q.from, fee:q.fee, hist:q.hist, mv:true}; }
   const yrs = ov ? season - ov.since : k - gen*t.stay;
   const R = seeded(hashStr(ov ? `${club}|${i}|${ov.tag || "n" + ov.since}` : `${club}|${i}|${gen}`)), one = a => a[Math.floor(R()*a.length)];
   let nat = H.home;
@@ -219,12 +219,25 @@ function sqCard(club, i, base = strOf(club), season = S.season){
       <button type="button" class="dlg-x" data-pl-close aria-label="Close">×</button></div>
     <div class="pl-top"><div class="pl-ovr"><b>${me ? (S.attr ? mcOvr() : "–") : sqRating(p, base)}</b><span>Rating</span></div>
       <div class="pills"><span class="pill">${esc(me ? S.player.nation || "No nation" : p.nat)}</span><span class="pill">Age ${me ? S.age : p.age}</span>${me ? "" : `<span class="pill">At the club since ${seasonLabel(p.since)}</span>`}${p && p.mv ? `<span class="pill">From ${esc(p.from)}${p.fee ? ` · ${money(p.fee)}` : ""}</span>` : ""}</div></div>
+    ${p && p.hist ? `<p class="hint pl-path">${[...p.hist, [club, p.since]].map(([c, y])=>`${esc(c)} <span>${seasonLabel(y)}</span>`).join(" › ")}</p>` : ""}
+    ${sqHonours(me, p, club, season)}
     <section><h3>${L ? `${esc(TIERS[lk[0]].name)} this season` : season===S.season ? "This season" : seasonLabel(season)}</h3>
     ${x && x[0] ? `<div class="totals pl-four">${tile("Games", x[0])}${tile("Goals", x[1])}${tile("Assists", x[2])}${tile("Avg", (x[3]/10/x[0]).toFixed(2))}</div>
       <p class="hint" style="margin:10px 0 0">${top.map(([r,t])=>`${ord(r)} ${t}`).join(" · ") || "Not in the league's top 20 for goals, assists or ratings yet."}</p>`
-    : `<p class="hint" style="margin:0">${L ? "No league games this season yet." : season!==S.season ? "No games for the club yet." : "Only your own league is played out week by week, so there are no season numbers here."}</p>`}</section>
+    : `<p class="hint" style="margin:0">${L ? "No league games this season yet." : season!==S.season ? "No games for the club yet." : "Only your own league is played out week by week, so there are no season numbers here."}</p>`}
+    ${season===S.season ? cpCardLine(me ? "me" : club, i) : ""}</section>
     ${me && S.history.length && !lvEl ? `<button type="button" class="btn" data-act="my-profile" style="justify-self:start">Your full profile ›</button>` : ""}
   </div>`;
+}
+// a player's awards from the roll of honour (lgHonours): matched by name and year of birth, or by name and club for
+// seasons saved before years of birth were kept
+function sqHonours(me, p, club, season){
+  const out = [], clubs = p ? [club, ...(p.hist || []).map(h=>h[0])] : [];
+  (S.honours || []).forEach(h=>Object.entries(h.lb || {}).forEach(([k, lb])=>lb.forEach((x, j)=>{
+    if (x && (me ? x[3] : !x[3] && x[0]===p.name && (x[4]!=null ? x[4]===season - p.age : clubs.includes(x[1]))))
+      out.push(`${j ? "Player of the Season" : "Golden Boot"} ${h.s} (${TIERS[k] ? TIERS[k].short : k})`);
+  })));
+  return out.length ? `<div class="pills pl-hon">${out.map(t=>`<span class="pill gold">🏆 ${esc(t)}</span>`).join("")}</div>` : "";
 }
 function sqOpen(key, str, season){
   const d = document.getElementById("plDlg"); if (!d) return;
@@ -255,7 +268,8 @@ function sqSquadPanel(){
 // buys when he'd be a clear upgrade in his position, and fills the place he leaves with a newcomer. A signing stays
 // until his new place would next change hands anyway (at least three seasons, never past 34). Every stay ends when a
 // place's own next player is due, so nobody who has left ever comes back. Kept in
-// S.xf = {slots:{"club|place": [{since, until, p:{name, nat, num, age, ab (ability before age), from, fee}}, or
+// S.xf = {slots:{"club|place": [{since, until, p:{name, nat, num, age, ab (ability before age), from, fee, hist (earlier
+// clubs: [[club, season he joined]])}}, or
 // without p for a newcomer (tag picks him)]}, news:{s, list:[{n, pos, age, from, to, j (his place at the new club),
 // fee, rt}]}}. A stay is kept until the window after it ends, so last season's squads stay as they were.
 const SQ_MOVES = 4;   // the most players each league sells in a summer
@@ -273,7 +287,7 @@ function sqWindow(s){
   sqCache.clear();
   const u = sqSlotOf(S.player.pos), clubs = LEAGUES.flatMap(k=>S.world.tiers[k].map(c=>({c, k, str:strOf(c), xi:sqSquad(c, s).slice()})));
   const cand = clubs.flatMap(C=>C.xi.map((p,i)=>({C, i, p, rt:C.str + p.r})))
-    .filter(x=>x.p.r>=3 && x.p.age>=19 && x.p.age<=28 && !(x.p.mv && x.p.since>=s-1)).sort((a,b)=>b.rt-a.rt);
+    .filter(x=>x.p.r>=3 && x.p.age>=19 && x.p.age<=28 && x.p.since<s && !(x.p.mv && x.p.since>=s-1)).sort((a,b)=>b.rt-a.rt);
   const buys = new Map(), sold = new Map(), list = [];
   for (const x of cand){
     if ((sold.get(x.C.k) || 0)>=SQ_MOVES || Math.random()>.3 || x.C.xi[x.i]!==x.p) continue;
@@ -290,7 +304,7 @@ function sqWindow(s){
     for (const y of opts){ w -= y.w; if (w<=0){ o = y; break; } }
     const {B, j} = o, p = x.p, fee = sqFee(x.rt, p.age, p.pos, B.k);
     const until = sqNextStart(B.c, j, s + 3), leave = Math.min(until, s + Math.max(2, 34 - p.age));
-    sqSet(B.c, j, {since:s, until:leave, p:{name:p.name, nat:p.nat, num:p.num, age:p.age, ab:+(x.rt - sqAgeAdj(p.age)).toFixed(1), from:x.C.c, fee}});
+    sqSet(B.c, j, {since:s, until:leave, p:{name:p.name, nat:p.nat, num:p.num, age:p.age, ab:+(x.rt - sqAgeAdj(p.age)).toFixed(1), from:x.C.c, fee, hist:[...(p.hist || []), [x.C.c, p.since]]}});
     if (leave<until) sqSet(B.c, j, {since:leave, until});
     // the newcomer stays until the place would change hands anyway, or until the end of anything already planned
     // there; he never shares a name with a team-mate
