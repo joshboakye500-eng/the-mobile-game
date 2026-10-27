@@ -1820,6 +1820,9 @@ function finishSeason(comps, janFrom){
       if (k===5 && m.down.length) parts.push(`Out of the National League: ${m.down.map(x=>x.n).join(", ")}.`); });
     const pl = mv[1]; if (pl && pl.down.length) parts.unshift(`Relegated from the Premier League: ${pl.down.map(x=>x.n).join(", ")}.`);
     if (parts.length) note("info", "Promotion and relegation round-up", parts.join(" ")); }
+  // the season goes into the roll of honour, and the other clubs do their summer business
+  lgHonours(sim);
+  sqNewsNote(sqWindow(S.season + 1));
   (S.notes ||= []).push({season:sim.season, kind:"club", title:`${sim.season} season review`, text:"The papers, the fans, the manager and the club have had their say. Open to read it.", rev:sim.season});
   if (loanEnded) note("info", "Loan finished", `Your season at ${loanEnded} is over and you're back at ${S.club}.`);
   if (loanAsk) note("club", `${S.club} want you to go out on loan`, `You haven't kicked on over the last ${S.badStreak} seasons. The club still see a future for you, but you need regular football at a lower level first. Pick a loan, or move on permanently.`);
@@ -2658,11 +2661,13 @@ function leaguesTab(){
     <div class="legend">${isTop(k)?`<span><i class="z-ucl"></i>Champions League</span><span><i class="z-uel"></i>Europa League</span><span><i class="z-uecl"></i>Conference League</span>`:`<span><i class="z-up"></i>Promotion</span><span><i class="z-po"></i>Play-offs</span>`}<span><i class="z-rel"></i>Relegation</span></div>
     ${S.sim && lgGet(k) ? `<h3>The season's top players</h3>${lgBox(k, "final")}` : ""}
   </section>`:lgGet(k) ? "" : `<section class="panel"><h2>Final table</h2><p class="empty">Tables appear here after your first season.</p></section>`}
+  ${sqMovesHTML(k)}
   <details class="panel ss-panel"><summary><h2>${tb?"Next season":"This season"} in ${esc(theName(k))}</h2></summary>
     ${newIn.size?`<p class="hint" style="margin-bottom:10px">New this season: ${[...m.inDown.map(x=>`${esc(x.n)} (down from ${esc(theName(x.from))})`), ...m.inUp.map(x=>`${esc(x.n)} (up from ${esc(theName(x.from))})`)].join(", ")}.</p>`:""}
     <div class="clublist">${next.map(n=>`<span class="cl ${n===S.club?"me":""}">${clubBadge(n, 18)}${esc(n)}${newIn.has(n)?` <span class="pill ${m.inDown.some(x=>x.n===n)?"down":"up"}">New</span>`:""}</span>`).join("")}</div>
     <p class="hint" style="margin-top:10px">Sorted by current squad strength.</p>
-  </details>`;
+  </details>
+  ${lgHonoursHTML(k)}`;
 }
 function statsTab(part){
   if (!S.history.length) return part==="totals" ? `<section class="panel"><h2>Statistics</h2><p class="empty">Your numbers appear here after your first season, split by club and by competition.</p></section>` : "";

@@ -200,3 +200,29 @@ function lgFullTime(f){
   return `<div class="lg-ft"><div class="lv-eye">${esc(TIERS[S.mc.lgk].name)} · matchweek ${L.r}</div>${lgTableHTML(L, S.mc.lgk, true)}
     <button type="button" class="btn" data-lv="table">Full table and top scorers</button></div>`;
 }
+
+/* ---------- the roll of honour ---------- */
+// each season's champions in every league, and where the league was played out week by week its Golden Boot and
+// Player of the Season: S.honours = [{s, ch:{league key: champions}, lb:{league key: [[name, club, goals, you?],
+// [name, club, average rating, you?]]}}], the latest 40 seasons
+function lgHonours(sim){
+  const row = {s:sim.season, ch:{}}, who = p => p.me ? S.player.name : p.name;
+  LEAGUES.forEach(k=>{ const tb = sim.tables[k]; if (tb && tb[0]) row.ch[k] = tb[0].n; });
+  if (S.lg && S.lg.s===sim.season) Object.entries(S.lg.L).forEach(([k, L])=>{
+    if (L.r < L.G) return;
+    const g = lgLeaders(L, "g")[0], p = lgAwards(L).pots;
+    (row.lb ||= {})[k] = [g ? [who(g), g.club, g.g, !!g.me] : null, p ? [who(p), p.club, +p.avg.toFixed(2), !!p.me] : null];
+  });
+  const H = S.honours ||= []; if (H.length && H[H.length-1].s===row.s) H.pop();
+  H.push(row); if (H.length>40) H.splice(0, H.length-40);
+}
+function lgHonoursHTML(k){
+  const H = (S.honours || []).filter(h=>h.ch[k]).reverse(); if (!H.length) return "";
+  const line = (l, x, v) => x ? `<small class="${x[3] ? "me" : ""}">${l}: ${esc(x[0])} (${esc(x[1])}), ${v(x[2])}</small>` : "";
+  return `<details class="panel ss-panel"><summary><h2>Roll of honour</h2></summary>
+    <ol class="lg-hon">${H.map(h=>{ const lb = h.lb && h.lb[k];
+      return `<li class="${h.ch[k]===S.club ? "me" : ""}"><span class="label">${esc(h.s)}</span><span class="lg-hon-c">${clubBadge(h.ch[k], 18)}<b>${esc(h.ch[k])}</b></span>
+        ${lb ? line("Golden Boot", lb[0], g=>`${g} goal${g===1 ? "" : "s"}`) + line("Player of the Season", lb[1], r=>r.toFixed(2)) : ""}</li>`; }).join("")}</ol>
+    <p class="hint" style="margin-top:8px">Champions every season of your career. The Golden Boot and Player of the Season are there for seasons when you played in this league.</p>
+  </details>`;
+}

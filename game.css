@@ -968,3 +968,22 @@ details.nego-d[open] summary{margin-bottom:8px}
 .sq-hd span:last-child{text-align:right}
 .sq-n{font-size:13px;font-variant-numeric:tabular-nums}
 .sq-p{cursor:pointer}
+/* the summer's transfers: the player and the fee, then from › to across the whole row */
+.xf-list li{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm v" "cl cl";row-gap:2px}
+.xf-nm{grid-area:nm;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xf-nm small{font-size:12px;color:var(--muted);margin-left:6px}
+.xf-list .lg-v{grid-area:v;font-size:18px}
+.xf-cl{grid-area:cl;display:flex;align-items:center;gap:4px;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap}
+.xf-cl span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.xf-cl i{font-style:normal;font-weight:700;margin:0 2px}
+.xf-cl .crest{flex:none}
+.lg-lead li.me .xf-nm small,.lg-lead li.me .xf-cl{color:inherit}
+/* the roll of honour: one season a row */
+.lg-hon{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.lg-hon li{display:grid;gap:2px;padding:8px 10px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)}
+.lg-hon li.me{border-color:var(--accent)}
+.lg-hon .label{font-size:11px}
+.lg-hon-c{display:flex;align-items:center;gap:6px;min-width:0}
+.lg-hon-c b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg-hon small{font-size:12px;color:var(--muted)}
+.lg-hon small.me{color:var(--ink);font-weight:700}
