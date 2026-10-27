@@ -116,6 +116,7 @@ const lvMove = (id, x, y, rot=0, sc=1) => lv$(id)?.setAttribute("transform", `tr
 /* ---------- the match ---------- */
 function lvScore(st, min){ let f = 0, a = 0; st.ev.forEach(e=>{ if (e.min<min){ if (e.us) f++; else a++; } }); return [f, a]; }
 function lvHead(st, min, step){
+  if (st.drill) return drHead(st);   // a training drill (drills.js) has its own scoreboard
   const [f, a] = lvScore(st, min), left = st.f.home || st.f.neutral, us = lvAbbr(left ? S.mc.club : st.f.opp), them = lvAbbr(left ? st.f.opp : S.mc.club);
   const [l, r] = left ? [f, a] : [a, f];
   return `<div class="lv-top"><span class="lv-sc"><b>${esc(us)}</b> ${l}–${r} <b>${esc(them)}</b></span><span>${min}'</span>

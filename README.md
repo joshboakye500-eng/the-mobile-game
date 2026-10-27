@@ -28,7 +28,9 @@ Each half-season is a **match centre**: a fixture list for your club (league, cu
 The Season screen keeps it short: this week's match and the play buttons at the top, then your key numbers and this week's training, then tabs for recent results, the league table, your targets, your attributes and the full fixture list. *Stats*, *Club & leagues*, *Legacy* and the shop are split into tabs the same way, and on phones the header and your player card fold down to a single row (tap *Full profile* for the whole card).
 
 - **Training.** Each week, pick a focus (finishing, passing, pace, defending or shot-stopping, stamina, match prep, or rest) and how hard to train. Hard training grows you faster but tires you and raises the injury risk. Young players grow fast, and over-30s fight decline.
-- **Selection.** Whether you start, come off the bench or sit out depends on the manager's trust, how your overall rating compares with the squad, your form and how tired you are.
+- **Training drills.** Once a week you can do a drill for your training focus: shooting practice, a passing drill, sprint starts for pace, a tackling drill (shot-stopping for keepers), a beep test for stamina, or free kicks for match prep. They're quicker, easier versions of the match mini-games, plus two of their own. The better the session, the more that attribute grows on top of the week's training: a perfect score adds about the same again, and even players near their peak gain a little. Free kicks sharpen you instead.
+- **Selection.** Whether you start, come off the bench or sit out depends on the manager's trust, how your overall rating compares with the squad, your form, how tired you are and how you train. He marks every week's training: good drills and hard sessions raise your chances of starting and of coming off the bench, and poor drills lower them. The match centre shows how he rates your training.
+- **Minutes played.** Every match records the minutes you played and the minutes your team played while you were there. *Stats* shows the share for each season, and your average a season.
 - **Matches.** Fixtures are simulated from your attributes, form, sharpness and fitness. Your goals and assists come out of the team's scorelines. ★ marks the big games.
 - **Key moments.** Every match you're picked for is played as quick mini-games for the moments that involve you. A starter gets about 4: more against weaker teams and when your team is in form, fewer against the best (keepers the other way round). Off the bench you get 1 or 2. There are 13 mini-games, drawn by position:
   - **Attack:** shots (one-on-ones, in the box, long range, free kicks over a wall), headers (tap as the rings meet), passes (pick the free man), take-ons (read the defender and go the other way), crosses (pick the free runner on his spot), and a three-step **attacking move** that ends in a shot or a square ball for an assist.
@@ -93,6 +95,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `moments.js` | Key moments: the live match screen and its shot, pass, tackle/block and save mini-games |
 | `squads.js` | Every club's starting XI, the line-ups before a match, scorers, match ratings and Player of the Match |
 | `league.js` | Your league played out week by week: the table, top scorers, assists, ratings and results |
+| `drills.js` | Weekly training drills: easier mini-games that grow your attributes and earn you game time |
 | `targets.js` | The manager's season targets and your agent's clauses |
 | `shop.js` | The shop: boots and training boosts bought with gold coins |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |

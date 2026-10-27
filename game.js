@@ -1630,8 +1630,10 @@ function newState(player, age, clubName, years, custom, value){
 }
 
 /* ================= SEASON FLOW ================= */
-function totOf(comps){ const t = {apps:0,g:0,a:0,cs:0}; Object.values(comps||{}).forEach(c=>{ t.apps+=c.apps; t.g+=c.g; t.a+=c.a; t.cs+=(c.cs||0); }); return t; }
-function mergeComps(a, b){ const out = {}; [a||{}, b||{}].forEach(x=>Object.entries(x).forEach(([k,c])=>{ const o = out[k] ||= {apps:0,g:0,a:0,cs:0,code:c.code||k}; o.apps+=c.apps; o.g+=c.g; o.a+=c.a; o.cs+=(c.cs||0); })); return out; }
+// a season's numbers; mins (minutes played) and of (the team's minutes while you were there) come from the match centre
+function totOf(comps){ const t = {apps:0,g:0,a:0,cs:0,mins:0,of:0}; Object.values(comps||{}).forEach(c=>{ t.apps+=c.apps; t.g+=c.g; t.a+=c.a; t.cs+=(c.cs||0); t.mins+=(c.mins||0); t.of+=(c.of||0); }); return t; }
+function mergeComps(a, b){ const out = {}; [a||{}, b||{}].forEach(x=>Object.entries(x).forEach(([k,c])=>{ const o = out[k] ||= {apps:0,g:0,a:0,cs:0,mins:0,of:0,code:c.code||k}; o.apps+=c.apps; o.g+=c.g; o.a+=c.a; o.cs+=(c.cs||0); o.mins+=(c.mins||0); o.of+=(c.of||0); })); return out; }
+const minsPct = t => t && t.of ? Math.round(t.mins/t.of*100) + "%" : "–";
 const halfOf = () => (S.half===2 ? 2 : 1);
 function submitSeason(){
   const comps = readStatsForm(currentPlan()); if (comps) applyHalf(comps);
@@ -2673,6 +2675,10 @@ function statsTab(part){
   };
   const head = first => `<thead><tr><th>${first}</th><th class="n">Apps</th><th class="n">Goals</th><th class="n">Assists</th><th class="n">G+A</th>${showCS?`<th class="n">Clean sheets</th>`:""}</tr></thead>`;
   const per90 = total.apps ? ((total.g+total.a)/total.apps).toFixed(2) : "0.00", tt = totals();
+  // each season's share of the team's minutes (both clubs in a season with a January move), averaged over the seasons
+  // played in the match centre
+  const bySeason = {}; S.history.forEach(h=>{ if (!h.tot || !h.tot.of) return; const x = bySeason[h.season] ||= {mins:0, of:0}; x.mins += h.tot.mins; x.of += h.tot.of; });
+  const shares = Object.values(bySeason).map(x=>x.mins/x.of), minsAvg = shares.length ? Math.round(shares.reduce((a,b)=>a+b, 0)/shares.length*100) + "%" : "–";
   if (part==="totals") return `
   <section class="panel">
     <h2>Career totals</h2>
@@ -2682,6 +2688,7 @@ function statsTab(part){
       <div class="total big"><div class="label">Assists</div><div class="v">${total.a}</div></div>
       ${showCS?`<div class="total big"><div class="label">Clean sheets</div><div class="v">${total.cs}</div></div>`:""}
       <div class="total"><div class="label">G+A a game</div><div class="v">${per90}</div></div>
+      <div class="total"><div class="label">Minutes a season</div><div class="v">${minsAvg}</div></div>
       <div class="total"><div class="label">Clubs</div><div class="v">${clubs.length}</div></div>
       <div class="total"><div class="label">Trophies</div><div class="v">${S.trophies.length}</div></div>
       <div class="total"><div class="label">Peak value</div><div class="v">${money(tt.peak)}</div></div>
@@ -2720,6 +2727,7 @@ function careerPanels(part){
         <div class="ss-stats">
           <div><span class="label">Age</span><b>${h.age}</b></div>
           <div><span class="label">Apps</span><b>${h.tot.apps}</b></div>
+          <div><span class="label">Minutes</span><b>${minsPct(h.tot)}</b></div>
           <div><span class="label">Goals</span><b>${h.tot.g}</b></div>
           <div><span class="label">Assists</span><b>${h.tot.a}</b></div>
           <div><span class="label">Wage</span><b class="sm">${h.wage?wageTxt(h.wage):"—"}</b></div>

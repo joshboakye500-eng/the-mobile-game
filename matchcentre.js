@@ -167,11 +167,16 @@ function mcBuild(){
 /* ---------- playing a week ---------- */
 function mcInjury(frac){ const list = S.inj && S.inj.season===seasonLabel(S.season) ? S.inj.list : []; return list.find(i=>i.at!=null && frac>=i.at && frac<i.at+i.red) || null; }
 function mcFormAvg(){ const f = S.cond.form; return f.length ? f.reduce((s,x)=>s+x, 0)/f.length : 6.6; }
+// how the manager rates your training: the average of the last four weeks' marks, each a drill's score (drills.js), a
+// neutral half mark for a week without one, and a little extra for hard sessions. Good training gets you more game time
+function mcTrainNote(mark){ S.cond.tr = (S.cond.tr || []).concat(+clamp(mark + (S.train.hard && S.train.focus!=="rest" ? .1 : 0), 0, 1).toFixed(2)).slice(-4); }
+function mcTrainImp(){ const L = S.cond.tr || []; return (L.reduce((s,x)=>s+x, 0) + .5*(4-L.length))/4; }   // a new player starts on neutral marks
+function mcTrainLabel(v){ return v>=.75 ? "Impressing the manager" : v>=.58 ? "Training well" : v>=.42 ? "Average in training" : "Poor in training"; }
 function mcFormLabel(v){ return !S.cond.form.length ? "No games yet" : v>=7.4 ? "On fire" : v>=7 ? "Good" : v>=6.5 ? "Steady" : v>=6.1 ? "Patchy" : "Poor"; }
 // chance the manager starts you: his trust, how you compare with the squad, your form and how tired you are
 function mcStartChance(f){
   const c = S.cond, our = S.mc.club;
-  let p = selectShare(our) * logistic((mcOvr() - strOf(our))/3.5 + 1.2) + (mcFormAvg()-6.6)*.25 - (c.fat>75 ? .25 : c.fat>60 ? .1 : 0) + (f && f.cup && !f.big ? .1 : 0);
+  let p = selectShare(our) * logistic((mcOvr() - strOf(our))/3.5 + 1.2) + (mcFormAvg()-6.6)*.25 + (mcTrainImp()-.5)*.4 - (c.fat>75 ? .25 : c.fat>60 ? .1 : 0) + (f && f.cup && !f.big ? .1 : 0);
   if (S.loan) p = Math.max(p, .8);
   return clamp(p, .02, .97);
 }
@@ -186,6 +191,7 @@ function mcHurt(w){
 }
 function mcTrain(w){
   const T = S.train, a = S.attr, c = S.cond, age = S.age, g = mcGrowth(age);
+  if (!S.mc.weeks[w].drill) mcTrainNote(.5);
   if (mcInjury(mcFrac(w))){ c.fat = Math.max(0, c.fat-20); c.sharp = Math.max(20, c.sharp-6); }   // rehab
   else if (T.focus==="rest"){ c.fat = Math.max(0, c.fat-35); c.sharp = Math.max(20, c.sharp-5); }
   else {
@@ -206,7 +212,7 @@ function mcSelect(f, w){
   if (w < S.mc.intlTo) return {st:"intl", mins:0};
   if (Math.random() < mcStartChance(f)) return {st:"start", mins: S.cond.fat>85 || Math.random()<.18 ? 60 + Math.floor(Math.random()*25) : 90};
   // keepers almost never come off the bench
-  return Math.random() < (S.player.pos==="GK" ? .03 : .55) ? {st:"sub", mins:10 + Math.floor(Math.random()*30)} : {st:"bench", mins:0};
+  return Math.random() < (S.player.pos==="GK" ? .03 : .55 + (mcTrainImp()-.5)*.4) ? {st:"sub", mins:10 + Math.floor(Math.random()*30)} : {st:"bench", mins:0};
 }
 function mcPoisson(l){ let k = 0, p = 1; const L = Math.exp(-l); do { k++; p *= Math.random(); } while (p>L); return k-1; }
 function mcTieOn(f, r){
@@ -325,11 +331,13 @@ async function mcAdvance(kind){
 // the half-season's numbers go to the same review as the manual form
 function mcFinishHalf(){
   const M = S.mc; if (!M || !M.done || M.finished) return;
-  const comps = {}; currentPlan().forEach(p=>{ comps[p.code] = {apps:0, g:0, a:0, cs:0, code:p.code}; });
+  const comps = {}; currentPlan().forEach(p=>{ comps[p.code] = {apps:0, g:0, a:0, cs:0, mins:0, of:0, code:p.code}; });
   M.weeks.forEach(w=>w.fx.forEach(f=>{
-    if (!f.me || !f.me.mins) return;
-    const o = comps[f.code] ||= {apps:0, g:0, a:0, cs:0, code:f.code};
-    o.apps++; o.g += f.me.g; o.a += f.me.a; if (f.me.cs) o.cs++;
+    if (!f.res || !f.me) return;
+    const o = comps[f.code] ||= {apps:0, g:0, a:0, cs:0, mins:0, of:0, code:f.code};
+    o.of += 90;
+    if (!f.me.mins) return;
+    o.apps++; o.g += f.me.g; o.a += f.me.a; if (f.me.cs) o.cs++; o.mins += f.me.mins;
   }));
   M.finished = true;
   tgHalfway();
@@ -403,7 +411,7 @@ function mcPanel(){
   const M = S.mc, c = S.cond, a = S.attr, W = M.weeks.length, h = M.half;
   const list = []; M.weeks.forEach((wk,w)=>wk.fx.slice().sort((x,y)=>(x.code==="league")-(y.code==="league")).forEach(f=>{ if (!f.skip && (f.res || mcLive(f) || f.code==="league")) list.push([f,w]); }));
   const played = list.filter(([f])=>f.res), now = list.filter(([f,w])=>!f.res && w===M.wi), later = list.filter(([f,w])=>!f.res && w>M.wi);
-  const tot = {apps:0, g:0, a:0, cs:0, r:[], potm:0}; played.forEach(([f])=>{ if (f.me && f.me.mins){ tot.apps++; tot.g += f.me.g; tot.a += f.me.a; if (f.me.cs) tot.cs++; tot.r.push(f.me.r); if (f.potm) tot.potm++; } });
+  const tot = {apps:0, g:0, a:0, cs:0, r:[], potm:0, mins:0, of:0}; played.forEach(([f])=>{ if (!f.me) return; tot.of += 90; if (f.me.mins){ tot.apps++; tot.g += f.me.g; tot.a += f.me.a; if (f.me.cs) tot.cs++; tot.r.push(f.me.r); if (f.potm) tot.potm++; tot.mins += f.me.mins; } });
   const avgR = tot.r.length ? (tot.r.reduce((s,x)=>s+x, 0)/tot.r.length).toFixed(2) : "–";
   const fa = mcFormAvg(), pS = mcStartChance(), injNow = M.done ? null : mcInjury(mcFrac(M.wi));
   const T = S.train, a0 = S.attr0 && S.attr0.s===seasonLabel(S.season) ? S.attr0 : null, showCS = DEF.includes(S.player.pos);
@@ -434,12 +442,14 @@ function mcPanel(){
         <button type="button" class="btn small" data-shop="open"><i class="coin" aria-hidden="true"></i> Shop</button></div>
       <div class="chips mc-chips" role="group" aria-label="Training focus">${MC_TRAIN.map(([k])=>`<button type="button" class="chip ${T.focus===k?"on":""}" data-act="mc-focus" data-k="${k}" aria-pressed="${T.focus===k}">${esc(mcAttrName(k))}</button>`).join("")}</div>
       <p class="hint">${hint}${S.boost && S.boost.double>0 ? ` <span class="pill gold">Double training · ${S.boost.double} week${S.boost.double===1?"":"s"} left</span>` : ""}</p>
+      ${drPanel()}
+      <p class="hint mc-imp"><b>${mcTrainLabel(mcTrainImp())}.</b> Good drills and hard sessions get you more game time.</p>
     </div>`}
     ${subTabs("season", [
       ["results", "Results", `${played.length ? fx(played.slice(-5).reverse()) : `<p class="empty">No results yet. Tap Play next week to get going.</p>`}${later.length ? `<h3>Coming up</h3>${fx(later.slice(0,3))}` : ""}`],
       lgGet(M.lgk) && ["table", "Table", lgPanel()],
       S.tg && S.tg.s===seasonLabel(S.season) && ["targets", "Targets", tgPanel()],
-      ["you", "You", `<div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR],["Player of the Match",tot.potm]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
+      ["you", "You", `<div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR],["Minutes",tot.of ? Math.round(tot.mins/tot.of*100)+"%" : "–"],["Player of the Match",tot.potm]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
         <h3>Your attributes</h3>
         <div class="attrs">${MC_ATTR.map(([k])=>{ const d = a0 ? Math.round(a[k]-a0[k]) : 0, bt = mcBoot(), bn = bt && bt.k===k ? bt.n : 0;
           return `<div class="attr"><span>${esc(mcAttrName(k))}</span><div class="meter"><span style="width:${Math.min(99, a[k]+bn)}%"></span></div><span class="v">${Math.round(Math.min(99, a[k]+bn))}${bn ? `<small class="boot" title="From your boots">👟+${bn}</small>` : ""}${d ? `<small class="${d>0?"":"neg"}">${d>0?"+":""}${d}</small>` : ""}</span></div>`; }).join("")}</div>
@@ -454,6 +464,7 @@ function mcAction(a, b){
   if (a==="mc-week") mcAdvance("week");
   else if (a==="mc-half") mcAdvance("half");
   else if (a==="mc-finish") mcFinishHalf();
+  else if (a==="mc-drill") drPlay();
   else if (a==="mc-focus"){ S.train.focus = k; save(); render(); }
   else if (a==="mc-hard"){ S.train.hard = k==="1"; save(); render(); }
   else if (a==="mc-mode"){
