@@ -486,8 +486,8 @@ function mcPanel(){
       ["you", "You", `<div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR],["Minutes",tot.of ? Math.round(tot.mins/tot.of*100)+"%" : "–"],["Player of the Match",tot.potm]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
         <h3>Your attributes</h3>
         <div class="attrs">${MC_ATTR.map(([k])=>{ const d = a0 ? Math.round(a[k]-a0[k]) : 0, bt = mcBoot(), bn = bt && bt.k===k ? bt.n : 0;
-          return `<div class="attr"><span>${esc(mcAttrName(k))}</span><div class="meter"><span style="width:${Math.min(99, a[k]+bn)}%"></span></div><span class="v">${Math.round(Math.min(99, a[k]+bn))}${bn ? `<small class="boot" title="From your boots">👟+${bn}</small>` : ""}${d ? `<small class="${d>0?"":"neg"}">${d>0?"+":""}${d}</small>` : ""}</span></div>`; }).join("")}</div>
-        <p class="hint" style="margin-top:8px">Numbers are this half of the season. Green and red show changes since August.${mcBoot() ? ` 👟 is your ${esc(shopBootName(mcBoot().k))}.` : ""} ${mcPotLabel()}.</p>`],
+          return `<div class="attr"><span>${esc(mcAttrName(k))}</span><div class="meter"><span style="width:${Math.min(99, a[k]+bn)}%"></span></div><span class="v">${Math.round(Math.min(99, a[k]+bn))}${bn ? `<small class="boot" title="From your boots">${shopBootIcon(mcBoot().k, Account.locker().boots[mcBoot().k], "boot-ic tiny")}+${bn}</small>` : ""}${d ? `<small class="${d>0?"":"neg"}">${d>0?"+":""}${d}</small>` : ""}</span></div>`; }).join("")}</div>
+        <p class="hint" style="margin-top:8px">Numbers are this half of the season. Green and red show changes since August.${mcBoot() ? ` ${shopBootIcon(mcBoot().k, Account.locker().boots[mcBoot().k], "boot-ic tiny")} is your ${esc(shopBootName(mcBoot().k))}.` : ""} ${mcPotLabel()}.</p>`],
       ["fixtures", "Fixtures", `${fx(list)}<p class="hint" style="margin-top:8px">★ marks the big games. Cup ties only appear while the team is still in the competition.</p>`]
     ])}
     ${mcModeSwitch()}

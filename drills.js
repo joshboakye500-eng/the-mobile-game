@@ -46,6 +46,7 @@ function drPanel(){
 }
 // the drill's scoreboard: which rep you're on, how each went, and a way out
 function drHead(st){
+  if (st.lab) return labHead(st);   // a drill tried in the mini-game lab (lab.js)
   const D = st.drill;
   return `<div class="lv-top"><span class="lv-sc"><b>Training</b> · ${esc(D.t)}</span>
     ${D.n ? `<span class="lv-steps-dots" aria-label="${Math.min(st.i+1, D.n)} of ${D.n}">${[...Array(D.n)].map((_,j)=>`<i class="${j<st.got.length ? (st.got[j]>=.5 ? "on" : "off") : ""}"></i>`).join("")}</span>` : `<span>Level ${Math.floor(st.lvl/2)+1}</span>`}
@@ -53,7 +54,7 @@ function drHead(st){
 }
 // how a rep went, shown over the pitch for a moment before the next one
 async function drFlash(ok, big, small){
-  lv$(".lv-stage")?.insertAdjacentHTML("beforeend", `<div class="lv-res ${ok ? "good" : "bad"}"><span>${esc(big)}</span>${small ? `<small>${esc(small)}</small>` : ""}</div>`);
+  lv$(".lv-stage")?.insertAdjacentHTML("beforeend", lvResHTML({ok, big, small})); lvBuzz(ok ? "good" : "bad");
   lv$("[data-lv-skip]")?.remove(); lvEl.querySelectorAll(".lv-act").forEach(b=>{ b.disabled = true; });
   await lvWait(900);
 }
@@ -90,12 +91,12 @@ function drSprintCore(st){
 }
 // the beep test: tap as the runner reaches each line; each turn speeds him up. Resolves the shuttles completed
 function drBeepCore(st){
-  const kit = lvKits(st), e = lvEase(st, mcA().sta), zone = clamp(.15*(1 + e*1.1), .09, .22), x0 = 34, x1 = 266;
+  const kit = lvKits(st), e = lvEase(st, lvAttr(st).sta), zone = clamp(.15*(1 + e*1.1), .09, .22), x0 = 34, x1 = 266;
   return new Promise(res=>{
     lvShow(`${drHead(st)}<h2 class="lv-t">Beep test</h2><p class="lv-s">Tap Turn! as he reaches each line, while he's in the green. Two misses and you're out.</p>
       <div class="lv-stage">${lvField("none", `<rect x="${x0-12}" y="36" width="${(x1-x0)*zone+12}" height="110" rx="8" fill="rgba(74,222,128,.25)" stroke="#4ADE80" stroke-width="2"/>
           <rect x="${x1-(x1-x0)*zone}" y="36" width="${(x1-x0)*zone+12}" height="110" rx="8" fill="rgba(74,222,128,.25)" stroke="#4ADE80" stroke-width="2"/>
-          <path d="M${x0} 30v122M${x1} 30v122" stroke="#F5C542" stroke-width="3"/><g id="drRun">${lvMan(0, 0, kit.us)}</g>`)}
+          <path d="M${x0} 30v122M${x1} 30v122" stroke="#F5C542" stroke-width="3"/><g id="drRun">${lvMan(0, 0, kit.us, {run:true})}</g>`)}
         <span class="dr-lives" aria-label="Misses left"><i></i><i></i></span></div>
       <button type="button" class="btn primary big lv-act">Turn!</button>`);
     lvSkippable(res);

@@ -612,7 +612,10 @@ html.lv-open,html.lv-open body{overflow:hidden}
 .lv-cue{position:absolute;left:0;right:0;top:2px;text-align:center;font-family:var(--f-label);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:14px;color:#FFE9A8;animation:lvpulse .8s ease-in-out infinite alternate;pointer-events:none}
 .lv-bar{position:relative;height:24px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);overflow:hidden;touch-action:manipulation}
 .lv-zone{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,rgba(74,222,128,.5),rgba(74,222,128,.85),rgba(74,222,128,.5))}
-.lv-mark{position:absolute;top:-3px;bottom:-3px;left:0;width:5px;margin-left:-2.5px;border-radius:3px;background:#fff;box-shadow:0 0 12px #fff}
+.lv-mark{position:absolute;inset:0;pointer-events:none;will-change:transform}
+.lv-mark::before{content:"";position:absolute;top:0;bottom:0;left:-3px;width:6px;border-radius:3px;background:#fff;box-shadow:0 0 10px #fff,0 0 2px #000}
+.lv-zone{transition:filter .12s,box-shadow .12s}
+.lv-bar.in .lv-zone{filter:brightness(1.35) saturate(1.2);box-shadow:0 0 16px rgba(74,222,128,.9)}
 .lv-act{width:100%}
 .lv-res{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px;text-align:center;background:rgba(3,8,6,.55);animation:lvpop .35s ease-out}
 .lv-res span{font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:clamp(40px,12vw,64px);line-height:.9;text-shadow:0 0 30px currentColor}
@@ -1002,3 +1005,176 @@ details.nego-d[open] summary{margin-bottom:8px}
 .cp-res summary{cursor:pointer;font-weight:700;padding:6px 0}
 .cp-res .lg-res{margin-top:6px}
 .lg-res li small{grid-column:1/-1;text-align:center;font-size:11px;color:var(--muted)}
+
+/* ---- the mini-games' motion: aim reticle, running legs, slides, flashes, result icons, screens easing in ---- */
+.lv-reticle{position:absolute;width:30px;height:30px;transform:translate(-50%,-50%);pointer-events:none;border-radius:50%;border:2.5px solid #F5C542;box-shadow:0 0 14px rgba(245,197,66,.85),inset 0 0 0 4px rgba(245,197,66,.18)}
+.lv-reticle::before,.lv-reticle::after{content:"";position:absolute;left:50%;top:50%;background:#F5C542;transform:translate(-50%,-50%)}
+.lv-reticle::before{width:2px;height:40px}
+.lv-reticle::after{width:40px;height:2px}
+.lv-aim.on{background:rgba(245,197,66,.1);box-shadow:inset 0 0 0 1.5px rgba(245,197,66,.6)}
+.lv-aim.on::after{display:none}
+.lv-sl{transition:transform .2s cubic-bezier(.3,.7,.3,1)}
+.lv-ico{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;margin-bottom:4px}
+.lv-ico svg{width:28px;height:28px}
+.lv-ico.good{background:rgba(74,222,128,.2);color:#86EFAC;box-shadow:0 0 0 2px rgba(74,222,128,.6)}
+.lv-ico.bad{background:rgba(251,146,60,.18);color:#FDBA74;box-shadow:0 0 0 2px rgba(251,146,60,.55)}
+.lv-ico.goal{background:rgba(245,197,66,.22);box-shadow:0 0 0 2px #F5C542,0 0 24px rgba(245,197,66,.6)}
+.lv-ico.goal svg{width:34px;height:34px}
+.lv-flash{opacity:0}
+@media (prefers-reduced-motion:no-preference){
+  .lv-in.enter>*{animation:lvin .28s cubic-bezier(.2,.8,.3,1) both}
+  .lv-in.enter>:nth-child(2){animation-delay:.03s}.lv-in.enter>:nth-child(3){animation-delay:.06s}.lv-in.enter>:nth-child(4){animation-delay:.09s}.lv-in.enter>:nth-child(n+5){animation-delay:.12s}
+  .lv-legs.run .lv-l1,.lv-legs.run .lv-l2{transform-box:fill-box;transform-origin:50% 0;animation:lvstride .3s ease-in-out infinite alternate}
+  .lv-legs.run .lv-l2{animation-direction:alternate-reverse}
+  .lv-legs.run+.lv-body{animation:lvbob .15s ease-in-out infinite alternate}
+  /* arms pump against the legs when running */
+  .lv-legs.run+.lv-body .lv-a1,.lv-legs.run+.lv-body .lv-a2{transform-box:fill-box;animation:lvarm .3s ease-in-out infinite alternate}
+  .lv-legs.run+.lv-body .lv-a1{transform-origin:100% 0;animation-direction:alternate-reverse}
+  .lv-legs.run+.lv-body .lv-a2{transform-origin:0 0}
+  /* a kick: the right leg swings through; a jump; a celebration with both arms up */
+  .kick .lv-l2{transform-box:fill-box;transform-origin:50% 0;animation:lvkick .32s cubic-bezier(.3,.7,.4,1)}
+  .hop .lv-fig{animation:lvhop .44s cubic-bezier(.3,.7,.4,1)}
+  .cheer .lv-a1,.cheer .lv-a2{transform-box:fill-box;transition:transform .22s cubic-bezier(.3,1.4,.5,1)}
+  .cheer .lv-a1{transform-origin:100% 0;transform:rotate(128deg)}
+  .cheer .lv-a2{transform-origin:0 0;transform:rotate(-128deg)}
+  .cheer .lv-fig{animation:lvhop .5s cubic-bezier(.3,.7,.4,1) .1s 3}
+  /* the keeper shifts his weight while he waits, until he moves */
+  .lv-kbody{transform-box:fill-box;transform-origin:50% 100%;animation:lvkeep 1.1s ease-in-out infinite alternate}
+  #lvKp.dive .lv-kbody{animation:none}
+  .lv-crowd.roar .lv-cr{animation:lvroar .24s ease-in-out 10 alternate}
+  .lv-crowd.roar .lv-cr:nth-child(2){animation-delay:.06s}.lv-crowd.roar .lv-cr:nth-child(3){animation-delay:.12s}.lv-crowd.roar .lv-cr:nth-child(4){animation-delay:.03s}
+  .lv-mark-you{animation:lvmark .7s ease-in-out infinite alternate}
+  .lg-impact{transform-box:fill-box;transform-origin:center;animation:lgimp .55s ease-out forwards}
+  .lv-reticle.pop{animation:lvret .3s cubic-bezier(.2,.9,.3,1.3)}
+  .lv-res .lv-ico{animation:lvico .4s cubic-bezier(.2,.9,.3,1.4) both}
+  .lv-flash{animation:lvflash 4.2s linear infinite}
+}
+@keyframes lvin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes lvstride{from{transform:rotate(-26deg)}to{transform:rotate(26deg)}}
+@keyframes lvbob{from{transform:translateY(0)}to{transform:translateY(-1.2px)}}
+@keyframes lvarm{from{transform:rotate(18deg)}to{transform:rotate(-18deg)}}
+@keyframes lvkick{0%{transform:none}35%{transform:rotate(-46deg) scaleY(.82)}100%{transform:none}}
+@keyframes lvhop{0%,100%{transform:none}12%{transform:translateY(1.2px) scaleY(.94)}50%{transform:translateY(-8px)}}
+@keyframes lvkeep{from{transform:translateX(-1.4px) rotate(-1.4deg)}to{transform:translateX(1.4px) rotate(1.4deg)}}
+@keyframes lvroar{to{transform:translateY(-2.6px)}}
+@keyframes lvmark{to{transform:translateY(-2px)}}
+@keyframes lgimp{from{transform:scale(.3);opacity:1}to{transform:scale(2.6);opacity:0}}
+@keyframes lvret{from{transform:translate(-50%,-50%) scale(1.8);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+@keyframes lvico{from{transform:scale(.3) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes lvflash{0%,96%,100%{opacity:0}97%{opacity:.95}98.5%{opacity:.2}}
+
+/* ---- the mini-game lab (development) ---- */
+.lab{display:grid;gap:14px;padding-top:4px}
+.lab-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.lab-x{background:rgba(255,255,255,.08);color:#F2F6F3;border-color:rgba(255,255,255,.2)}
+.lab-intro{margin:0;color:rgba(242,246,243,.8);font-size:15px}
+.lab-intro b{color:#FFE9A8}
+.lab-bar{display:grid;gap:10px}
+.lab-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+.lab-seg button{font-family:var(--f-label);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:13px;padding:9px 6px;border:0;border-radius:9px;background:transparent;color:rgba(242,246,243,.7);cursor:pointer}
+.lab-seg button[aria-pressed="true"]{background:#F5C542;color:#1A1400}
+.lab-cats{margin:0}
+.lab-cats .chip small{opacity:.7;margin-left:2px}
+.lab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.lab-card{display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-rows:auto auto;gap:2px 12px;align-items:center;text-align:left;padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer;position:relative;transition:transform .12s,background .12s,border-color .12s}
+.lab-card:hover,.lab-card:focus-visible{background:rgba(255,255,255,.09);border-color:rgba(245,197,66,.6);outline:none}
+.lab-card:active{transform:scale(.98)}
+.lab-card .lab-ic{grid-row:1/3}
+.lab-txt{display:grid;gap:2px;min-width:0;padding-right:44px}
+.lab-txt b{font-family:var(--f-display);font-weight:800;text-transform:uppercase;letter-spacing:.02em;font-size:18px;line-height:1.05;color:#FFE9A8}
+.lab-txt small{font-size:13px;color:rgba(242,246,243,.72);line-height:1.3}
+.lab-tag{position:absolute;top:10px;right:10px;font-family:var(--f-label);font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.1);color:rgba(242,246,243,.8)}
+.lab-card.new .lab-tag{background:#F5C542;color:#1A1400}
+.lab-card.drill .lab-tag{background:rgba(74,222,128,.22);color:#86EFAC}
+.lab-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,rgba(245,197,66,.22),rgba(245,197,66,.06));color:#F5C542;box-shadow:inset 0 0 0 1px rgba(245,197,66,.35)}
+.lab-ic svg{width:26px;height:26px}
+.lab-ic.big{width:56px;height:56px;border-radius:14px}
+.lab-ic.big svg{width:34px;height:34px}
+.lab-card.new .lab-ic{background:linear-gradient(145deg,rgba(45,212,191,.25),rgba(45,212,191,.06));color:#5EEAD4;box-shadow:inset 0 0 0 1px rgba(45,212,191,.4)}
+.lab-pre-h{display:flex;align-items:center;gap:14px}
+.lab-pre-h .lv-t{margin:0}
+.lab-guide summary{cursor:pointer;font-family:var(--f-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:13px;color:#F5C542;padding:4px 0}
+.lab-guide[open] summary{margin-bottom:10px}
+.lab-guide .lv-steps{margin-top:10px}
+.lab-res{display:grid;justify-items:center;gap:6px;text-align:center;padding:16px 12px;border-radius:14px;background:rgba(255,255,255,.05)}
+.lab-res span{font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:clamp(34px,10vw,52px);line-height:.9}
+.lab-res.good span{color:#FFE08A} .lab-res.bad span{color:#FCA5A5}
+.lab-res small{font-size:15px;color:rgba(242,246,243,.85)}
+.lab-score{text-align:center;font-family:var(--f-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#FFE9A8!important}
+.lab-diff-pill{font-family:var(--f-label);font-size:11px;letter-spacing:.1em;padding:2px 8px;border-radius:999px;background:rgba(245,197,66,.18);color:#FFE9A8}
+/* on a tall phone the controls sit at the bottom, under your thumb */
+.lv-in:has(>.lv-stage){min-height:calc(100vh - 34px);min-height:calc(100dvh - max(14px,env(safe-area-inset-top,0px)) - max(18px,env(safe-area-inset-bottom,0px)))}
+.lv-in>.lv-stage+*{margin-top:auto}
+.lab-tally{font-family:var(--f-display);font-weight:900;font-size:17px;letter-spacing:.02em;color:#FFE9A8;font-variant-numeric:tabular-nums}
+/* ---- the new lab games' pieces: a score in the corner, words that float up, an aiming pad ---- */
+.lg-hud{position:absolute;top:8px;right:10px;display:grid;justify-items:end;pointer-events:none;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.lg-hud b{font-family:var(--f-display);font-weight:900;font-size:34px;line-height:.9;color:#FFE9A8}
+.lg-hud small{font-family:var(--f-label);font-weight:700;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(242,246,243,.75)}
+.lg-hud b.bump{animation:lgbump .3s cubic-bezier(.2,.9,.3,1.4)}
+.lg-pop{position:absolute;transform:translate(-50%,-50%);pointer-events:none;font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:24px;letter-spacing:.02em;text-shadow:0 2px 12px rgba(0,0,0,.7);animation:lgpop .9s ease-out forwards;white-space:nowrap}
+.lg-pop.good{color:#FFE08A} .lg-pop.bad{color:#FDBA74}
+.lg-aimpad{position:absolute;inset:0;touch-action:none}
+.lv-timer span{transform-origin:left center}
+@keyframes lgbump{from{transform:scale(1.5)}to{transform:none}}
+@keyframes lgpop{from{opacity:0;transform:translate(-50%,-30%) scale(.8)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}to{opacity:0;transform:translate(-50%,-120%)}}
+@media (prefers-reduced-motion:reduce){.lg-pop{animation:none;opacity:1}.lg-hud b.bump{animation:none}}
+.lg-seq{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:6px;pointer-events:none}
+.lg-seq i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;font-style:normal;font-size:20px;font-weight:900;color:#1A1400;background:#FFE9A8;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.lg-seq i.hid{background:rgba(255,255,255,.14);color:rgba(242,246,243,.7)}
+.lg-seq i.ok{background:#4ADE80} .lg-seq i.bad{background:#FB923C}
+.lg-pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.lg-pad .btn{font-size:24px;padding-left:0;padding-right:0}
+.lg-beat{position:absolute;left:50%;top:22%;width:0;height:0;pointer-events:none}
+.lg-beat-c{position:absolute;left:-9px;top:-9px;width:18px;height:18px;border-radius:50%;background:#F5C542;box-shadow:0 0 16px #F5C542}
+.lg-beat-r{position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;border:3px solid #FFE9A8;transform:translate(-50%,-50%) scale(2)}
+.lg-chipbar .lv-zone{transition:none}
+.lg-fill{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.55),#fff);transform-origin:left center;transform:scaleX(0);opacity:.85}
+.lv-lr .btn.on{background:#F5C542;color:#1A1400}
+/* new lab games: tap targets on teammates, the pressure bar, the flag, the beat */
+.lg-tgt{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lg-tgt:focus-visible{outline:3px solid #F5C542;outline-offset:2px}
+.lg-tgt:disabled{pointer-events:none}
+.lg-press{position:absolute;left:12px;top:10px;display:flex;align-items:center;gap:8px;pointer-events:none;font-family:var(--f-label);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#FFE9A8;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.lg-press i{display:block;width:96px;height:8px;border-radius:5px;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);overflow:hidden}
+.lg-press b{display:block;height:100%;background:linear-gradient(90deg,#4ADE80,#F5C542 60%,#FB923C);transform-origin:left center;transform:scaleX(0)}
+.lg-press i.hot{box-shadow:inset 0 0 0 1px #FB923C,0 0 12px rgba(251,146,60,.6)}
+.lg-seqbar{position:absolute;left:50%;top:50px;width:132px;height:4px;margin-left:-66px;border-radius:2px;background:rgba(0,0,0,.4);overflow:hidden;pointer-events:none}
+.lg-seqbar span{display:block;height:100%;background:#F5C542;transform-origin:left center;animation:lgseq linear forwards}
+.lg-seq i.cur{box-shadow:0 0 0 2px #F5C542,0 4px 14px rgba(0,0,0,.4)}
+.lg-flag{transform-box:fill-box;transform-origin:100% 100%;transform:rotate(-150deg);transition:transform .35s cubic-bezier(.3,1.4,.5,1)}
+.lg-flag.up{transform:rotate(6deg)}
+.lg-beat.hit .lg-beat-c{transform:scale(1.4);box-shadow:0 0 24px #F5C542}
+.lg-beat-c{transition:transform .12s,box-shadow .12s}
+@keyframes lgseq{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media (prefers-reduced-motion:no-preference){
+  .lg-seq i.hid{animation:lgflip .25s ease-out}
+  .lg-flag.up .lg-cloth{transform-box:fill-box;transform-origin:100% 50%;animation:lgwave .3s ease-in-out 4 alternate}
+}
+@keyframes lgflip{from{transform:rotateX(90deg)}to{transform:none}}
+@keyframes lgwave{to{transform:skewY(-10deg) scaleX(.9)}}
+@media (prefers-reduced-motion:reduce){.lg-impact{display:none}}
+/* boots in the shop, the header and the match centre */
+.boot-ic{display:inline-block;width:44px;height:29px;flex:none;vertical-align:middle;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.boot-ic.big{width:64px;height:42px}
+.boot-ic.tiny{width:22px;height:15px;margin:-2px 3px 0 0;filter:none}
+.boot-ic.none{opacity:.38;filter:grayscale(.85)}
+.shop-top b{flex:1;min-width:0}
+.shop-card.on .boot-ic{filter:drop-shadow(0 0 8px rgba(245,197,66,.55))}
+.boot-pill{display:inline-flex;align-items:center}
+small.boot{display:inline-flex;align-items:center}
+/* the app: switching tabs and views, dialogs, presses */
+.btn:active:not(:disabled){transform:translateY(1px) scale(.98)}
+@media (prefers-reduced-motion:no-preference){
+  .ui-enter>*{animation:uiin .34s cubic-bezier(.2,.8,.3,1) both}
+  .ui-enter>:nth-child(2){animation-delay:.05s}.ui-enter>:nth-child(3){animation-delay:.1s}.ui-enter>:nth-child(n+4){animation-delay:.14s}
+  .ui-enter .meter span{transform-origin:left center;animation:uibar .7s cubic-bezier(.2,.8,.3,1) .1s both}
+  .acct-dlg[open]{animation:uidlg .26s cubic-bezier(.2,.8,.3,1)}
+  .acct-dlg[open]::backdrop{animation:uifade .26s ease-out}
+  .tab[aria-selected="true"] svg{animation:uipop .35s cubic-bezier(.3,1.5,.5,1)}
+  .subtabs button[aria-pressed="true"]{animation:uipop .3s cubic-bezier(.3,1.5,.5,1)}
+}
+@keyframes uiin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes uibar{from{transform:scaleX(0)}}
+@keyframes uidlg{from{opacity:0;transform:translateY(28px) scale(.98)}}
+@keyframes uifade{from{opacity:0}}
+@keyframes uipop{0%{transform:scale(.9)}100%{transform:none}}

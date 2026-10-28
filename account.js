@@ -6,7 +6,7 @@
    calls Account.boot(start) once it has loaded, and this file calls back into the game (render, exportBackup…)
    only after that. */
 const Account = (() => {
-  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1", VERSION = "1.17";
+  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1", VERSION = "1.18";
   const OLD = {career:"efp-career-v1", hall:"efp-hall-v1"};   // where saves lived before accounts existed
   const $id = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -181,6 +181,13 @@ const Account = (() => {
   }
 
   /* ---------- account menu ---------- */
+  // The Development section (the mini-game lab) is only shown on a phone where developer mode is on: tap the version
+  // line at the bottom of this menu five times, or open the game once with ?dev at the end of its address
+  const DEV = "efp-dev";
+  const devOn = () => { try{ return localStorage.getItem(DEV)==="1"; }catch(e){ return false; } };
+  const setDev = on => { try{ if (on) localStorage.setItem(DEV, "1"); else localStorage.removeItem(DEV); }catch(e){} };
+  if (/[?&]dev\b/.test(location.search)) setDev(true);
+  let devTaps = 0, devNote = "";
   function dialogHTML(){
     const since = new Date(me.created).toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"});
     return `<div class="dlg-in">
@@ -193,6 +200,8 @@ const Account = (() => {
           <label class="btn small" for="acctBackupFile" style="display:inline-flex;align-items:center">Load backup</label><input id="acctBackupFile" type="file" accept="application/json,.json" hidden></div>
         ${S ? `<label class="chk"><input type="checkbox" id="acctReplace"> Loading a backup also replaces my current career</label>` : ""}
       </section>
+      ${devOn() ? `<section><h3>Development</h3><p class="hint">Only on this phone: try every mini-game, including 20 new ones that aren't in the game. Nothing you play there affects your career or your coins.</p>
+        <div class="row"><button type="button" class="btn small primary" data-acct="lab">Open the mini-game lab</button><button type="button" class="btn small" data-acct="dev-off">Hide this section</button></div></section>` : ""}
       <section><h3>Get the app</h3><div data-install>${installHTML()}</div></section>
       <details class="dlg-more"><summary>Change password</summary>
         <form id="pwForm" class="acct-form">
@@ -208,12 +217,12 @@ const Account = (() => {
           <div class="field"><label for="d-pw">Password</label><input id="d-pw" name="pw" type="password" autocomplete="current-password"></div>
           <button class="btn small danger" type="submit">Delete account</button><p class="err" id="delErr" role="alert"></p>
         </form></details>
-      <p class="hint" style="margin:0">Game version ${VERSION}. <button type="button" class="linkbtn" data-acct="update">Check for updates</button></p>
+      <p class="hint" style="margin:0"><span data-acct="ver">Game version ${VERSION}.</span> <button type="button" class="linkbtn" data-acct="update">Check for updates</button>${devNote ? ` <span role="status">${esc(devNote)}</span>` : ""}</p>
       <div class="row dlg-foot"><button type="button" class="btn" data-acct="signout">Sign out</button><button type="button" class="btn primary" data-acct="close">Back to the game</button></div>
     </div>`;
   }
   function openMenu(){
-    const d = $id("acctDlg"); d.innerHTML = dialogHTML();
+    const d = $id("acctDlg"); devTaps = 0; devNote = ""; d.innerHTML = dialogHTML();
     if (d.showModal){ if (!d.open) d.showModal(); } else d.setAttribute("open", "");
   }
   function closeMenu(){ const d = $id("acctDlg"); if (d.close) d.close(); else d.removeAttribute("open"); }
@@ -230,6 +239,12 @@ const Account = (() => {
     else if (a==="signout") signOut();
     else if (a==="update"){ b.textContent = "Checking…"; try{ const r = await navigator.serviceWorker?.getRegistration(); await r?.update(); }catch(err){} location.reload(); }
     else if (a==="backup"){ closeMenu(); exportBackup(); }
+    else if (a==="lab"){ closeMenu(); labOpen(); }
+    else if (a==="ver" || a==="dev-off"){
+      if (a==="ver" && ++devTaps<5) return;
+      devTaps = 0; setDev(a==="ver" && !devOn()); devNote = devOn() ? "Developer mode is on: the Development section is above." : "Developer mode is off.";
+      const d = $id("acctDlg"), y = d.scrollTop; d.innerHTML = dialogHTML(); d.scrollTop = y;
+    }
     else if (a==="install" && installEvt){ const ev = installEvt; installEvt = null; ev.prompt(); try{ await ev.userChoice; }catch(err){} paintInstall(); }
   });
   document.addEventListener("change", e=>{

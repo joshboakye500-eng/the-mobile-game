@@ -838,9 +838,6 @@ function trophyIcon(kind, name){
     // shield on a stand
     shield: `<path d="M14 10h36v22c0 14-8 22-18 26-10-4-18-12-18-26z" fill="${F}"/><path d="M20 16h24v15c0 10-5 15-12 18-7-3-12-8-12-18z" fill="none" stroke="${M[0]}" stroke-opacity=".55" stroke-width="1.4"/>
       <path d="M32 22l2.5 5 5.5.6-4 3.8 1 5.4-5-2.6-5 2.6 1-5.4-4-3.8 5.5-.6z" fill="${M[0]}" opacity=".6"/>${stem(57,64,8)}`,
-    // golden boot
-    boot: `<path d="M18 10h13l2 26c9 2 17 5 19 11 1 4-1 7-6 7H18z" fill="${F}"/><path d="M18 50h34" stroke="${M[0]}" stroke-width="1.2"/><path d="M22 54v5M30 54v5M40 54v5M48 54v4" stroke="${M[0]}" stroke-width="2.5"/>
-      <path d="M22 16l7 0M22 22l7 0M22 28l7 0" stroke="${M[0]}" stroke-opacity=".6"/>${stem(59,64,10)}`,
     // world champions: a gold globe ringed by a laurel band, raised on a fluted pillar
     globe: `<circle cx="32" cy="24" r="16" fill="${F}"/>
       <path d="M16 24h32M32 8v32M19 15c8 4 18 4 26 0M19 33c8-4 18-4 26 0" stroke="${M[0]}" stroke-width="1.3" fill="none" opacity=".6"/>
@@ -851,14 +848,33 @@ function trophyIcon(kind, name){
     // golden ball on a cradle
     ball: `<circle cx="32" cy="28" r="19" fill="${F}"/><path d="M32 14l6 5-2.5 7.5h-7L26 19zM16 25l5.5-3 4 6.5-3 6.5-5-1.5zM48 25l-5.5-3-4 6.5 3 6.5 5-1.5zM25 44l4-6h6l4 6-7 3z" fill="${M[0]}" opacity=".45"/>
       ${shine(22,17,16)}<path d="M22 46c3 6 17 6 20 0" stroke="${F}" stroke-width="3" fill="none"/>${stem(50,64,6)}`,
-    // top scorer: a sleek boot in profile, mounted on an angled crystal block
-    bootpro: `<path d="M14 14c4-2 9-2 13 0l2 16c6 1 15 3 21 7 3 2 3 6 0 7l-34 1c-3 0-4-2-4-4z" fill="${F}"/>
-      <path d="M16 16c3-1 7-1 10 0" stroke="${M[2]}" stroke-width="1.6" fill="none" opacity=".8"/>
-      <path d="M27 22l5-1M28 26l6-1M29 30l6-1" stroke="${M[0]}" stroke-width="1.6" stroke-linecap="round"/>
-      <path d="M16 45h34" stroke="${M[0]}" stroke-width="1.4"/>
-      <path d="M19 46v4M26 46v4M35 46v4M44 46v4" stroke="${M[0]}" stroke-width="2.6" stroke-linecap="round"/>
-      <path d="M22 52h20l4 12H18z" fill="${M[2]}" opacity=".55" stroke="${M[1]}" stroke-width="1"/>
-      ${shine(17,18,20)}`,
+    // top scorer: a golden football boot side-on (sock collar, laces, a raised stripe, studs), standing on a black block
+    bootpro: `<defs><linearGradient id="${id}u" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF4C2"/><stop offset=".3" stop-color="#F9D85E"/><stop offset=".66" stop-color="#DDA81C"/><stop offset="1" stop-color="#8F6405"/></linearGradient>
+        <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C39414"/><stop offset="1" stop-color="#6A4704"/></linearGradient>
+        <linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A97A0C"/><stop offset=".55" stop-color="#EAC23E"/><stop offset="1" stop-color="#B58710"/></linearGradient>
+        <radialGradient id="${id}h" cx="34%" cy="22%" r="55%"><stop offset="0" stop-color="#FFFBE6" stop-opacity=".85"/><stop offset="1" stop-color="#FFFBE6" stop-opacity="0"/></radialGradient>
+        <linearGradient id="${id}k" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2C313C"/><stop offset="1" stop-color="#0A0C10"/></linearGradient>
+        <linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3B414D"/><stop offset=".5" stop-color="#5A616E"/><stop offset="1" stop-color="#3B414D"/></linearGradient></defs>
+      <path d="M13.5 53.5h37l-1.5 2.5h-34z" fill="url(#${id}t)"/><rect x="15" y="56" width="34" height="10" fill="url(#${id}k)"/><rect x="22" y="58.4" width="20" height="5" rx=".8" fill="#D9A821"/><path d="M24 61h16" stroke="#8F6405" stroke-width=".6"/>
+      <g transform="translate(1.8 53.6)">
+        <path d="M6 -1.4h4.6l-.8 3.2h-3zM13.4 -1.4h4.6l-.8 3.2h-3zM30 -1.4h3.8l-.7 3h-2.4zM37 -1.5h3.8l-.7 3h-2.4zM44 -1.8h3.8l-.7 2.9h-2.4zM50.6 -2.3h3.6l-.7 2.8h-2.2z" fill="url(#${id}s)"/>
+        <path d="M2.8 -4.4H54.5C57.8 -4.2 60 -4.6 60.6 -5.6l.4 1.2C60.4 -2.4 57.6 -1.1 53.5 -1H5.4C3 -1 1.8 -2.6 2.8 -4.4z" fill="url(#${id}s)"/>
+        <path d="M4 -4.2H54.4C57 -4.1 59 -4.5 60 -5.2" stroke="#FFE9A0" stroke-width=".6" fill="none" opacity=".8"/>
+        <path d="M4.2 -22.4C3.6 -25.8 4.4 -28.6 6.2 -30C9.6 -31 13 -30.3 15.6 -28.2C15.8 -27 15.2 -25.8 14.4 -24.8z" fill="url(#${id}c)" stroke="#7A5606" stroke-width=".6"/>
+        <path d="M6.3 -28.9l.8 5.2M8.6 -29.5l.6 5M11 -29.4l.3 4.7M13.3 -28.7v4" stroke="#8F6405" stroke-width=".55" opacity=".55"/>
+        <path d="M2.8 -4.4C1 -10 1.2 -17 4 -22.6C7 -25.2 11 -25.8 14.6 -24.6C19 -21.8 24 -18.8 31 -16.6C39 -14.2 47 -12 53.5 -9.8C58 -8.4 61 -6.8 60.6 -5.6C60 -4.6 57.8 -4.2 54.5 -4.2z" fill="url(#${id}u)" stroke="#7A5606" stroke-width=".7"/>
+        <path d="M2.8 -4.4C1 -10 1.2 -17 4 -22.6C7 -25.2 11 -25.8 14.6 -24.6C19 -21.8 24 -18.8 31 -16.6C39 -14.2 47 -12 53.5 -9.8C58 -8.4 61 -6.8 60.6 -5.6C60 -4.6 57.8 -4.2 54.5 -4.2z" fill="url(#${id}h)"/>
+        <path d="M2.8 -4.4C1 -10 1.2 -17 4 -22.6l4.2 1.2C6.6 -15.8 6.5 -9.8 8 -4.4z" fill="#8F6405" opacity=".4"/>
+        <path d="M4.8 -22.4C7.8 -24.6 11.2 -25.2 14.2 -24.6C11.6 -23 8 -22.4 4.8 -22.4z" fill="#4A3304"/>
+        <path d="M17.6 -22.4l2.4 2.3M20.8 -20.6l2.2 2.4M24 -19l2 2.5M27.2 -17.6l1.8 2.5" stroke="#8F6405" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+        <path d="M17.4 -22.9l2.4 2.3M20.6 -21.1l2.2 2.4M23.8 -19.5l2 2.5M27 -18.1l1.8 2.5" stroke="#FFF1B0" stroke-width="1.15" stroke-linecap="round"/>
+        <path d="M8.5 -8C19.5 -9.6 31.5 -12.8 45.5 -10.8" stroke="#8F6405" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".45"/>
+        <path d="M8.5 -8.6C19.5 -10.2 31.5 -13.4 45.5 -11.4" stroke="#FFE58A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <path d="M46 -11.6C47.4 -9.2 47.6 -6.6 46.8 -4.6" stroke="#8F6405" stroke-width=".6" fill="none" opacity=".55"/>
+        <path d="M15.6 -23.6C19.6 -21 23.6 -19 28.4 -17.4" stroke="#FFFFFF" stroke-width="1.2" fill="none" opacity=".7" stroke-linecap="round"/>
+        <path d="M40 -13.6C46 -12.2 51.6 -10.6 56.6 -8.2" stroke="#FFFFFF" stroke-width="1.1" fill="none" opacity=".85" stroke-linecap="round"/>
+        <path d="M2.6 -12C2.5 -16 3.1 -19.2 4.6 -21.6" stroke="#FFFFFF" stroke-width=".9" fill="none" opacity=".5" stroke-linecap="round"/></g>
+      <path d="M50 20l1 3.2 3.2 1-3.2 1-1 3.2-1-3.2-3.2-1 3.2-1z" fill="#FFF6D2"/><path d="M13 14l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z" fill="#FFF6D2" opacity=".75"/>`,
     // playmaker: a gold orb traced by three curling passes, held up in a forked cradle
     playmaker: `<circle cx="32" cy="26" r="17" fill="${F}"/>
       <path d="M19 33c6-10 16-14 26-12M18 22c8 2 15 8 18 18M40 12c-6 4-10 12-9 22" stroke="${M[0]}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".75"/>
@@ -882,7 +898,7 @@ function trophyIcon(kind, name){
       <path d="M32 35l3 6.5 7 .6-5.3 4.7 1.6 7-6.3-3.8-6.3 3.8 1.6-7-5.3-4.7 7-.6z" fill="${M[0]}" opacity=".7"/>`
   };
   const body = shapes[st.shape] || shapes.twohandle;
-  return `<svg viewBox="0 0 64 82" aria-hidden="true">${defs}${body}${st.shape==="medal"?"":plinth(st.shape==="grand"||st.shape==="bowl"?40:34)}</svg>`;
+  return `<svg viewBox="0 0 64 82" aria-hidden="true">${defs}${body}${st.shape==="medal"?"":plinth(st.shape==="bootpro" ? 50 : st.shape==="grand"||st.shape==="bowl"?40:34)}</svg>`;
 }
 
 /* ================= SIMULATION ================= */
@@ -2795,8 +2811,11 @@ document.addEventListener("click", e=>{
   const b = e.target.closest("[data-sub-k]"); if (!b) return;
   const g = b.dataset.sub, k = b.dataset.subK; SUB[g] = k;
   document.querySelectorAll(`[data-sub="${g}"][data-sub-k]`).forEach(x=>x.setAttribute("aria-pressed", x.dataset.subK===k));
-  document.querySelectorAll(`.subview[data-sub="${g}"]`).forEach(v=>{ v.hidden = v.dataset.k!==k; });
+  document.querySelectorAll(`.subview[data-sub="${g}"]`).forEach(v=>{ v.hidden = v.dataset.k!==k; if (!v.hidden) uiEnter(v); });
 });
+// a view that's just been switched to eases in (its panels one after another, its bars filling); the class comes off
+// again so a later redraw doesn't replay it
+function uiEnter(el){ if (!el) return; el.classList.remove("ui-enter"); void el.offsetWidth; el.classList.add("ui-enter"); clearTimeout(el._ent); el._ent = setTimeout(()=>el.classList.remove("ui-enter"), 700); }
 function compName(k){ return {league:"League", fa:"FA Cup", lc:"League Cup", eflt:"EFL Trophy", fat:"FA Trophy", ...cupNames, UCL:"UCL", UEL:"UEL", UECL:"UECL"}[k] || k; }
 
 function statsBody(){
@@ -2845,7 +2864,7 @@ function renderCareer(){
             <div class="fact"><div class="label">Nation${S.intl&&S.intl.caps?` · ${S.intl.caps} caps`:""}</div><div class="v" style="font-size:18px;overflow-wrap:anywhere">${esc(pl.nation||"—")}</div></div>
           </div>
           ${S.release?`<div class="label">Release clause · ${money(S.release)}</div>`:""}
-          <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span class="pill gold">Rating ${mcSeasonRating().toFixed(2)}</span>`:""}${S.attr&&mcBoot()?`<span class="pill">👟 ${esc(shopBootName(mcBoot().k))} +${mcBoot().n}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
+          <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span class="pill gold">Rating ${mcSeasonRating().toFixed(2)}</span>`:""}${S.attr&&mcBoot()?`<span class="pill boot-pill">${shopBootIcon(mcBoot().k, Account.locker().boots[mcBoot().k], "boot-ic tiny")}${esc(shopBootName(mcBoot().k))} +${mcBoot().n}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
           <div class="value-box">
             <div><div class="label">Market value</div><div class="value-big">${money(S.value)}</div></div>
             ${last?`<div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))}</div>`:""}
@@ -2927,7 +2946,7 @@ document.addEventListener("click", e=>{
   const b = e.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act;
   if (a.startsWith("mc-")){ mcAction(a, b); return; }
-  if (a==="tab"){ tab = b.dataset.k; render(); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
+  if (a==="tab"){ tab = b.dataset.k; render(); uiEnter(document.getElementById("tabBody")); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
   else if (a==="backup-export"){ exportBackup(); }
   else if (a==="intl-yes" || a==="intl-no"){ const n = (S.notes||[]).find(x=>x.ask && x.ask.id===b.dataset.k); if (n){ n.ask.answer = a==="intl-yes"; save(); render(); } }
   else if (a==="my-profile"){ tab = "legacy"; profileId = S.id; render(); window.scrollTo({top:0}); }

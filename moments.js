@@ -33,19 +33,25 @@ function lvAbbr(n){
   if (!w.length) return String(n).slice(0,3).toUpperCase();
   return (w.length>1 && w[0]==="Manchester" ? w[0][0] + w[1].slice(0,2) : w[0].slice(0,3)).toUpperCase();
 }
-function lvOpen(){
-  lvEl = document.createElement("div"); lvEl.className = "lv"; lvEl.setAttribute("role", "dialog"); lvEl.setAttribute("aria-modal", "true"); lvEl.setAttribute("aria-label", "Match");
+function lvOpen(label = "Match"){
+  lvEl = document.createElement("div"); lvEl.className = "lv"; lvEl.setAttribute("role", "dialog"); lvEl.setAttribute("aria-modal", "true"); lvEl.setAttribute("aria-label", label);
   document.body.appendChild(lvEl); document.documentElement.classList.add("lv-open");
 }
 function lvClose(){ cancelAnimationFrame(lvRaf); lvKey = null; lvEl?.remove(); lvEl = null; document.documentElement.classList.remove("lv-open"); }
-function lvShow(html){ cancelAnimationFrame(lvRaf); lvKey = null; lvEl.innerHTML = `<div class="lv-in">${html}</div>`; lvEl.scrollTop = 0; (lvEl.querySelector("[data-lv-focus]") || lvEl.querySelector("button"))?.focus({preventScroll:true}); }
+// a new screen eases in (only when it first appears: parts swapped in later, like a scoreboard, don't)
+function lvShow(html){
+  cancelAnimationFrame(lvRaf); lvKey = null; lvEl.innerHTML = `<div class="lv-in enter">${html}</div>`; lvEl.scrollTop = 0;
+  const box = lvEl.firstElementChild; setTimeout(()=>box.classList.remove("enter"), 450);
+  (lvEl.querySelector("[data-lv-focus]") || lvEl.querySelector("button"))?.focus({preventScroll:true});
+}
 const lv$ = s => lvEl.querySelector(s);
 // a screen whose buttons (data-lv="value") answer it
 function lvAsk(html){ return new Promise(res=>{ lvShow(html); lvEl.querySelectorAll("[data-lv]").forEach(b=>b.addEventListener("click", ()=>res(b.dataset.lv))); }); }
-function lvTween(ms, step){ return new Promise(res=>{ const t0 = performance.now(); const tick = now=>{ const k = Math.min(1, (now-t0)/ms); step(k); if (k<1) lvRaf = requestAnimationFrame(tick); else res(); }; lvRaf = requestAnimationFrame(tick); }); }
+// a tween stops (and never finishes) if its screen goes, so nothing carries on drawing after you've left
+function lvTween(ms, step){ return new Promise(res=>{ const t0 = performance.now(), box = lvEl?.firstElementChild; const tick = now=>{ if (box && !box.isConnected) return; const k = Math.min(1, (now-t0)/ms); step(k); if (k<1) lvRaf = requestAnimationFrame(tick); else res(); }; lvRaf = requestAnimationFrame(tick); }); }
 const lvWait = ms => new Promise(r=>setTimeout(r, ms));
 // one animation loop per mini-game: step(now) returns false to stop
-function lvLoop(step){ const tick = now=>{ if (lvEl && step(now)!==false) lvRaf = requestAnimationFrame(tick); }; lvRaf = requestAnimationFrame(tick); }
+function lvLoop(step){ const box = lvEl?.firstElementChild; const tick = now=>{ if (lvEl && (!box || box.isConnected) && step(now)!==false) lvRaf = requestAnimationFrame(tick); }; lvRaf = requestAnimationFrame(tick); }
 document.addEventListener("keydown", e=>{
   if (!lvEl || !lvKey) return;
   const k = {" ":"go", Enter:"go", ArrowLeft:"l", ArrowRight:"r", ArrowUp:"c", ArrowDown:"c"}[e.key];
@@ -54,17 +60,29 @@ document.addEventListener("keydown", e=>{
 });
 // fast taps: act on pointerdown, and ignore the click that follows
 function lvTap(el, fn){ if (!el) return; el.addEventListener("pointerdown", e=>{ e.preventDefault(); fn(e); }); el.addEventListener("click", e=>{ if (e.detail===0) fn(e); }); }
+// a little buzz on phones that have it: a tap for a good result, a double for a bad one, a rumble for a goal
+function lvBuzz(kind){ try{ navigator.vibrate?.(kind==="goal" ? [30, 50, 70] : kind==="bad" ? [14, 40, 14] : 18); }catch(e){} }
+const lvEaseOut = k => 1 - Math.pow(1-k, 2.2), lvEaseInOut = k => k<.5 ? 2*k*k : 1 - Math.pow(2 - 2*k, 2)/2;
+
+/* ---------- who's playing: a match in your career, or the lab's sandbox (lab.js) ----------
+   A moment in the lab carries st.lab = {a:attributes, ease, pos, kits:{us, them, usTrim, themTrim}, cols}, and
+   nothing it does reaches the career: no coins, no stats, no saves. */
+const lvAttr = st => st.lab ? st.lab.a : mcA();
+const lvPos = st => st.lab ? st.lab.pos : S.player.pos;
+const lvCols = st => { if (st.lab) return st.lab.cols; const k = meta(S.mc.club); return [k.c1, k.c2 || "#FFFFFF", "#F5C542", "#FFFFFF"]; };
 
 /* ---------- drawing ---------- */
 const lvPct = (x, y) => `left:${(x/3).toFixed(2)}%;top:${(y/1.8).toFixed(2)}%`;
 // how much easier your attribute makes a moment against this opponent, with sharpness and form: about −0.35 to +0.35
-const lvEase = (st, attr) => clamp((attr - st.f.oppStr)/40 + (S.cond.sharp-60)/400 + (mcFormAvg()-6.6)/10, -.35, .35);
+// (in the lab, the difficulty you picked)
+const lvEase = (st, attr) => st.lab ? st.lab.ease : clamp((attr - st.f.oppStr)/40 + (S.cond.sharp-60)/400 + (mcFormAvg()-6.6)/10, -.35, .35);
 // light kit? (this file loads before game.js, so it can't use isLight while drawing the instruction diagrams)
 function lvLight(hex){ const h = s => parseInt(String(hex).slice(s, s+2), 16) || 0; return (h(1)*299 + h(3)*587 + h(5)*114)/1000 > 150; }
 function lvNear(x, y){ const h = s => [1,3,5].map(i=>parseInt(String(s).slice(i,i+2),16)||0), a = h(x), b = h(y); return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]) < 110; }
 // both kits, kept apart when they clash; each kit's second colour goes on its collars, cuffs and shorts (LV_TRIM)
 const LV_TRIM = {}, LV_SKIN = ["#F1C9A5","#D9A37A","#B57D52","#8A5A3B","#5C3A24"], LV_HAIR = ["#17130F","#2B1B12","#4A2E1A","#17130F","#B5872F","#0E0B09"];
 function lvKits(st){
+  if (st.lab){ const k = st.lab.kits; LV_TRIM[k.us] = k.usTrim; LV_TRIM[k.them] = k.themTrim; return {us:k.us, them:k.them}; }
   const us = meta(S.mc.club), them = meta(st.f.opp);
   let t = them.c1, tt = them.c2;
   if (lvNear(us.c1, t)){ if (them.c2 && !lvNear(us.c1, them.c2)){ t = them.c2; tt = them.c1; } else { t = lvLight(us.c1) ? "#1F2937" : "#E5E7EB"; tt = null; } }
@@ -72,83 +90,169 @@ function lvKits(st){
   return {us:us.c1, them:t};
 }
 // a player seen from above or the front: (x, y) is where his feet are. Shirt and socks in the kit colour, shorts and
-// trim in its second; skin and hair vary with where he stands, and you (o.ring) look like your player
+// trim in its second; skin and hair vary with where he stands, and you (o.ring) look like your player. o.run sets his
+// legs going
 function lvMan(x, y, kit, o={}){
   let trim = o.trim || LV_TRIM[kit];
   if (!trim || lvNear(trim, kit)) trim = lvLight(kit) ? "#1F2937" : "#F3F4F6";
-  const v = Math.abs(Math.round(x*7 + y*13)), you = !!o.ring && typeof S!=="undefined" && S && S.player;
+  const v = Math.abs(Math.round(x*7 + y*13)), me = !!(o.ring || o.you), you = me && typeof S!=="undefined" && S && S.player;
   const skin = o.skin || (you ? LV_SKIN[S.player.skin ?? 1] : LV_SKIN[v % LV_SKIN.length]) || LV_SKIN[1];
   const hair = you ? (S.player.hair==="none" ? null : HAIRC[S.player.hairColour] || LV_HAIR[0]) : LV_HAIR[v % LV_HAIR.length];
-  return `<g ${o.id?`id="${o.id}"`:""} transform="translate(${x} ${y}) scale(${o.s||1})">
-    <ellipse cy="1" rx="10" ry="3.2" fill="rgba(0,0,0,.35)"/>
-    ${o.ring ? `<circle cy="-16" r="19" fill="none" stroke="${o.ring}" stroke-width="2.5" opacity=".9"/>` : ""}
-    <path d="M-3.8 -12V-3M3.8 -12V-3" stroke="${skin}" stroke-width="3.3" stroke-linecap="round"/>
-    <path d="M-3.8 -7.4V-2.6M3.8 -7.4V-2.6" stroke="${kit}" stroke-width="3.8" stroke-linecap="round"/>
-    <path d="M-6.6 -.8h4.4M2.2 -.8h4.4" stroke="#0E1012" stroke-width="2.6" stroke-linecap="round"/>
+  const leg = (sx, b) => `<g class="lv-l${b}"><path d="M${sx} -12V-3" stroke="${skin}" stroke-width="3.3" stroke-linecap="round"/><path d="M${sx} -7.4V-2.6" stroke="${kit}" stroke-width="3.8" stroke-linecap="round"/><path d="M${sx<0 ? -6.6 : 2.2} -.8h4.4" stroke="#0E1012" stroke-width="2.6" stroke-linecap="round"/></g>`;
+  // an arm: sleeve, cuff and hand, swung from the shoulder when running and raised to celebrate
+  const arm = (d, b) => `<g class="lv-a${b}"><path d="M${8*d} -25l${5*d} 8" stroke="${kit}" stroke-width="4.2" stroke-linecap="round"/><path d="M${12.2*d} -18.4l${.8*d} 1.4" stroke="${trim}" stroke-width="4.4" stroke-linecap="round"/><circle cx="${13.6*d}" cy="-15.3" r="1.8" fill="${skin}"/></g>`;
+  return `<g ${o.id?`id="${o.id}"`:""} class="lv-man${me ? " lv-you" : ""}" transform="translate(${x} ${y}) scale(${o.s||1})">
+    ${o.noShadow ? "" : `<ellipse cy="1" rx="10" ry="3.2" fill="rgba(0,0,0,.35)"/>`}
+    ${o.ring ? `<circle cy="-16" r="19" fill="none" stroke="${o.ring}" stroke-width="2.5" opacity=".9"/><circle cy="-16" r="19" fill="${o.ring}" opacity=".08"/>` : ""}
+    <g class="lv-fig">
+    <g class="lv-legs${o.run ? " run" : ""}">${leg(-3.8, 1)}${leg(3.8, 2)}</g>
+    <g class="lv-body">
     <path d="M-7.8 -18.4h15.6l.9 6.6h-6.6l-1.9-1.7-1.9 1.7h-6.6z" fill="${trim}" stroke="rgba(0,0,0,.25)" stroke-width=".6"/>
-    <path d="M-8 -25l-5 8M8 -25l5 8" stroke="${kit}" stroke-width="4.2" stroke-linecap="round"/>
-    <path d="M-12.2 -18.4l-.8 1.4M12.2 -18.4l.8 1.4" stroke="${trim}" stroke-width="4.4" stroke-linecap="round"/>
-    <circle cx="-13.6" cy="-15.3" r="1.8" fill="${skin}"/><circle cx="13.6" cy="-15.3" r="1.8" fill="${skin}"/>
+    ${arm(-1, 1)}${arm(1, 2)}
     <path d="M-8 -26q8-4 16 0v8h-16z" fill="${kit}" stroke="rgba(0,0,0,.35)" stroke-width=".8"/>
-    <path d="M2.6 -27.7q3.1.5 5.4 1.7v8h-5.4z" fill="#000" opacity=".13"/>
+    <path d="M2.6 -27.7q3.1.5 5.4 1.7v8h-5.4z" fill="#000" opacity=".13"/><path d="M-8 -26q2-1.2 4-1.7v9.7h-4z" fill="#fff" opacity=".08"/>
     <path d="M-3.2 -27.6q3.2 2 6.4 0" fill="none" stroke="${trim}" stroke-width="1.5"/>
-    <circle cy="-31" r="5.6" fill="${skin}"/>
+    <circle cy="-31" r="5.6" fill="${skin}"/><path d="M1.6 -35.6a5.6 5.6 0 0 1 0 9.2a5.6 5.6 0 0 0 0-9.2z" fill="#000" opacity=".1"/>
     ${hair ? `<path d="M-5.6 -31.4a5.6 5.6 0 0 1 11.2 0q-2.3-2.4-5.6-2.4q-3.3 0-5.6 2.4z" fill="${hair}"/>` : ""}
     ${o.num!=null ? `<text y="-19.6" text-anchor="middle" font-size="7.6" font-weight="800" fill="${lvLight(kit) ? "#15171A" : "#FFFFFF"}" font-family="Barlow Condensed,sans-serif">${o.num}</text>` : ""}
+    </g></g>
+    ${o.mark ? `<path class="lv-mark-you" d="M-4.5 -47h9l-4.5 5.5z" fill="#F5C542" stroke="rgba(0,0,0,.4)" stroke-width=".6"/>` : ""}
     ${o.label ? `<text y="-42" text-anchor="middle" font-size="9" font-weight="700" fill="#FFE9A8" font-family="Barlow Condensed,sans-serif" letter-spacing=".5">${o.label}</text>` : ""}
   </g>`;
 }
-const lvBallSvg = (id, x, y, r=5) => `<g id="${id}" transform="translate(${x} ${y})"><ellipse cy="${r*.9}" rx="${r}" ry="${r*.35}" fill="rgba(0,0,0,.35)"/><circle r="${r}" fill="#fff" stroke="#15171A" stroke-width="1.1"/><path d="M${-r*.4} ${-r*.3}l${r*.4}-${r*.3} ${r*.4} ${r*.3}-${r*.15} ${r*.45}h-${r*.5}z" fill="#15171A"/><circle cx="${-r*.35}" cy="${-r*.45}" r="${r*.28}" fill="#fff" opacity=".8"/></g>`;
+// shading for the ball, shared by every scene
+const LV_DEFS = `<radialGradient id="lvBallG" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="#EEF2EF"/><stop offset="1" stop-color="#AEB6B0"/></radialGradient>
+  <pattern id="lvNetS" width="3" height="3" patternUnits="userSpaceOnUse"><path d="M3 0H0V3" fill="none" stroke="rgba(255,255,255,.45)" stroke-width=".6"/></pattern>`;
+const lvPent = (r, rot) => [0,1,2,3,4].map(k=>{ const a = (rot + 72*k)*Math.PI/180; return [r*Math.cos(a), r*Math.sin(a)]; });
+// a ball with its shadow (and, for one that flies, the ghosts of where it just was): lvBallAt and lvFly move it
+function lvBallSvg(id, x, y, r=5, trail=true){
+  const P = lvPent(r*.38, -90), seam = lvPent(r*.38, -90).map(([px,py], k)=>{ const [qx, qy] = lvPent(r*1.1, -90)[k]; return `M${px.toFixed(2)} ${py.toFixed(2)}L${qx.toFixed(2)} ${qy.toFixed(2)}`; }).join("");
+  const patch = lvPent(r*1.02, -54).map(([px,py])=>`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${(r*.3).toFixed(2)}"/>`).join("");
+  return `${trail ? `<g id="${id}-tr" fill="#fff" style="pointer-events:none">${[0,1,2,3,4].map(i=>`<circle r="${(r*(.85 - i*.13)).toFixed(2)}" data-r="${(r*(.85 - i*.13)).toFixed(2)}" opacity="0"/>`).join("")}</g>` : ""}
+    <g id="${id}" transform="translate(${x} ${y})"><ellipse class="lv-bsh" cy="${(r*.95).toFixed(2)}" rx="${(r*1.05).toFixed(2)}" ry="${(r*.36).toFixed(2)}" fill="rgba(0,0,0,.38)"/>
+    <g class="lv-bb"><clipPath id="${id}-c"><circle r="${r}"/></clipPath><circle r="${r}" fill="url(#lvBallG)"/>
+      <g clip-path="url(#${id}-c)" fill="#15171A"><polygon points="${P.map(p=>p.map(v=>v.toFixed(2)).join(" ")).join(" ")}"/>${patch}<path d="${seam}" stroke="#15171A" stroke-width="${(r*.1).toFixed(2)}" fill="none"/></g>
+      <circle r="${r}" fill="none" stroke="#15171A" stroke-width="${(r*.16).toFixed(2)}" opacity=".85"/><ellipse cx="${(-r*.35).toFixed(2)}" cy="${(-r*.42).toFixed(2)}" rx="${(r*.3).toFixed(2)}" ry="${(r*.2).toFixed(2)}" fill="#fff" opacity=".85"/></g></g>`;
+}
+// put a ball at (x, y), z above the ground, at scale s, turned spin degrees; trail leaves ghosts behind it
+function lvBallAt(id, x, y, s=1, z=0, spin=0, trail=false){
+  const g = lv$(id); if (!g) return;
+  g.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(3)})`);
+  g.querySelector(".lv-bb")?.setAttribute("transform", `translate(0 ${(-z/s).toFixed(1)}) rotate(${spin.toFixed(0)})`);
+  g.querySelector(".lv-bsh")?.setAttribute("opacity", (1 - Math.min(.8, z/45)).toFixed(2));
+  const tr = lv$(`${id}-tr`); if (!tr) return;
+  const P = tr._p ||= [], C = [...tr.children];
+  if (!trail){ P.length = 0; C.forEach(c=>c.setAttribute("opacity", 0)); return; }
+  P.unshift([x, y - z, s]); if (P.length>C.length*2 + 2) P.pop();
+  C.forEach((c, i)=>{ const q = P[(i+1)*2]; if (!q) return; c.setAttribute("cx", q[0].toFixed(1)); c.setAttribute("cy", q[1].toFixed(1)); c.setAttribute("r", (c.dataset.r*q[2]).toFixed(2)); c.setAttribute("opacity", (.3 - i*.055).toFixed(2)); });
+}
+// a ball flying from a to b over ms: h is the top of its arc (0 keeps it on the ground), s0 and s1 its scale at either
+// end, curve bends it sideways, spin is how many turns it makes
+function lvFly(id, a, b, ms, o={}){
+  const h = o.h || 0, s0 = o.s0 ?? 1, s1 = o.s1 ?? s0, ease = o.ease || lvEaseOut, cv = o.curve || 0, spin = o.spin ?? 1.2;
+  return lvTween(ms, k=>{
+    const q = ease(k), x = a[0] + (b[0]-a[0])*q + cv*Math.sin(Math.PI*q), y = a[1] + (b[1]-a[1])*q;
+    lvBallAt(id, x, y, s0 + (s1-s0)*q, h*4*q*(1-q), k*360*spin, k<1);
+  }).then(()=>lvBallAt(id, b[0], b[1], s1, 0, spin*360, false));
+}
+// a short animation on a player (a CSS class, taken off again when it's done): a kick or a jump
+function lvAnim(sel, cls, ms){ lvEl?.querySelectorAll(sel).forEach(g=>{ g.classList.remove(cls); void g.getBBox; g.classList.add(cls); setTimeout(()=>g.classList.remove(cls), ms); }); }
+const lvKick = (sel = ".lv-you") => lvAnim(sel, "kick", 330), lvHop = sel => lvAnim(sel, "hop", 460);
+// a goal: you celebrate, arms up, and the crowd jumps
+function lvCheer(){
+  lvEl?.querySelectorAll(".lv-you").forEach(g=>{ g.querySelector(".lv-legs")?.classList.remove("run"); g.classList.add("cheer"); });
+  lvEl?.querySelectorAll(".lv-crowd").forEach(c=>c.classList.add("roar"));
+}
+// your boot swinging through the ball at the bottom of a goal scene, in the pair you're wearing; resolves as it
+// makes contact, and follows through while the ball flies
+function lvStrike(st){
+  const svg = lv$(".lv-stage svg"); if (!svg || typeof shopBootArt!=="function") return Promise.resolve();
+  const worn = mcBoot(), sock = st ? lvKits(st).us : "#1F2937";
+  svg.insertAdjacentHTML("beforeend", `<g class="lv-boot" style="pointer-events:none"><g transform="scale(-.92 .92)"><path d="M-57 -24-59 -41h19l-5 18z" fill="${sock}" stroke="rgba(0,0,0,.3)" stroke-width="1"/><path d="M-59 -41-60 -52h20l-1 11z" fill="${sock}" opacity=".45"/>${shopBootArt(worn ? worn.k : null, worn ? Account.locker().boots[worn.k] : 0, {x:-62, y:-30})}</g></g>`);
+  const b = svg.lastElementChild, at = k => `translate(${(240 - 78*k).toFixed(1)} ${(204 - 34*k).toFixed(1)}) rotate(${(34 - 36*k).toFixed(1)})`;
+  b.setAttribute("transform", at(0));
+  return lvTween(105, k=>b.setAttribute("transform", at(k*k))).then(()=>{
+    const t0 = performance.now(), f = now=>{ const k = Math.min(1, (now - t0)/260); b.setAttribute("transform", at(1 + .45*lvEaseOut(k))); b.setAttribute("opacity", (1 - k*k).toFixed(2)); if (k<1 && b.isConnected) requestAnimationFrame(f); else b.remove(); };
+    requestAnimationFrame(f);
+  });
+}
+// a player (any <g> drawn at the origin) gliding to (x, y)
+const lvGlide = (id, a, b, ms, ease = lvEaseInOut) => lvTween(ms, k=>{ const q = ease(k); lvMove(id, a[0] + (b[0]-a[0])*q, a[1] + (b[1]-a[1])*q); });
 // a pitch from above: attacking the goal at the top, or defending yours at the bottom ("side" puts the goal on the right)
 function lvField(goal, inner=""){
   const box = goal==="top" ? `<rect x="90" y="5" width="120" height="44"/><rect x="124" y="5" width="52" height="16"/><path d="M120 49a30 30 0 0 0 60 0"/>`
     : goal==="bottom" ? `<rect x="90" y="131" width="120" height="44"/><rect x="124" y="159" width="52" height="16"/><path d="M120 131a30 30 0 0 1 60 0"/>`
     : goal==="side" ? `<rect x="236" y="40" width="59" height="100"/><rect x="273" y="66" width="22" height="48"/>` : `<circle cx="150" cy="90" r="24"/><path d="M150 5v170"/>`;
-  const net = goal==="top" ? `<rect x="133" y="0" width="34" height="6" fill="rgba(255,255,255,.8)"/>` : goal==="bottom" ? `<rect x="133" y="174" width="34" height="6" fill="rgba(255,255,255,.8)"/>`
-    : goal==="side" ? `<rect x="293" y="74" width="7" height="32" fill="rgba(255,255,255,.8)"/>` : "";
+  // the goal behind the line: its net, and the posts throwing a little shadow on the grass
+  const net = goal==="top" ? `<rect x="133" y="0" width="34" height="5" fill="rgba(6,18,11,.6)"/><rect x="133" y="0" width="34" height="5" fill="url(#lvNetS)"/><path d="M132 0v6.5M168 0v6.5" stroke="#F4F7F2" stroke-width="2.6"/><path d="M133 7.4h35" stroke="rgba(0,0,0,.25)" stroke-width="1.6"/><circle cx="150" cy="30" r="1.4" fill="rgba(255,255,255,.6)"/>`
+    : goal==="bottom" ? `<rect x="133" y="175" width="34" height="5" fill="rgba(6,18,11,.6)"/><rect x="133" y="175" width="34" height="5" fill="url(#lvNetS)"/><path d="M132 173.5v6.5M168 173.5v6.5" stroke="#F4F7F2" stroke-width="2.6"/><circle cx="150" cy="150" r="1.4" fill="rgba(255,255,255,.6)"/>`
+    : goal==="side" ? `<rect x="295" y="74" width="5" height="32" fill="rgba(6,18,11,.6)"/><rect x="295" y="74" width="5" height="32" fill="url(#lvNetS)"/><path d="M293.5 73h6.5M293.5 107h6.5" stroke="#F4F7F2" stroke-width="2.6"/>` : "";
   // mown stripes, a little grass texture, the lines, and the floodlights fading towards the corners
-  return `<svg viewBox="0 0 300 180" aria-hidden="true"><defs><radialGradient id="lvVg" cx="50%" cy="45%" r="72%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".34"/></radialGradient>
+  return `<svg viewBox="0 0 300 180" aria-hidden="true"><defs>${LV_DEFS}<radialGradient id="lvVg" cx="50%" cy="45%" r="72%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".34"/></radialGradient>
+      <linearGradient id="lvSun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".07"/><stop offset=".5" stop-color="#FFF6D6" stop-opacity="0"/></linearGradient>
       <pattern id="lvGr" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M1 6.5 2.4 4M4.6 3.5 6 1" stroke="#fff" stroke-opacity=".05" stroke-width="1"/></pattern></defs>
     <rect width="300" height="180" fill="#195C33"/>
     ${[0,2,4,6,8].map(i=>goal==="side" ? `<rect x="${i*30}" width="30" height="180" fill="#1E6A3B"/>` : `<rect y="${i*18}" width="300" height="18" fill="#1E6A3B"/>`).join("")}
-    <rect width="300" height="180" fill="url(#lvGr)"/>
-    <g fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5"><rect x="5" y="5" width="290" height="170"/>${box}</g>${net}
+    <rect width="300" height="180" fill="url(#lvGr)"/><rect width="300" height="180" fill="url(#lvSun)"/>
+    <g fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"><rect x="5" y="5" width="290" height="170"/>${box}</g>${net}
     <rect width="300" height="180" fill="url(#lvVg)"/>${inner}</svg>`;
 }
-// the crowd in the stands behind the goal: heads in three rows, some in each team's colours
+// the crowd in the stands behind the goal: heads in four rows, some in your colours, and the odd camera flash
 function lvCrowd(){
-  const R = seeded(77), cols = ["#26332D","#33413A","#1E2A25","#3D4A43"], k = S && S.mc ? [meta(S.mc.club).c1] : [];
-  return `<g opacity=".55">${[0,1,2,3].map(r=>[...Array(33)].map((_,i)=>{ const c = R()<.16 && k.length ? k[0] : cols[Math.floor(R()*cols.length)];
-    return `<circle cx="${(i*9.4 + (r%2)*4.7 + R()*2).toFixed(1)}" cy="${(14 + r*20 + R()*3).toFixed(1)}" r="${(3.6 + R()*1.2).toFixed(1)}" fill="${c}"/><rect x="${(i*9.4 + (r%2)*4.7 - 4.5).toFixed(1)}" y="${(18 + r*20).toFixed(1)}" width="9" height="9" rx="3" fill="${c}"/>`; }).join("")).join("")}</g>`;
+  const R = seeded(77), cols = ["#26332D","#33413A","#1E2A25","#3D4A43"], k = typeof S!=="undefined" && S && S.mc ? [meta(S.mc.club).c1] : ["#F5C542"];
+  return `<g class="lv-crowd" opacity=".55">${[0,1,2,3].map(r=>`<g class="lv-cr">${[...Array(33)].map((_,i)=>{ const c = R()<.16 ? k[0] : cols[Math.floor(R()*cols.length)];
+    return `<circle cx="${(i*9.4 + (r%2)*4.7 + R()*2).toFixed(1)}" cy="${(14 + r*20 + R()*3).toFixed(1)}" r="${(3.6 + R()*1.2).toFixed(1)}" fill="${c}"/><rect x="${(i*9.4 + (r%2)*4.7 - 4.5).toFixed(1)}" y="${(18 + r*20).toFixed(1)}" width="9" height="9" rx="3" fill="${c}"/>`; }).join("")}</g>`).join("")}</g>
+    <g fill="#fff">${[...Array(7)].map((_,i)=>`<circle class="lv-flash" cx="${(18 + R()*264).toFixed(0)}" cy="${(12 + R()*70).toFixed(0)}" r="1.6" style="animation-delay:${(R()*4).toFixed(2)}s"/>`).join("")}</g>`;
 }
-// the goal from the front, with the keeper (you, when me is set) and, for free kicks, a wall
-function lvGoalSvg(kc, wall, me){
-  const skin = me ? LV_SKIN[S.player.skin ?? 1] : "#D9A37A", hair = me ? (S.player.hair==="none" ? null : HAIRC[S.player.hairColour]) : "#1A120D";
+// the goal from the front, with the keeper (you, when me is set; none with o.empty) and, for free kicks, a wall
+function lvGoalSvg(kc, wall, me, o={}){
+  const you = me && typeof S!=="undefined" && S && S.player;
+  const skin = you ? LV_SKIN[S.player.skin ?? 1] : "#D9A37A", hair = you ? (S.player.hair==="none" ? null : HAIRC[S.player.hairColour]) : "#1A120D";
+  const ink = lvLight(kc) ? "#15171A" : "#FFFFFF", trim = LV_TRIM[kc] && !lvNear(LV_TRIM[kc], kc) ? LV_TRIM[kc] : lvLight(kc) ? "#1F2937" : "#E5E7EB";
   return `<svg viewBox="0 0 300 180" aria-hidden="true">
-    <defs><pattern id="lvNet" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1"/></pattern>
+    <defs>${LV_DEFS}<pattern id="lvNet" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1"/></pattern>
+      <linearGradient id="lvPostV" x1="0" x2="1"><stop offset="0" stop-color="#BFC6C1"/><stop offset=".5" stop-color="#FFFFFF"/><stop offset="1" stop-color="#A3ABA6"/></linearGradient>
+      <linearGradient id="lvPostH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#A3ABA6"/></linearGradient>
+      <linearGradient id="lvTurf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17542E"/><stop offset="1" stop-color="#22743F"/></linearGradient>
       <radialGradient id="lvLight" cx="50%" cy="0%" r="80%"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".22"/><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"/></radialGradient></defs>
     <rect width="300" height="180" fill="#08180F"/>
     ${lvCrowd()}<rect width="300" height="180" fill="url(#lvLight)"/>
     <rect y="100" width="300" height="24" fill="#0B1A12"/>${[0,1,2,3,4,5].map(i=>`<text x="${25+i*50}" y="116" text-anchor="middle" font-family="Big Shoulders Display, Impact, sans-serif" font-weight="900" font-size="10" letter-spacing="1" fill="${i%2 ? "#F5C542" : "#7FD7C4"}" opacity=".38">PYRAMID</text>`).join("")}
-    <rect y="124" width="300" height="56" fill="#1D6537"/><path d="M0 146h300M0 168h300" stroke="rgba(255,255,255,.06)" stroke-width="11"/>
+    <rect y="124" width="300" height="56" fill="url(#lvTurf)"/><path d="M0 138h300M0 158h300" stroke="rgba(255,255,255,.05)" stroke-width="9"/><path d="M60 180 108 124M240 180 192 124" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>
     <path d="M30 20 16 32v92h14zM270 20l14 12v92h-14z" fill="url(#lvNet)" opacity=".7"/><path d="M30 20 16 32v92M270 20l14 12v92" fill="none" stroke="rgba(244,247,242,.5)" stroke-width="1.5"/>
-    <rect x="30" y="20" width="240" height="104" fill="#06120B" opacity=".55"/><rect x="30" y="20" width="240" height="104" fill="url(#lvNet)"/>
-    <path d="M30 124V20h240v104" fill="none" stroke="#F4F7F2" stroke-width="5" stroke-linejoin="round"/>
+    <rect x="30" y="20" width="240" height="104" fill="#06120B" opacity=".55"/><rect x="30" y="20" width="240" height="104" fill="url(#lvNet)"/><rect x="30" y="22" width="240" height="5" fill="#000" opacity=".22"/>
+    <g id="lvRip" opacity="0"><ellipse class="lv-rb" rx="1" ry="1" fill="rgba(0,0,0,.4)"/><circle class="lv-rr" r="1" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2"/></g>
+    <rect x="27.5" y="17.5" width="5" height="107" fill="url(#lvPostV)"/><rect x="267.5" y="17.5" width="5" height="107" fill="url(#lvPostV)"/><rect x="27.5" y="17.5" width="245" height="5" rx="1.5" fill="url(#lvPostH)"/>
     <path d="M0 124h300" stroke="rgba(255,255,255,.55)" stroke-width="2"/>
-    <g id="lvKp" transform="translate(150 84)"><path d="M-10 -8L-26 -24M10 -8L26 -24" stroke="${kc}" stroke-width="7" stroke-linecap="round"/><circle cx="-27.5" cy="-25.5" r="4.6" fill="#C8F04A" stroke="rgba(0,0,0,.35)"/><circle cx="27.5" cy="-25.5" r="4.6" fill="#C8F04A" stroke="rgba(0,0,0,.35)"/>
-      <path d="M-6 16v20M6 16v20" stroke="${skin}" stroke-width="6.5" stroke-linecap="round"/><path d="M-6 26v12M6 26v12" stroke="${kc}" stroke-width="7" stroke-linecap="round"/><path d="M-9.5 39.5h6M3.5 39.5h6" stroke="#0E1012" stroke-width="3.5" stroke-linecap="round"/>
-      <path d="M-11 10h22l1 9h-10l-2-2-2 2h-10z" fill="#1F2937"/>
-      <rect x="-11" y="-14" width="22" height="27" rx="8" fill="${kc}" stroke="rgba(0,0,0,.35)"/><path d="M3 -13.5q6 1 8 4v22h-8z" fill="#000" opacity=".14"/>
-      <circle cy="-22" r="7.5" fill="${skin}"/>${hair ? `<path d="M-7.5 -23a7.5 7.5 0 0 1 15 0q-3-3-7.5-3t-7.5 3z" fill="${hair}"/>` : ""}</g>
+    ${o.extra || ""}
+    <g id="lvKp" transform="translate(150 84)" ${o.empty ? `style="display:none"` : ""}><ellipse cy="41" rx="17" ry="3.6" fill="rgba(0,0,0,.4)"/><g class="lv-kbody">
+      <path d="M-6 16v20M6 16v20" stroke="${skin}" stroke-width="6.5" stroke-linecap="round"/><path d="M-6 26v12M6 26v12" stroke="${kc}" stroke-width="7" stroke-linecap="round"/><path d="M-10 39.5h7M3 39.5h7" stroke="#0E1012" stroke-width="3.8" stroke-linecap="round"/>
+      <path d="M-11 10h22l1 9h-10l-2-2-2 2h-10z" fill="${trim}"/>
+      <g class="lv-karms"><path d="M-10 -8L-26 -24M10 -8L26 -24" stroke="${kc}" stroke-width="7" stroke-linecap="round"/><path d="M-21 -19l-3 -3M21 -19l3 -3" stroke="${trim}" stroke-width="7.5" stroke-linecap="round"/>
+        <path d="M-27.5 -31.5l-4.6 1.6 1 6.4 4.4 1.8 3.6-3.4z" fill="#C8F04A" stroke="rgba(0,0,0,.35)" stroke-width=".8"/><path d="M27.5 -31.5l4.6 1.6-1 6.4-4.4 1.8-3.6-3.4z" fill="#C8F04A" stroke="rgba(0,0,0,.35)" stroke-width=".8"/></g>
+      <rect x="-11" y="-14" width="22" height="27" rx="8" fill="${kc}" stroke="rgba(0,0,0,.35)"/><path d="M3 -13.5q6 1 8 4v22h-8z" fill="#000" opacity=".14"/><path d="M-4 -14q4 3 8 0" fill="none" stroke="${trim}" stroke-width="2"/>
+      <text y="3" text-anchor="middle" font-size="11" font-weight="900" fill="${ink}" opacity=".9" font-family="Big Shoulders Display,Impact,sans-serif">1</text>
+      <circle cy="-22" r="7.5" fill="${skin}"/><path d="M2.4 -28.5a7.5 7.5 0 0 1 0 13a7.5 7.5 0 0 0 0-13z" fill="#000" opacity=".12"/>${hair ? `<path d="M-7.5 -23a7.5 7.5 0 0 1 15 0q-3-3-7.5-3t-7.5 3z" fill="${hair}"/>` : ""}</g></g>
     ${wall ? [126,142,158,174].map(x=>lvMan(x, 152, wall, {s:1.15})).join("") : ""}
-    <g id="lvBall" transform="translate(150 166)"><circle r="7" fill="#fff" stroke="#15171A" stroke-width="1.4"/><path d="M-3 -2l3-2 3 2-1 3h-4z" fill="#15171A"/><circle cx="-2.6" cy="-3.2" r="1.8" fill="#fff" opacity=".85"/></g>
+    ${lvBallSvg("lvBall", 150, 166, 7)}
   </svg>`;
 }
 const lvMove = (id, x, y, rot=0, sc=1) => lv$(id)?.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${sc.toFixed(2)})`);
+// the net bulging where a goal went in
+function lvRipple(x, y){
+  const g = lv$("#lvRip"); if (!g) return Promise.resolve();
+  g.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`); g.setAttribute("opacity", 1);
+  const e = g.querySelector(".lv-rb"), c = g.querySelector(".lv-rr");
+  return lvTween(520, k=>{ const q = lvEaseOut(k); e.setAttribute("rx", (4 + 22*q).toFixed(1)); e.setAttribute("ry", (3 + 14*q).toFixed(1)); c.setAttribute("r", (4 + 30*q).toFixed(1)); g.setAttribute("opacity", (1 - k*.85).toFixed(2)); });
+}
+// the power bar: a green zone, and a marker moved by transform so the page never has to lay out again
+const lvBarHTML = (mid, zone) => `<div class="lv-bar" aria-hidden="true"><span class="lv-zone" style="left:${((mid-zone/2)*100).toFixed(1)}%;width:${(zone*100).toFixed(1)}%"></span><span class="lv-mark"></span></div>`;
+function lvBarSet(p, lo, hi){ const m = lv$(".lv-mark"); if (!m) return; m.style.transform = `translateX(${(p*100).toFixed(2)}%)`; m.parentNode.classList.toggle("in", p>=lo && p<=hi); }
 
 /* ---------- the match ---------- */
 function lvScore(st, min){ let f = 0, a = 0; st.ev.forEach(e=>{ if (e.min<min){ if (e.us) f++; else a++; } }); return [f, a]; }
 function lvHead(st, min, step){
+  if (st.lab) return labHead(st, step);   // the mini-game lab (lab.js) has its own
   if (st.drill) return drHead(st);   // a training drill (drills.js) has its own scoreboard
   const [f, a] = lvScore(st, min), left = st.f.home || st.f.neutral, us = lvAbbr(left ? S.mc.club : st.f.opp), them = lvAbbr(left ? st.f.opp : S.mc.club);
   const [l, r] = left ? [f, a] : [a, f];
@@ -201,17 +305,27 @@ function lvAuto(st, m){
 }
 // after each moment: the outcome over the pitch, then on to the next
 // a goal you scored or set up: confetti in your club's colours
-function lvBurst(){
-  const k = meta(S.mc.club), cols = [k.c1, k.c2 || "#FFFFFF", "#F5C542", "#FFFFFF"];
+function lvBurst(cols){
   return `<div class="lv-burst" aria-hidden="true">${[...Array(28)].map((_,i)=>{ const a = Math.random()*Math.PI*2, d = 70 + Math.random()*120;
     return `<i style="--x:${(Math.cos(a)*d).toFixed(0)}px;--y:${(Math.sin(a)*d*.7 - 40).toFixed(0)}px;--r:${Math.round(Math.random()*720 - 360)}deg;--c:${cols[i%4]};--d:${(Math.random()*.2).toFixed(2)}s"></i>`; }).join("")}</div>`;
 }
+// the result over the pitch: a tick, a cross or a ball, the headline and why
+const LV_ICON = {good:`<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  bad:`<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`,
+  goal:`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="#fff" stroke="#15171A" stroke-width="1.5"/><path d="M12 7.6l3.8 2.8-1.5 4.4H9.7l-1.5-4.4z" fill="#15171A"/></svg>`};
+function lvResHTML(R, cls = "lv-res"){
+  const goal = !!(R.g || R.a || R.gf), kind = goal ? "goal" : R.ok ? "good" : "bad";
+  return `<div class="${cls} ${R.ok?"good":"bad"} ${goal ? "goal" : ""}"><i class="lv-ico ${kind}" aria-hidden="true">${LV_ICON[kind]}</i><span>${esc(R.big)}</span>${R.small?`<small>${esc(R.small)}</small>`:""}</div>`;
+}
 function lvOutcome(st, R){
-  lv$(".lv-stage").insertAdjacentHTML("beforeend", `<div class="lv-res ${R.ok?"good":"bad"} ${R.g || R.a ? "goal" : ""}"><span>${esc(R.big)}</span>${R.small?`<small>${esc(R.small)}</small>`:""}${R.g || R.a ? lvBurst() : ""}</div>`);
+  const goal = !!(R.g || R.a || R.gf);
+  lv$(".lv-stage").insertAdjacentHTML("beforeend", lvResHTML(R));
+  if (R.g || R.a){ lv$(".lv-res").insertAdjacentHTML("beforeend", lvBurst(lvCols(st))); lvCheer(); }
+  lvBuzz(goal ? "goal" : R.ok ? "good" : "bad");
   // some mini-games (take-ons) have their own buttons instead of a main one: swap those for it
   let act = lv$(".lv-act"); if (!act){ act = document.createElement("button"); act.type = "button"; lv$(".lv-in").appendChild(act); }
   lv$(".lv-lr")?.remove(); act.hidden = false;
-  act.textContent = st.left>1 ? "Next moment" : "Full time"; act.disabled = true; act.className = "btn big primary lv-act"; act.onclick = null;
+  act.textContent = st.lab ? st.lab.next || "Continue" : st.left>1 ? "Next moment" : "Full time"; act.disabled = true; act.className = "btn big primary lv-act"; act.onclick = null;
   lv$("[data-lv-skip]")?.remove();
   // a short pause, so the tap that made the tackle can't also skip past its result
   return new Promise(res=>setTimeout(()=>{
@@ -372,30 +486,46 @@ const LV_SHOT = {
   oneonone:{t:"Through on goal!", s:"Pick your spot, then stop the power bar in the green.", z:.2, k:.85, per:1300},
   box:{t:"Space in the box", s:"Pick your spot, then stop the power bar in the green.", z:.16, k:1, per:1200},
   long:{t:"Shot from 25 yards", s:"Pick your spot. Hit it too hard and it's in the stands.", z:.11, k:1.25, per:1000},
-  freekick:{t:"Free kick in range", s:"Go over the wall or for a corner, then stop the bar in the green.", z:.12, k:1.1, per:1050}
+  freekick:{t:"Free kick in range", s:"Go over the wall or for a corner, then stop the bar in the green.", z:.12, k:1.1, per:1050},
+  pen:{t:"Penalty", s:"Pick your spot, then stop the power bar in the green.", z:.2, k:.95, per:1250}
 };
+// where the keeper ends up: at the ball when he saves it, close when it beats his hands, the other way when he's fooled
+function lvKeeperTo(tx, ty, reach, kcol){
+  lv$("#lvKp")?.classList.add("dive");
+  const side = tx<140 ? -1 : tx>160 ? 1 : 0;
+  if (reach==="save") return side ? [tx - side*20, ty + 18, side*62] : [tx, ty + 26, 0];
+  if (reach==="near") return side ? [150 + (tx-150)*.72, ty + 24, side*55] : [150, ty + 30, 0];
+  const k = {l:-1, c:0, r:1}[kcol];
+  return [150 + k*80, LV_ROWS.b - 4, k*62];
+}
 // the shot itself, also used at the end of a take-on and an attacking move: resolves {goal, big, small} or "skip"
 function lvShotCore(st, m, v, head, title){
-  const K = LV_SHOT[v], f = st.f, attr = mcA().fin, e = lvEase(st, attr), kit = lvKits(st);
+  const K = LV_SHOT[v], f = st.f, attr = lvAttr(st).fin, e = lvEase(st, attr), kit = lvKits(st);
   const zone = clamp(K.z*(1 + e*1.3), .05, .32), mid = .72, per = K.per*(1 + e*.8), kq = clamp(.5 + (f.oppStr - attr)/40, .2, .85);
+  const lo = mid-zone/2, hi = mid+zone/2;
   return new Promise(res=>{
     lvShow(`${head}<h2 class="lv-t">${title || K.t}</h2><p class="lv-s">${K.s}</p>
       <div class="lv-stage">${lvGoalSvg(kit.them, v==="freekick" ? kit.them : null)}
-        <div class="lv-aims">${["tl","tc","tr","bl","bc","br"].map(z=>`<button type="button" class="lv-aim" data-z="${z}" aria-label="Aim ${{t:"high",b:"low"}[z[0]]} ${{l:"left",c:"centre",r:"right"}[z[1]]}"></button>`).join("")}</div></div>
-      <div class="lv-bar" aria-hidden="true"><span class="lv-zone" style="left:${((mid-zone/2)*100).toFixed(1)}%;width:${(zone*100).toFixed(1)}%"></span><span class="lv-mark"></span></div>
+        <div class="lv-aims">${["tl","tc","tr","bl","bc","br"].map(z=>`<button type="button" class="lv-aim" data-z="${z}" aria-label="Aim ${{t:"high",b:"low"}[z[0]]} ${{l:"left",c:"centre",r:"right"}[z[1]]}"></button>`).join("")}</div>
+        <span class="lv-reticle" hidden></span></div>
+      ${lvBarHTML(mid, zone)}
       <button type="button" class="btn big lv-act" disabled>Tap the goal to aim</button>`);
     lvSkippable(res);
-    let aim = null, t0 = 0, p = 0, fired = false;
-    const mark = lv$(".lv-mark"), act = lv$(".lv-act");
-    const setAim = b=>{
+    let aim = null, pt = null, t0 = 0, p = 0, fired = false;
+    const act = lv$(".lv-act"), ret = lv$(".lv-reticle"), stage = lv$(".lv-stage");
+    // aim where you tapped (in the scene's coordinates), or the middle of the zone from the keyboard
+    const setAim = (b, ev)=>{
       if (fired) return; aim = b.dataset.z; lvEl.querySelectorAll(".lv-aim").forEach(x=>x.classList.toggle("on", x===b));
+      const r = stage.getBoundingClientRect(), br = b.getBoundingClientRect(), tap = ev && ev.pointerType && ev.clientX!=null;
+      pt = [clamp(((tap ? ev.clientX : br.left + br.width/2) - r.left)/r.width*300, 40, 260), clamp(((tap ? ev.clientY : br.top + br.height/2) - r.top)/r.height*180, 30, 114)];
+      ret.hidden = false; ret.setAttribute("style", lvPct(pt[0], pt[1])); ret.classList.remove("pop"); void ret.offsetWidth; ret.classList.add("pop");
       if (!t0){ t0 = performance.now(); act.disabled = false; act.classList.add("primary"); act.textContent = "Shoot!";
-        lvLoop(now=>{ if (fired) return false; p = (1 - Math.cos(2*Math.PI*(now-t0)/per))/2; mark.style.left = (p*100).toFixed(2)+"%"; }); }
+        lvLoop(now=>{ if (fired) return false; p = (1 - Math.cos(2*Math.PI*(now-t0)/per))/2; lvBarSet(p, lo, hi); }); }
     };
-    lvEl.querySelectorAll(".lv-aim").forEach(b=>lvTap(b, ()=>setAim(b)));
+    lvEl.querySelectorAll(".lv-aim").forEach(b=>lvTap(b, ev=>setAim(b, ev)));
     const fire = async ()=>{
-      if (!aim || fired) return; fired = true; cancelAnimationFrame(lvRaf); act.disabled = true;
-      const lo = mid-zone/2, hi = mid+zone/2, row = aim[0], col = aim[1];
+      if (!aim || fired) return; fired = true; cancelAnimationFrame(lvRaf); act.disabled = true; ret.hidden = true;
+      const row = aim[0], col = aim[1];
       // just past the green still hits the target, a little easier to save; well past it goes over
       let over = false, weak = 0;
       if (p>hi){ if (p-hi > (row==="t" ? .03 : .1)) over = true; else weak = .1; }
@@ -407,10 +537,15 @@ function lvShotCore(st, m, v, head, title){
       const save = clamp((kcol===col ? read : col==="c" ? .2 : .04)*(kq/.5)*K.k + weak, .02, .97);
       let goal = !over && !wall && Math.random()>save, tip = false;
       if (goal && Math.random()>m.q){ goal = false; tip = true; }   // in a match that's going against you, chances are harder
-      const tx = LV_COLS[col] + (Math.random()*16-8), ty = over ? -12 : wall ? 146 : LV_ROWS[row] + (Math.random()*10-5);
-      const kx = LV_COLS[kcol], ky = row==="t" ? 62 : 96, rot = kcol==="l" ? -62 : kcol==="r" ? 62 : 0;
-      await lvTween(480, k=>{ const q = 1-Math.pow(1-k, 2); lvMove("#lvBall", 150 + (tx-150)*q, 166 + (ty-166)*q, k*540, 1 - .35*q);
-        const d = Math.min(1, k*1.4); lvMove("#lvKp", 150 + (kx-150)*d, 84 + (ky-84)*d, rot*d); });
+      const tx = clamp(pt[0] + (Math.random()*10-5), 36, 264), ty = over ? -14 : wall ? 140 : clamp(pt[1] + (Math.random()*8-4), 30, 116);
+      const wx = wall ? clamp(tx, 128, 172) : tx;
+      const [kx, ky, rot] = lvKeeperTo(wx, ty, !goal && !over && !wall ? "save" : goal && kcol===col ? "near" : "wrong", kcol);
+      await lvStrike(st);
+      await Promise.all([
+        lvFly("#lvBall", [150, 166], [wx, ty], over ? 520 : 470, {s0:1, s1:wall ? .85 : .6, h:row==="t" || over ? 14 : 4, curve:(col==="l" ? -1 : col==="r" ? 1 : 0)*(6 + Math.random()*8), spin:1.6}),
+        lvTween(330, k=>{ const q = lvEaseOut(k); lvMove("#lvKp", 150 + (kx-150)*q, 84 + (ky-84)*q, rot*q, 1 + .06*q); })
+      ]);
+      if (goal){ lvRipple(wx, ty); await lvWait(160); }
       res({goal, big: goal ? "Goal!" : over ? "Over the bar" : wall ? "Hit the wall" : "Saved",
         small: goal ? (kcol===col ? "Past the keeper's hands" : "Sent him the wrong way") : over ? (row==="t" ? "Too high" : "Overhit") : wall ? "Go higher or wider" : tip ? "Fingertip save" : weak>=.3 ? "Not enough on it" : kcol===col ? "The keeper read it" : "Brilliant save"});
     };
@@ -428,37 +563,41 @@ async function lvGameShot(st, m){
 // a ring closes on the ball; tap as it meets the target ring. Resolves the miss distance d against tolerance tol
 function lvRing(st, o){
   const e = lvEase(st, o.attr), tol = clamp(.17*(1 + e*1.2), .08, .3), per = clamp(1200*(1 + e*.5), 850, 1650);
+  // the ball comes in from the wing as the ring closes, and arrives with it (o.ball: [id, where it ends up, scale])
+  const [bid, bx, by, bs] = o.ball || [], from = [bx + 150, by - 26];
   return new Promise(res=>{
     lvShow(`${o.head}<h2 class="lv-t">${o.title}</h2><p class="lv-s">${o.sub}</p>
       <div class="lv-stage lv-ringstage">${o.scene}
         <span class="lv-ring tgt" style="${lvPct(o.x, o.y)}"></span><span class="lv-ring mov" style="${lvPct(o.x, o.y)}"></span></div>
       <button type="button" class="btn primary big lv-act">${o.btn}</button>`);
     lvSkippable(res);
-    if (o.ball) lvMove("#lvBall", o.ball[0], o.ball[1], 0, .85);
     const ring = lv$(".lv-ring.mov"), t0 = performance.now() + 350; let s = 2.8, done = false;
-    lvLoop(now=>{ if (done) return false; const t = Math.max(0, now-t0)/per; s = 2.8 - 2.6*t; ring.style.transform = `translate(-50%,-50%) scale(${Math.max(.15, s).toFixed(3)})`; if (s<=.2){ end(); return false; } });
+    const ballAt = k => { if (bid) lvBallAt(bid, from[0] + (bx-from[0])*k, from[1] + (by-from[1])*k, bs, Math.sin(Math.min(1, k)*Math.PI)*34*(1 - k*.4), k*500, true); };
+    ballAt(0);
+    lvLoop(now=>{ if (done) return false; const t = Math.max(0, now-t0)/per; s = 2.8 - 2.6*t; ring.style.transform = `translate(-50%,-50%) scale(${Math.max(.15, s).toFixed(3)})`; ballAt(clamp((2.8 - s)/1.8, 0, 1.12)); if (s<=.2){ end(); return false; } });
     const end = ()=>{ if (done) return; done = true; cancelAnimationFrame(lvRaf); lv$(".lv-act").disabled = true; res({d:Math.abs(s-1), tol}); };
     lvTap(lv$(".lv-act"), end); lvTap(lv$(".lv-stage"), end);
     lvKey = k=>{ if (k==="go") end(); };
   });
 }
 async function lvGameHeader(st, m){
-  const kit = lvKits(st), a = mcA(), kq = clamp(.5 + (st.f.oppStr - a.fin)/40, .2, .85);
+  const kit = lvKits(st), a = lvAttr(st), kq = clamp(.5 + (st.f.oppStr - a.fin)/40, .2, .85);
   const r = await lvRing(st, {head:lvHead(st, m.min), title:"Cross coming in", sub:"Tap Head it! when the closing ring meets the gold one.", btn:"Head it!",
-    attr:a.fin*.6 + a.def*.4, x:112, y:104, scene:lvGoalSvg(kit.them), ball:[112, 104]});
+    attr:a.fin*.6 + a.def*.4, x:112, y:104, scene:lvGoalSvg(kit.them), ball:["#lvBall", 112, 104, .85]});
   if (r==="skip") return r;
   const perfect = r.d < r.tol*.45, on = r.d < r.tol;
   const save = perfect ? .1*kq/.5 : on ? clamp(.45*kq/.5, .2, .8) : 1;
   let goal = Math.random() > save; if (goal && Math.random()>m.q) goal = false;
   const col = pick(["l","r"]), tx = perfect ? LV_COLS[col] : on ? 150 + (Math.random()*60-30) : 150 + (Math.random()*160-80), ty = !on ? -10 : perfect ? 42 : 80;
-  await lvTween(380, k=>lvMove("#lvBall", 112 + (tx-112)*k, 104 + (ty-104)*k, k*400, .85 - .3*k));
-  if (goal) return {ok:true, big:"Goal!", small: perfect ? "A bullet header" : "Glanced in", g:1};
+  const [kx, ky, rot] = lvKeeperTo(tx, ty, goal ? "wrong" : on ? "save" : "wrong", goal ? (tx<150 ? "r" : "l") : "c");
+  await Promise.all([lvFly("#lvBall", [112, 104], [tx, ty], 380, {s0:.85, s1:.6, spin:1.4}), on ? lvTween(300, k=>{ const q = lvEaseOut(k); lvMove("#lvKp", 150 + (kx-150)*q, 84 + (ky-84)*q, rot*q); }) : null]);
+  if (goal){ lvRipple(tx, ty); await lvWait(160); return {ok:true, big:"Goal!", small: perfect ? "A bullet header" : "Glanced in", g:1}; }
   return {ok:false, big: on ? "Saved" : "Over the bar", small: on ? (perfect ? "Somehow he kept it out" : "Straight at the keeper") : r.d<r.tol*2 ? "Just mistimed it" : "Way off", bonus:-.08};
 }
 async function lvGameClaim(st, m){
-  const kit = lvKits(st), a = mcA();
+  const kit = lvKits(st), a = lvAttr(st);
   const r = await lvRing(st, {head:lvHead(st, m.min), title:"Cross into your box", sub:"Tap Claim it! when the closing ring meets the gold one.", btn:"Claim it!",
-    attr:a.def, x:150, y:112, scene:lvField("bottom", `${lvMan(150,170,kit.us,{ring:"#F5C542"})}${lvMan(96,124,kit.them)}${lvMan(206,118,kit.them)}${lvMan(226,140,kit.us)}${lvBallSvg("lvB",150,112,4)}`)});
+    attr:a.def, x:150, y:112, scene:lvField("bottom", `${lvMan(150,170,kit.us,{ring:"#F5C542"})}${lvMan(96,124,kit.them)}${lvMan(206,118,kit.them)}${lvMan(226,140,kit.us)}${lvBallSvg("lvB",150,112,4)}`), ball:["#lvB", 150, 112, 1]});
   if (r==="skip") return r;
   if (r.d < r.tol*.6) return {ok:true, big:"Claimed!", small:"Safe hands", bonus:.3};
   if (r.d < r.tol) return {ok:true, big:"Punched clear", small:"Not pretty, but it's gone", bonus:.15};
@@ -468,7 +607,7 @@ async function lvGameClaim(st, m){
 /* ---------- passes: tap the free teammate ---------- */
 // resolves {ok, why} or "skip"; extra gives more (or less) time
 function lvPassCore(st, head, title, sub, extra=0){
-  const f = st.f, a = mcA(), e = lvEase(st, a.pas), kit = lvKits(st);
+  const f = st.f, a = lvAttr(st), e = lvEase(st, a.pas), kit = lvKits(st);
   const win = clamp(2900*(1 + e*.6), 1900, 3900) + extra, iv = clamp(950*(1 + e*.5), 600, 1350);
   const spots = [[50,72],[150,36],[250,72]].map(([x,y])=>[x + Math.random()*24-12, y + Math.random()*14-7]);
   return new Promise(res=>{
@@ -499,7 +638,9 @@ function lvPassCore(st, head, title, sub, extra=0){
       if (done) return; done = true; cancelAnimationFrame(lvRaf);
       // a fraction of a second's grace when the defenders have only just moved
       const ok = i>=0 && (i===open || (i===prev && performance.now()-switched<220));
-      if (ok){ const [x,y] = spots[i]; await lvTween(300, k=>lvMove("#lvPb", 150 + (x-150)*k, 150 + (y-150)*k)); }
+      // the ball goes to him, or to the defender who was waiting for it
+      if (i>=0){ const [x,y] = spots[i], far = Math.hypot(x-150, y-150) > 90;
+        lvKick(); await lvFly("#lvPb", [150, 150], ok ? [x, y] : [x + (x<150 ? 9 : x>150 ? -9 : 0), y + 8], far ? 420 : 320, {h:far ? 16 : 5, spin:1}); }
       res({ok, i, why: i<0 ? "You took too long" : ok ? "" : "He was marked"});
     };
     lvEl.querySelectorAll(".lv-mate").forEach(b=>lvTap(b, ()=>finish(+b.dataset.i)));
@@ -509,7 +650,7 @@ function lvPassCore(st, head, title, sub, extra=0){
 // a teammate finishing a chance you made: better the stronger your team is against this opponent
 const lvConv = (st, m, base) => clamp(base + (st.X.base - st.f.oppStr)*.008, base*.55, base*1.5)*m.q;
 async function lvGamePass(st, m){
-  const title = {LB:"Overlap down the wing", RB:"Overlap down the wing", ST:"Hold it up and lay it off", LW:"Cutting inside", RW:"Cutting inside", CDM:"Switch the play"}[S.player.pos] || "Teammate making a run";
+  const title = {LB:"Overlap down the wing", RB:"Overlap down the wing", ST:"Hold it up and lay it off", LW:"Cutting inside", RW:"Cutting inside", CDM:"Switch the play"}[lvPos(st)] || "Teammate making a run";
   const r = await lvPassCore(st, lvHead(st, m.min), title, "Tap the teammate who's free before the defenders close him down.");
   if (r==="skip") return r;
   if (!r.ok) return {ok:false, big: r.i<0 ? "Closed down" : "Intercepted", small:r.why, bonus:-.1};
@@ -518,7 +659,7 @@ async function lvGamePass(st, m){
 
 /* ---------- take-ons: read the defender and go the other way ---------- */
 function lvTakeonCore(st, head, title, sub){
-  const f = st.f, a = mcA(), e = lvEase(st, a.pac*.6 + a.fin*.4), kit = lvKits(st);
+  const f = st.f, a = lvAttr(st), e = lvEase(st, a.pac*.6 + a.fin*.4), kit = lvKits(st);
   const react = clamp(720*(1 + e), 380, 1100), wait = 700 + Math.random()*900, fake = f.oppStr > a.pac + 4 && Math.random()<.3;
   return new Promise(res=>{
     lvShow(`${head}<h2 class="lv-t">${title}</h2><p class="lv-s">${sub}</p>
@@ -535,7 +676,8 @@ function lvTakeonCore(st, head, title, sub){
       if (fake && !faked && t>wait-420 && t<wait-200){ lvMove("#lvDef", 150 + (Math.random()<.5 ? -6 : 6), 92); }
       else if (fake && !faked && t>=wait-200){ faked = true; lvMove("#lvDef", 150, 92); }
       if (!commit && t>=wait){ commit = pick(["l","r"]); at = now; stage.dataset.commit = commit;
-        lvMove("#lvDef", 150 + (commit==="l" ? -16 : 16), 92); const b = lv$("#lvBang"); b.setAttribute("x", 150 + (commit==="l" ? -30 : 22)); b.setAttribute("y", 58); b.setAttribute("opacity", 1); }
+        const b = lv$("#lvBang"); b.setAttribute("x", 150 + (commit==="l" ? -30 : 22)); b.setAttribute("y", 58); b.setAttribute("opacity", 1); }
+      if (commit) lvMove("#lvDef", 150 + (commit==="l" ? -16 : 16)*lvEaseOut(Math.min(1, (now-at)/140)), 92);
       if (commit && now-at > react){ end(null, "He closed you down"); return false; }
     });
     const end = async (side, why)=>{
@@ -544,7 +686,10 @@ function lvTakeonCore(st, head, title, sub){
       if (side && !commit){ ok = Math.random() < .3; why = ok ? "" : "You went too early: he read you"; }
       else if (side){ ok = side!==commit; why = ok ? "" : "He was waiting for that"; }
       const dx = side==="l" ? -46 : 46;
-      if (ok) await lvTween(320, k=>{ lvMove("#lvMe", 150 + dx*k, 150 - 80*k); lvMove("#lvTb", 150 + dx*k, 136 - 82*k); });
+      lv$("#lvMe .lv-legs")?.classList.add("run");
+      if (ok) await lvTween(340, k=>{ const q = lvEaseOut(k); lvMove("#lvMe", 150 + dx*q, 150 - 80*q); lvBallAt("#lvTb", 150 + dx*q + 4, 136 - 84*q, 1, 0, k*400); });
+      else { const dd = commit || (side==="l" ? "l" : "r"), bx = 150 + (dd==="l" ? -10 : 10);
+        await lvTween(260, k=>{ const q = lvEaseOut(k); lvMove("#lvDef", 150 + (bx-150)*q, 92 + 34*q); lvBallAt("#lvTb", 150 + (dd==="l" ? -50 : 50)*q, 136 + 10*q, 1, 6*Math.sin(Math.PI*q), k*300); }); }
       res({ok, why});
     };
     lvEl.querySelectorAll("[data-s]").forEach(b=>lvTap(b, ()=>end(b.dataset.s)));
@@ -556,7 +701,7 @@ async function lvGameTakeon(st, m){
   if (r==="skip") return r;
   if (!r.ok) return {ok:false, big:"Tackled", small:r.why, bonus:-.08};
   // forwards go through on goal; full-backs and midfielders cut it back
-  if (["ST","LW","RW","CAM"].includes(S.player.pos)){
+  if (["ST","LW","RW","CAM"].includes(lvPos(st))){
     const s = await lvShotCore(st, m, "oneonone", lvHead(st, m.min), "You're through!"); if (s==="skip") return s;
     return s.goal ? {ok:true, big:"Goal!", small:"Beat his man and finished it", g:1} : {ok:false, big:s.big, small:s.small, bonus:.02};
   }
@@ -592,17 +737,17 @@ async function lvGameMove(st, m){
   return Math.random() < lvConv(st, m, .72) ? {ok:true, big:"Assist!", small:"Squared for a tap-in", a:1} : {ok:true, big:"Off the line!", small:"Cleared at the last second", bonus:.12};
 }
 function lvWeight(st, m, head){
-  const e = lvEase(st, mcA().pas), zone = clamp(.26*(1 + e), .14, .4), mid = .6, per = 1100, kit = lvKits(st);
+  const e = lvEase(st, lvAttr(st).pas), zone = clamp(.26*(1 + e), .14, .4), mid = .6, per = 1100, kit = lvKits(st);
   return new Promise(res=>{
     lvShow(`${head}<h2 class="lv-t">Square it</h2><p class="lv-s">Weight the pass: stop the bar in the green.</p>
       <div class="lv-stage">${lvField("top", `${lvMan(108,70,kit.us,{ring:"#F5C542"})}${lvMan(196,52,kit.us,{num:9})}${lvMan(150,20,kit.them)}${lvBallSvg("lvSq",116,74,4)}`)}</div>
-      <div class="lv-bar" aria-hidden="true"><span class="lv-zone" style="left:${((mid-zone/2)*100).toFixed(1)}%;width:${(zone*100).toFixed(1)}%"></span><span class="lv-mark"></span></div>
+      ${lvBarHTML(mid, zone)}
       <button type="button" class="btn big primary lv-act">Pass!</button>`);
     lvSkippable(res);
-    const mark = lv$(".lv-mark"), t0 = performance.now(); let p = 0, done = false;
-    lvLoop(now=>{ if (done) return false; p = (1 - Math.cos(2*Math.PI*(now-t0)/per))/2; mark.style.left = (p*100).toFixed(2)+"%"; });
+    const t0 = performance.now(); let p = 0, done = false;
+    lvLoop(now=>{ if (done) return false; p = (1 - Math.cos(2*Math.PI*(now-t0)/per))/2; lvBarSet(p, mid-zone/2, mid+zone/2); });
     const go = async ()=>{ if (done) return; done = true; cancelAnimationFrame(lvRaf); lv$(".lv-act").disabled = true; const ok = Math.abs(p-mid)<=zone/2;
-      await lvTween(300, k=>lvMove("#lvSq", 116 + (ok ? 74 : 40)*k, 74 - (ok ? 20 : 2)*k)); res(ok); };
+      lvKick(); await lvFly("#lvSq", [116, 74], ok ? [190, 54] : [156 + (p>mid ? 40 : 0), p>mid ? 40 : 72], 320, {spin:1}); res(ok); };
     lvTap(lv$(".lv-act"), go); lv$(".lv-bar").addEventListener("pointerdown", go);
     lvKey = k=>{ if (k==="go") go(); };
   });
@@ -610,13 +755,13 @@ function lvWeight(st, m, head){
 
 /* ---------- crosses: pick the free runner as he hits his spot ---------- */
 function lvGameCross(st, m){
-  const a = mcA(), e = lvEase(st, a.pas), kit = lvKits(st), left = ["LW","LB"].includes(S.player.pos), X = x => left ? 300-x : x;
+  const a = lvAttr(st), e = lvEase(st, a.pas), kit = lvKits(st), left = ["LW","LB"].includes(lvPos(st)), X = x => left ? 300-x : x;
   const R = [{from:[X(214),124], to:[X(170),26], spot:[X(172),38]}, {from:[X(138),140], to:[X(122),20], spot:[X(128),34]}];
   const marked = Math.floor(Math.random()*2), per = clamp(1750*(1 + e*.35), 1250, 2300), rr = clamp(14*(1 + e), 9, 21);
   return new Promise(res=>{
     lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">Cross it in</h2><p class="lv-s">Tap the free runner as he reaches his green spot.</p>
       <div class="lv-stage">${lvField("top", R.map((r,i)=>`<circle cx="${r.spot[0]}" cy="${r.spot[1]}" r="${rr}" fill="rgba(74,222,128,.28)" stroke="#4ADE80" stroke-width="1.5"/>`).join("")
-          + R.map((r,i)=>`<g id="lvR${i}">${lvMan(0,0,kit.us,{num:[9,11][i]})}</g>`).join("") + `<g id="lvRd">${lvMan(0,0,kit.them)}</g>` + lvMan(X(272), 34, kit.us, {ring:"#F5C542"}) + lvBallSvg("lvCb", X(262), 36, 4))}
+          + R.map((r,i)=>`<g id="lvR${i}">${lvMan(0,0,kit.us,{num:[9,11][i], run:true})}</g>`).join("") + `<g id="lvRd">${lvMan(0,0,kit.them,{run:true})}</g>` + lvMan(X(272), 34, kit.us, {ring:"#F5C542"}) + lvBallSvg("lvCb", X(262), 36, 4))}
         ${R.map((r,i)=>`<button type="button" class="lv-tap lv-run-btn" data-i="${i}" ${i===marked?"data-marked":""} aria-label="Cross to number ${[9,11][i]}"></button>`).join("")}</div>
       <button type="button" class="btn big lv-act" disabled>Pick your man</button>`);
     lvSkippable(res);
@@ -632,7 +777,8 @@ function lvGameCross(st, m){
       if (done) return; done = true; cancelAnimationFrame(lvRaf);
       if (i<0) return res({ok:false, big:"Too late", small:"The chance has gone", bonus:-.08});
       const r = R[i], [x,y] = pos(r, Math.min(t, 1.1)), d = Math.hypot(x - r.spot[0], y - r.spot[1]);
-      await lvTween(360, k=>lvMove("#lvCb", X(262) + (r.spot[0]-X(262))*k, 36 + (r.spot[1]-36)*k - Math.sin(k*Math.PI)*16));
+      lvEl.querySelectorAll(".lv-legs.run").forEach(l=>l.classList.remove("run"));
+      lvKick(); await lvFly("#lvCb", [X(262), 36], r.spot, 420, {h:30, spin:1.4});
       if (i===marked) return res({ok:false, big:"Cleared", small:"He was marked", bonus:-.08});
       if (d>rr) return res({ok:false, big:"Wasted", small: t<1 && Math.hypot(x-r.from[0], y-r.from[1]) < Math.hypot(r.spot[0]-r.from[0], r.spot[1]-r.from[1]) ? "Crossed too early" : "Crossed too late", bonus:-.08});
       res(Math.random() < lvConv(st, m, .42) ? {ok:true, big:"Assist!", small:"A perfect cross, buried with a header", a:1} : {ok:true, big:"Great cross", small:"His header was saved", bonus:.12});
@@ -644,7 +790,7 @@ function lvGameCross(st, m){
 
 /* ---------- tackles and blocks: timing ---------- */
 function lvGameTiming(st, m){
-  const f = st.f, a = mcA(), block = m.g==="block", kit = lvKits(st);
+  const f = st.f, a = lvAttr(st), block = m.g==="block", kit = lvKits(st);
   const e = lvEase(st, block ? a.def : a.def*.7 + a.pac*.3);
   const zone = clamp(.14*(1 + e*1.2), .06, .3), mid = block ? .78 : .66, per = clamp(1300*(1 + e*.45), 750, 1750);
   const T = block ? {t:"Shot heading for goal!", s:"Throw yourself in the way: tap when the ball reaches the green.", b:"Block!"}
@@ -653,17 +799,23 @@ function lvGameTiming(st, m){
     lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">${T.t}</h2><p class="lv-s">${T.s}</p>
       <div class="lv-stage">${lvField(block ? "side" : "none", `<path d="M10 92H290" stroke="rgba(255,255,255,.3)" stroke-width="3" stroke-dasharray="8 6"/>
           <rect x="${(10 + 280*(mid-zone/2)).toFixed(1)}" y="52" width="${(280*zone).toFixed(1)}" height="78" rx="10" fill="rgba(74,222,128,.3)" stroke="#4ADE80" stroke-width="2"/>
-          ${lvMan(10 + 280*mid, 140, kit.us, {ring:"#F5C542"})}
-          ${block ? `${lvMan(18, 100, kit.them)}${lvBallSvg("lvRun", 10, 92, 5)}` : `<g id="lvRun">${lvMan(0, 8, kit.them)}<circle cx="9" cy="6" r="3.6" fill="#fff" stroke="#15171A"/></g>`}`)}</div>
+          <g id="lvMe">${lvMan(0, 0, kit.us, {ring:"#F5C542"})}</g>
+          ${block ? `${lvMan(18, 100, kit.them)}${lvBallSvg("lvRun", 10, 92, 5)}` : `<g id="lvRun">${lvMan(0, 8, kit.them, {run:true})}${lvBallSvg("lvRunB", 9, 6, 3.6, false)}</g>`}`)}</div>
       <button type="button" class="btn primary big lv-act">${T.b}</button>`);
     lvSkippable(res);
-    let p = -.1, done = false; const t0 = performance.now() + 450;
-    lvLoop(now=>{ if (done) return false; p = (now-t0)/per; lvMove("#lvRun", 10 + clamp(p, -.1, 1)*280, 92); if (p>=1){ go(true); return false; } });
-    const go = (late)=>{
+    let p = -.1, done = false; const t0 = performance.now() + 450, mx = 10 + 280*mid;
+    lvMove("#lvMe", mx, 140);
+    const place = () => { const x = 10 + clamp(p, -.1, 1)*280; if (block) lvBallAt("#lvRun", x, 92, 1, 0, x*4); else { lvMove("#lvRun", x, 92); lvBallAt("#lvRunB", 9, 6, 1, 0, x*5); } };
+    lvLoop(now=>{ if (done) return false; p = (now-t0)/per; place(); if (p>=1){ go(true); return false; } });
+    const go = async (late)=>{
       if (done || (p<0 && !late)) return;   // he isn't on the pitch yet: a tap now doesn't count
       done = true; cancelAnimationFrame(lvRaf); lv$(".lv-act").disabled = true;
-      const ok = Math.abs(p-mid)<=zone/2, early = p<mid-zone/2;
-      if (ok) return res({ok:true, big: block ? "Blocked!" : "Tackle won!", small: block ? "Off your shin and away" : "Clean as a whistle", bonus:.3});
+      const ok = Math.abs(p-mid)<=zone/2, early = p<mid-zone/2, x = 10 + clamp(p, -.1, 1)*280;
+      // you go to ground: a slide towards where he is (and the ball flying off if you got it)
+      lvTween(260, k=>{ const q = lvEaseOut(k); lvMove("#lvMe", mx + (x - mx)*q*.8, 140 - 34*q, (x<mx ? -1 : 1)*70*q); });
+      if (ok){ await lvWait(120); if (block) await lvFly("#lvRun", [x, 92], [x - 40, 30], 380, {h:24, spin:2}); else await lvFly("#lvRunB", [9, 6], [9, -50], 380, {h:20, spin:2});
+        return res({ok:true, big: block ? "Blocked!" : "Tackle won!", small: block ? "Off your shin and away" : "Clean as a whistle", bonus:.3}); }
+      await lvWait(260);
       const why = early ? (block ? "You went down too soon" : "You dived in") : (block ? "Too late" : "He skipped past you");
       if (Math.random() >= (block ? .72 : .52)*m.q) return res({ok:false, big:"Got away with it", small:`${why}, but the shot went wide`, bonus:-.1});
       const og = block && Math.random()<.3;   // a block that goes wrong can deflect in off you
@@ -676,28 +828,32 @@ function lvGameTiming(st, m){
 
 /* ---------- interceptions: read the passer's eyes ---------- */
 function lvGameIntercept(st, m){
-  const f = st.f, a = mcA(), e = lvEase(st, a.def*.7 + a.pas*.3), kit = lvKits(st);
+  const f = st.f, a = lvAttr(st), e = lvEase(st, a.def*.7 + a.pas*.3), kit = lvKits(st);
   const react = clamp(700*(1 + e), 400, 1100), wait = 700 + Math.random()*800, dummy = f.oppStr > a.def + 3 && Math.random()<.35;
   const L = {l:[70,110], c:[150,126], r:[230,110]};
   return new Promise(res=>{
     lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">Read the pass</h2><p class="lv-s">Watch where he looks, then tap that lane to cut it out.</p>
-      <div class="lv-stage">${lvField("bottom", `<path d="M112 20v150M188 20v150" stroke="rgba(255,255,255,.2)" stroke-width="2" stroke-dasharray="6 6"/>${lvMan(150,40,kit.them)}${Object.values(L).map(([x,y])=>lvMan(x, y, kit.them)).join("")}${lvMan(150,86,kit.us,{ring:"#F5C542"})}
+      <div class="lv-stage">${lvField("bottom", `<path d="M112 20v150M188 20v150" stroke="rgba(255,255,255,.2)" stroke-width="2" stroke-dasharray="6 6"/>${lvMan(150,40,kit.them)}${Object.values(L).map(([x,y])=>lvMan(x, y, kit.them)).join("")}<g id="lvMe">${lvMan(0,0,kit.us,{ring:"#F5C542"})}</g>
           <path id="lvLook" d="M0 0" stroke="#F5C542" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 6" opacity="0"/>${lvBallSvg("lvIb", 150, 44, 4)}`)}
         <div class="lv-thirds">${["l","c","r"].map(z=>`<button type="button" class="lv-tap" data-z="${z}" aria-label="Cut out the pass ${{l:"left",c:"through the middle",r:"right"}[z]}"></button>`).join("")}</div></div>
       <button type="button" class="btn big lv-act" disabled>Watch his eyes</button>`);
     lvSkippable(res);
-    const stage = lv$(".lv-stage"), look = lv$("#lvLook"), t0 = performance.now(); let dir = null, at = 0, done = false, faked = !dummy;
+    const stage = lv$(".lv-stage"), look = lv$("#lvLook"), t0 = performance.now(); let dir = null, at = 0, done = false, faked = !dummy, cur = [150, 44];
+    lvMove("#lvMe", 150, 86);
     const show = z => { const [x,y] = L[z]; look.setAttribute("d", `M150 46L${150 + (x-150)*.72} ${46 + (y-46)*.72}`); look.setAttribute("opacity", 1); };
     lvLoop(now=>{
       if (done) return false;
       const t = now - t0;
       if (!faked && t>=wait-450){ faked = true; show(pick(["l","c","r"])); setTimeout(()=>{ if (!dir && lvEl) look.setAttribute("opacity", 0); }, 200); }
       if (!dir && t>=wait){ dir = pick(["l","c","r"]); at = now; stage.dataset.look = dir; show(dir); }
-      if (dir){ const k = clamp((now-at-react*.45)/(react*.55), 0, 1), [x,y] = L[dir]; lvMove("#lvIb", 150 + (x-150)*k, 44 + (y-44)*k); if (k>=1){ end(null); return false; } }
+      if (dir){ const k = clamp((now-at-react*.45)/(react*.55), 0, 1), [x,y] = L[dir]; cur = [150 + (x-150)*k, 44 + (y-44)*k]; lvBallAt("#lvIb", cur[0], cur[1], 1, 0, k*500, k>0); if (k>=1){ end(null); return false; } }
     });
-    const end = z=>{
+    const end = async z=>{
       if (done) return; done = true; cancelAnimationFrame(lvRaf);
       const ok = z && (dir ? z===dir : Math.random()<1/3);
+      // you step across into the lane you picked; if it's the right one, the ball's yours
+      if (z){ const tx = {l:104, c:150, r:196}[z]; await lvTween(200, k=>lvMove("#lvMe", 150 + (tx-150)*lvEaseOut(k), 86 + 6*k));
+        if (ok) await lvFly("#lvIb", cur, [tx + 6, 90], 160); }
       if (ok) return res(Math.random()<.08 ? {ok:true, big:"Intercepted!", small:"…and the counter ends in a goal", gf:1, bonus:.4} : {ok:true, big:"Intercepted!", small: dir ? "You read it perfectly" : "A lucky guess", bonus:.3});
       const why = !z ? "Too slow to react" : !dir ? "You went before he'd decided" : "Wrong lane";
       res(Math.random() < .3*m.q ? {ok:false, big:"They score", small:`${why}: they broke through`, ga:1, bonus:-.3} : {ok:false, big:"Pass completed", small:why, bonus:-.1});
@@ -709,26 +865,27 @@ function lvGameIntercept(st, m){
 
 /* ---------- shadowing: stay in his lane ---------- */
 function lvGameShadow(st, m){
-  const a = mcA(), e = lvEase(st, a.def*.6 + a.pac*.4), kit = lvKits(st), X = {l:75, c:150, r:225};
+  const a = lvAttr(st), e = lvEase(st, a.def*.6 + a.pac*.4), kit = lvKits(st), X = {l:75, c:150, r:225};
   const react = clamp(640*(1 + e), 330, 980), moves = 4;
   return new Promise(res=>{
     lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">Shadow your man</h2><p class="lv-s">When he switches lane, tap the same lane to stay in front of him.</p>
       <div class="lv-stage">${lvField("bottom", `<path d="M112 10v150M188 10v150" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="6 6"/>
-          <g id="lvAt">${lvMan(0,0,kit.them)}</g><g id="lvMe">${lvMan(0,0,kit.us,{ring:"#F5C542"})}</g>`)}
+          <g id="lvAt" class="lv-sl">${lvMan(0,0,kit.them,{run:true})}</g><g id="lvMe" class="lv-sl">${lvMan(0,0,kit.us,{ring:"#F5C542", run:true})}</g>`)}
         <div class="lv-thirds">${["l","c","r"].map(z=>`<button type="button" class="lv-tap" data-z="${z}" aria-label="Move ${{l:"left",c:"to the middle",r:"right"}[z]}"></button>`).join("")}</div></div>
       <div class="lv-timer"><span></span></div>
       <button type="button" class="btn big lv-act" disabled>Stay with him</button>`);
     lvSkippable(res);
     const stage = lv$(".lv-stage"), bar = lv$(".lv-timer span");
     let his = "c", mine = "c", n = 0, misses = 0, next = performance.now() + 900, deadline = 0, done = false;
-    lvMove("#lvAt", X.c, 58); lvMove("#lvMe", X.c, 128); stage.dataset.lane = his;
+    const slide = (id, x, y) => { const g = lv$(id); if (g) g.style.transform = `translate(${x}px,${y}px)`; };
+    slide("#lvAt", X.c, 58); slide("#lvMe", X.c, 128); stage.dataset.lane = his;
     lvLoop(now=>{
       if (done) return false;
       if (deadline && now>=deadline){ if (mine!==his) misses++; deadline = 0; n++; next = now + 450 + Math.random()*350; if (n>=moves){ end(); return false; } }
-      if (!deadline && now>=next){ his = pick(["l","c","r"].filter(z=>z!==his)); stage.dataset.lane = his; lvMove("#lvAt", X[his], 58); deadline = now + react; }
+      if (!deadline && now>=next){ his = pick(["l","c","r"].filter(z=>z!==his)); stage.dataset.lane = his; slide("#lvAt", X[his], 58); deadline = now + react; }
       bar.style.width = (100 - (n/moves)*100) + "%";
     });
-    const step = z=>{ if (done) return; mine = z; lvMove("#lvMe", X[z], 128); };
+    const step = z=>{ if (done) return; mine = z; slide("#lvMe", X[z], 128); };
     const end = ()=>{
       done = true;
       if (misses===0) return res({ok:true, big:"Kept him in front", small:"He had nowhere to go", bonus:.3});
@@ -742,7 +899,7 @@ function lvGameShadow(st, m){
 
 /* ---------- saves and penalties: react to the shot ---------- */
 function lvGameSave(st, m){
-  const f = st.f, a = mcA(), pen = m.v==="pen", kit = lvKits(st), e = lvEase(st, a.def);
+  const f = st.f, a = lvAttr(st), pen = m.v==="pen", kit = lvKits(st), e = lvEase(st, a.def);
   const react = clamp(760*(1 + e) - (pen ? 160 : 0), 360, 1150);
   const T = pen ? {t:"Penalty!", s:"Watch the ball and dive the right way: tap that side of the goal."}
     : pick([{t:"One-on-one!", s:"He's through. Watch the ball and dive the right way."}, {t:"Shot from the edge of the box", s:"Watch the ball and dive the right way: tap that side of the goal."}]);
@@ -753,24 +910,26 @@ function lvGameSave(st, m){
         <span class="lv-cue">${pen ? "Penalty" : "Here he comes"}…</span></div>
       <button type="button" class="btn big lv-act" disabled>Watch the ball</button>`);
     lvSkippable(res);
-    let dir = null, ty = LV_ROWS.b, tap = null, tapAt = 0, rel = 0, done = false;
+    let dir = null, ty = LV_ROWS.b, tap = null, tapAt = 0, rel = 0, done = false, curl = 0;
     const windUp = (pen ? 1100 : 650) + Math.random()*700, t0 = performance.now();
     const pickDir = ()=>{ const all = ["l","c","r"]; if (tap && Math.random()<.8) return pick(all.filter(z=>z!==tap)); return pick(["l","l","c","r","r"]); };   // strikers punish keepers who go early
     lvLoop(now=>{
       if (done) return false;
-      if (!dir && now-t0>=windUp){ dir = pickDir(); ty = pick([LV_ROWS.t, LV_ROWS.b]); rel = now; lv$(".lv-cue")?.remove(); }
-      if (dir){ const k = Math.min(1, (now-rel)/react); lvMove("#lvBall", 150 + (LV_COLS[dir]-150)*k, 166 + (ty-166)*k, k*400, 1 - .35*k); if (k>=1){ end(); return false; } }
+      if (!dir && now-t0>=windUp){ dir = pickDir(); ty = pick([LV_ROWS.t, LV_ROWS.b]); rel = now; curl = (Math.random()*2-1)*(pen ? 4 : 12); lv$(".lv-cue")?.remove(); }
+      if (dir){ const k = Math.min(1, (now-rel)/react), q = lvEaseOut(k); lvBallAt("#lvBall", 150 + (LV_COLS[dir]-150)*q + curl*Math.sin(Math.PI*q), 166 + (ty-166)*q, 1 - .38*q, 0, k*480, true); if (k>=1){ end(); return false; } }
     });
     const dive = z=>{
-      if (tap || done) return; tap = z; tapAt = performance.now();
+      if (tap || done) return; tap = z; tapAt = performance.now(); lv$("#lvKp")?.classList.add("dive");
       const kx = LV_COLS[z], rot = z==="l" ? -62 : z==="r" ? 62 : 0;
-      lvTween(220, k=>lvMove("#lvKp", 150 + (kx-150)*k, 84 + (z==="c" ? -20 : 8)*k, rot*k)).then(()=>{ if (dir && !done) end(); });
+      lvTween(240, k=>{ const q = lvEaseOut(k); lvMove("#lvKp", 150 + (kx-150)*q, 84 + (z==="c" ? -20 : 8)*q, rot*q, 1 + .06*q); }).then(()=>{ if (dir && !done) end(); });
     };
     const end = async ()=>{
       if (done) return; done = true; cancelAnimationFrame(lvRaf);
       if (!dir) dir = pickDir();
       const saved = tap===dir && Math.random() > clamp((f.oppStr - a.def)/50, 0, .2);
-      lvMove("#lvBall", LV_COLS[dir], ty, 0, .65);
+      // a save stops it in your gloves; a goal ripples the net
+      lvBallAt("#lvBall", LV_COLS[dir] + (saved && dir!=="c" ? (dir==="l" ? 10 : -10) : 0), saved ? ty - 6 : ty, .62);
+      if (!saved) lvRipple(LV_COLS[dir], ty);
       await lvWait(250);
       if (saved) return res({ok:true, big:"Saved!", small: pen ? "Penalty saved!" : tap && tapAt<rel ? "You guessed right" : "Great reactions", bonus: pen ? .55 : .35});
       if (Math.random() > .92*m.q) return res({ok:true, big:"Off the post!", small:"Lucky", bonus:-.05});
@@ -783,11 +942,11 @@ function lvGameSave(st, m){
 
 /* ---------- rushing out: smother it after his heavy touch ---------- */
 function lvGameRush(st, m){
-  const f = st.f, a = mcA(), e = lvEase(st, a.def*.7 + a.pac*.3), kit = lvKits(st);
+  const f = st.f, a = lvAttr(st), e = lvEase(st, a.def*.7 + a.pac*.3), kit = lvKits(st);
   const run = clamp(1900*(1 + e*.3), 1300, 2400), react = clamp(620*(1 + e), 330, 980), heavyAt = .35 + Math.random()*.35;
   return new Promise(res=>{
     lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">He's through!</h2><p class="lv-s">Wait for his heavy touch, then rush out and smother it.</p>
-      <div class="lv-stage">${lvField("bottom", `<g id="lvSt">${lvMan(0,0,kit.them)}</g>${lvBallSvg("lvRb", 150, 30, 4)}<text id="lvBang" x="0" y="0" font-size="24" font-weight="900" fill="#F5C542" opacity="0" font-family="Big Shoulders Display,sans-serif">!</text>
+      <div class="lv-stage">${lvField("bottom", `<g id="lvSt">${lvMan(0,0,kit.them,{run:true})}</g>${lvBallSvg("lvRb", 150, 30, 4)}<text id="lvBang" x="0" y="0" font-size="24" font-weight="900" fill="#F5C542" opacity="0" font-family="Big Shoulders Display,sans-serif">!</text>
           <g id="lvGk">${lvMan(0,0,kit.us,{ring:"#F5C542"})}</g>`)}</div>
       <button type="button" class="btn primary big lv-act">Rush out!</button>`);
     lvSkippable(res);
@@ -798,13 +957,14 @@ function lvGameRush(st, m){
       k = Math.max(0, now-t0)/run; const y = 20 + k*112;
       lvMove("#lvSt", 150, y);
       if (!heavy && k>=heavyAt){ heavy = now; stage.dataset.heavy = 1; const b = lv$("#lvBang"); b.setAttribute("x", 160); b.setAttribute("y", y - 10); b.setAttribute("opacity", 1); }
-      lvMove("#lvRb", 150 + (heavy ? 4 : 0), y + 8 + (heavy ? Math.min(22, (now-heavy)/12) : 0));
+      lvBallAt("#lvRb", 150 + (heavy ? 4 : 0), y + 8 + (heavy ? Math.min(22, (now-heavy)/12) : 0), 1, 0, y*6);
       if (k>=1 || (heavy && now-heavy > react*1.8)){ end(true); return false; }
     });
     const end = async late=>{
       if (done) return; done = true; cancelAnimationFrame(lvRaf); lv$(".lv-act").disabled = true;
       const now = performance.now(), ok = heavy && !late && now-heavy <= react;
-      await lvTween(240, q=>lvMove("#lvGk", 150, 168 - q*(ok ? 50 : 26)));
+      lv$("#lvSt .lv-legs")?.classList.remove("run");
+      await lvTween(260, q=>lvMove("#lvGk", 150, 168 - lvEaseOut(q)*(ok ? 50 : 26), 0, 1 + (ok ? .08*q : 0)));
       if (ok) return res({ok:true, big:"Smothered it!", small:"Brave and perfectly timed", bonus:.35});
       if (!heavy) return res(Math.random() < .78*m.q ? {ok:false, big:"Rounded you", small:"You went too early", ga:1, bonus:-.3} : {ok:false, big:"Rounded you", small:"…but he ran it out of play", bonus:-.1});
       res(Math.random() < .58*m.q ? {ok:false, big:"He scores", small:"Too late: he got the shot away", ga:1, bonus:-.25} : {ok:true, big:"Saved!", small:"Late, but you got a hand to it", bonus:.15});

@@ -27,6 +27,8 @@ Each half-season is a **match centre**: a fixture list for your club (league, cu
 
 Every club has its own badge, drawn from its colours, in the tables, fixture lists, the match centre and on the match screens. Players wear their club's kit (shirt, shorts and socks), the goal has a crowd and advertising boards behind it, and a goal you score or set up ends in a burst of confetti in your club's colours.
 
+The match screens move: players run with their arms pumping, kick the ball when they pass or cross, jump for headers and throw their arms up when you score, while the crowd jumps with them. The keeper shifts his weight before a shot and dives for it, the ball curls, spins and bulges the net, and when you shoot your own boot swings through the ball in the colours of the pair you're wearing. Each new screen eases in, and so do the app's tabs, views and dialogs.
+
 The Season screen keeps it short: this week's match (both badges, the competition and the ground) and the play buttons at the top, then your key numbers and this week's training, then tabs for recent results, the league table, your targets, your attributes and the full fixture list. *Stats*, *Club & leagues*, *Legacy*, the shop and the summer transfer window (offers, loans and the season report) are split into tabs the same way, transfer offers keep their negotiation folded away until you tap *Negotiate*, and on phones the header and your player card fold down to a single row (tap *Full profile* for the whole card).
 
 - **Training.** Each week, pick a focus (finishing, passing, pace, defending or shot-stopping, stamina, match prep, or rest) and how hard to train. Hard training grows you faster but tires you and raises the injury risk. Young players grow fast, and over-30s fight decline.
@@ -34,7 +36,7 @@ The Season screen keeps it short: this week's match (both badges, the competitio
 - **Selection.** Whether you start, come off the bench or sit out depends on the manager's trust, how your overall rating compares with the squad, your form, how tired you are and how you train. He marks every week's training: good drills and hard sessions raise your chances of starting and of coming off the bench, and poor drills lower them. The match centre shows how he rates your training.
 - **Minutes played.** Every match records the minutes you played and the minutes your team played while you were there. *Stats* shows the share for each season, and your average a season.
 - **Matches.** Fixtures are simulated from your attributes, form, sharpness and fitness. Your goals and assists come out of the team's scorelines. ★ marks the big games.
-- **Key moments.** Every match you're picked for is played as quick mini-games for the moments that involve you. A starter gets about 4: more against weaker teams and when your team is in form, fewer against the best (keepers the other way round). Off the bench you get 1 or 2. There are 13 mini-games, drawn by position:
+- **Key moments.** Every match you're picked for is played as quick mini-games for the moments that involve you. A starter gets about 4: more against weaker teams and when your team is in form, fewer against the best (keepers the other way round). Off the bench you get 1 or 2. There are 13 mini-games, drawn by position (20 more are being tried out in the mini-game lab):
   - **Attack:** shots (one-on-ones, in the box, long range, free kicks over a wall), headers (tap as the rings meet), passes (pick the free man), take-ons (read the defender and go the other way), crosses (pick the free runner on his spot), and a three-step **attacking move** that ends in a shot or a square ball for an assist.
   - **Defence:** tackles and blocks (timing), interceptions (read the passer's eyes) and shadowing your man (stay in his lane).
   - **Keepers:** saves and penalties (react to the shot), claiming crosses (ring timing) and rushing out (wait for the heavy touch).
@@ -57,7 +59,7 @@ The Season screen keeps it short: this week's match (both badges, the competitio
 
   | Item | What it does | Cost |
   | --- | --- | --- |
-  | Boots: Sniper, Maestro, Lightning, Rock (Safe-hands gloves for keepers) and Engine | +2 / +4 / +6 to finishing, passing, pace, defending (or shot-stopping) or stamina in every match. Wear one pair at a time; boots are kept on your account across careers | 250, then 450 to Silver and 800 to Gold |
+  | Boots: Sniper, Maestro, Lightning, Rock (Safe-hands gloves for keepers) and Engine | +2 / +4 / +6 to finishing, passing, pace, defending (or shot-stopping) or stamina in every match. Wear one pair at a time; boots are kept on your account across careers. Each pair has its own colours, with bronze, silver or gold studs to match its level, and the pair you wear shows on your card and in your attributes | 250, then 450 to Silver and 800 to Gold |
   | Double training | Training gains doubled for 4 weeks | 250 |
   | Personal coach | +1 to your training focus now, up to 3 times a season | 400 |
   | Physio | Fitness back to 100 | 75 |
@@ -68,6 +70,19 @@ The Season screen keeps it short: this week's match (both badges, the competitio
 - **Results count.** Your club's league points and cup runs come from these fixtures, and your half-season numbers feed the same reviews, transfer offers and awards as before.
 
 - **Targets and clauses.** Each season the manager sets three targets: appearances, an output target for your position (goals, goals and assists, assists or clean sheets) and an average rating. Meeting them wins his trust, so you start more; missing them costs it. Time out injured is allowed for, and a January move brings new half-season targets. Your agent also adds clauses: hit a stretch number and a bigger club will bid for you in the summer, or make enough appearances and your wage goes up. Progress shows in the match centre, with inbox updates at the halfway point and at the end of the season.
+
+## Mini-game lab (development)
+
+The **mini-game lab** is a development area for trying out mini-games: every one in one place, to play as often as you like. The 20 new games are only in the lab, never in matches or training, and nothing you play there touches your career, your coins or your saves.
+
+It's hidden from players. To show it on a phone, open the Account menu and tap the *Game version* line at the bottom five times (or open the game once with `?dev` at the end of its address): a **Development** section appears in the menu with *Open the mini-game lab*. *Hide this section* (or five more taps) hides it again.
+
+- Pick **Easy**, **Normal** or **Hard** at the top, and filter by *In matches*, *Training* or *New*.
+- **In matches:** every key-moment game, with the shots and saves split up, 17 in all: one-on-ones, shots in the box and from range, free kicks, headers, passes, the attacking move, take-ons, crosses, tackles, blocks, interceptions, shadowing, saves, penalty saves, claiming crosses and rushing out.
+- **Training:** the sprint-start and beep-test drills.
+- **New, lab only:** 20 games that aren't in matches yet: penalty shootout, keepy-uppy, crossbar challenge, nutmeg, target practice, dribble slalom, volley, through ball, switch the play, one-two, bicycle kick, chip the keeper, skill combo, race to the ball, offside trap, clear the cross, rondo, shield the ball, bend it (swipe a curling free kick) and air duel.
+
+Each game has a card with how to play it, a score at the end, and *Play again*.
 
 **Legacy profiles.** Every career on the account is in *Legacy*: tap a player (or your own name on your card) for their profile, with their totals, average rating, Player of the Match awards, a career timeline, their trophies and every season's numbers, including minutes and rating.
 
@@ -102,14 +117,16 @@ Players on different phones can't see each other's careers. That would need an o
 | `game.js` / `game.css` | The game itself, taken from the artifact. Saving now goes to the signed-in account instead of Claude |
 | `account.js` | Accounts, the sign-in screen, the Account menu and the install instructions |
 | `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
-| `moments.js` | Key moments: the live match screen and its shot, pass, tackle/block and save mini-games |
+| `moments.js` | Key moments: the live match screen, its mini-games, and the drawing and animation they share (players, ball, goal, crowd) |
+| `labgames.js` | The 20 new mini-games, played only in the lab |
+| `lab.js` | The mini-game lab under the Account menu's Development section |
 | `squads.js` | Every club's starting XI, the line-ups before a match, scorers, match ratings, Player of the Match, player cards, the Squad view and the summer transfers between clubs |
 | `league.js` | Your league played out week by week: the table, top scorers, assists, ratings and results, and the roll of honour |
 | `cups.js` | The English cups played out in full: the draws, every tie, top scorers and the winners |
 | `drills.js` | Weekly training drills: easier mini-games that grow your attributes and earn you game time |
 | `crests.js` | Every club's badge, drawn from its colours |
 | `targets.js` | The manager's season targets and your agent's clauses |
-| `shop.js` | The shop: boots and training boosts bought with gold coins |
+| `shop.js` | The shop: boots (and their icons) and training boosts bought with gold coins |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |
 | `manifest.webmanifest`, `icons/` | App name, colours and home-screen icons |
 | `fonts/` | The game's fonts (Big Shoulders Display, Barlow, Barlow Condensed), served from here under the SIL Open Font License |
