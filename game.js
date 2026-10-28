@@ -2836,7 +2836,7 @@ function renderCareer(){
   S.notes ||= []; S.notesSeen ??= 0;
   const unread = S.notes.length - S.notesSeen;
   if (!["season","inbox","stats","club","cabinet","legacy"].includes(tab)) tab = {review:"inbox", leagues:"club", career:"stats"}[tab] || "season";
-  const tabs = [["season","Season","Season"],["inbox","Inbox","Inbox"],["stats","Statistics","Stats"],["club","Club & leagues","Club"],["cabinet","Trophies","Trophies"],["legacy","Legacy","Legacy"]];
+  const tabs = [["season","Season","Season"],["inbox","Inbox","Inbox"],["stats","Statistics","Stats"],["club","Club & leagues","Club"],["lab","Mini-game lab","Lab"],["cabinet","Trophies","Trophies"],["legacy","Legacy","Legacy"]];
   const body = tab==="season" ? action : tab==="inbox" ? inboxPanel() : tab==="stats" ? statsBody() : tab==="club" ? clubBody(t) : tab==="legacy" ? boardPanel() : cabinetPanel();
   if (tab==="inbox" && unread>0){ setTimeout(()=>{ S.notesSeen = S.notes.length; save(); }, 0); }
   $("#app").innerHTML = `
@@ -2888,7 +2888,8 @@ const TAB_IC = (()=>{ const w = d => `<svg viewBox="0 0 24 24" fill="none" strok
     stats: w('<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>'),
     club: w('<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M12 7v10"/>'),
     cabinet: w('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2.5 2.5 0 0 0 3 4M16 6h3a2.5 2.5 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/>'),
-    legacy: w('<path d="M4 17l1.5-9 4.5 4 2-6 2 6 4.5-4 1.5 9z"/><path d="M4 20h16"/>')
+    legacy: w('<path d="M4 17l1.5-9 4.5 4 2-6 2 6 4.5-4 1.5 9z"/><path d="M4 20h16"/>'),
+    lab: w('<path d="M9.5 3h5M10.5 3v5.5L5 18.2A1.9 1.9 0 0 0 6.7 21h10.6a1.9 1.9 0 0 0 1.7-2.8L13.5 8.5V3"/><path d="M7.4 14h9.2"/>')
   };
 })();
 let showBoard = false;
@@ -2946,6 +2947,7 @@ document.addEventListener("click", e=>{
   const b = e.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act;
   if (a.startsWith("mc-")){ mcAction(a, b); return; }
+  if (a==="tab" && b.dataset.k==="lab"){ labOpen(); return; }
   if (a==="tab"){ tab = b.dataset.k; render(); uiEnter(document.getElementById("tabBody")); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
   else if (a==="backup-export"){ exportBackup(); }
   else if (a==="intl-yes" || a==="intl-no"){ const n = (S.notes||[]).find(x=>x.ask && x.ask.id===b.dataset.k); if (n){ n.ask.answer = a==="intl-yes"; save(); render(); } }
