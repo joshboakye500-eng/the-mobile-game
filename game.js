@@ -2679,8 +2679,8 @@ function leaguesTab(){
     ${S.sim && lgGet(k) ? `<h3>The season's top players</h3>${lgBox(k, "final")}` : ""}
   </section>`:lgGet(k) ? "" : `<section class="panel"><h2>Final table</h2><p class="empty">Tables appear here after your first season.</p></section>`}
   ${sqMovesHTML(k)}
-  <details class="panel ss-panel"><summary><h2>${tb?"Next season":"This season"} in ${esc(theName(k))}</h2></summary>
-    ${newIn.size?`<p class="hint" style="margin-bottom:10px">New this season: ${[...m.inDown.map(x=>`${esc(x.n)} (down from ${esc(theName(x.from))})`), ...m.inUp.map(x=>`${esc(x.n)} (up from ${esc(theName(x.from))})`)].join(", ")}.</p>`:""}
+  <details class="panel ss-panel"><summary><h2>${S.sim?"Next season":"This season"} in ${esc(theName(k))}</h2></summary>
+    ${newIn.size?`<p class="hint" style="margin-bottom:10px">New ${S.sim?"next":"this"} season: ${[...m.inDown.map(x=>`${esc(x.n)} (down from ${esc(theName(x.from))})`), ...m.inUp.map(x=>`${esc(x.n)} (up from ${esc(theName(x.from))})`)].join(", ")}.</p>`:""}
     <div class="clublist">${next.map(n=>`<span class="cl ${n===S.club?"me":""}">${clubBadge(n, 18)}${esc(n)}${newIn.has(n)?` <span class="pill ${m.inDown.some(x=>x.n===n)?"down":"up"}">New</span>`:""}</span>`).join("")}</div>
     <p class="hint" style="margin-top:10px">Sorted by current squad strength.</p>
   </details>

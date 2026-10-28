@@ -99,7 +99,7 @@ lgAdd({id:"shootout", t:"Penalty shootout", d:"Five penalties each: take yours, 
 
 /* ---------- 2. Keepy-uppy: touch it up each time it drops into the green ---------- */
 function lgKeepy(st){
-  const kit = lvKits(st), e = st.lab.ease, zw = 26*(1 + e*1.2), goal = lgTarget(st, 15, 1.25);
+  const kit = lvKits(st), e = st.lab.ease, zw = 34*(1 + e*1.2), goal = lgTarget(st, 15, 1.25);
   return new Promise(res=>{
     lgShow(st, "Keepy-uppy", `Tap when the ball drops into the green band at your feet. Get to ${goal}.`,
       lgSide(`<rect x="0" y="${170 - zw}" width="300" height="${zw}" fill="rgba(74,222,128,.16)"/><path d="M0 ${170 - zw}h300" stroke="#4ADE80" stroke-width="1.2" stroke-dasharray="5 4" opacity=".8"/>
@@ -145,7 +145,7 @@ lgAdd({id:"keepy", t:"Keepy-uppy", d:"Keep it off the ground: touch it each time
 
 /* ---------- 3. Crossbar challenge: where along the bar, then how hard ---------- */
 function lgCrossbar(st){
-  const kit = lvKits(st), e = st.lab.ease, zone = clamp(.12*(1 + e*1.3), .06, .2), mid = .62, per = clamp(1700*(1 + e*.5), 1100, 2300);
+  const kit = lvKits(st), e = st.lab.ease, zone = clamp(.18*(1 + e*1.3), .1, .26), mid = .62, per = clamp(1700*(1 + e*.5), 1100, 2300), pw = clamp(1500*(1 + e*.5), 1150, 1900);
   let hits = 0;
   const one = (k) => new Promise(res=>{
     st.lab.tally = `${hits} of 3`;
@@ -159,7 +159,7 @@ function lgCrossbar(st){
     lvLoop(now=>{
       if (done) return false;
       if (phase===0){ ax = 16 + 268*lgSweep(now-t0, per); lvMove("#lgAim", ax, 0); }
-      else { p = (1 - Math.cos(2*Math.PI*(now-t1)/1150))/2; lvBarSet(p, mid-zone/2, mid+zone/2); }
+      else { p = (1 - Math.cos(2*Math.PI*(now-t1)/pw))/2; lvBarSet(p, mid-zone/2, mid+zone/2); }
     });
     const go = async () => {
       if (done) return;
@@ -701,7 +701,7 @@ function lgOffside(st){
   const kit = lvKits(st), e = st.lab.ease, R = clamp(330*(1 + e*1.1), 220, 450), DX = [62, 121, 179, 238], LY = 118, UP = 22; let got = 0;
   const one = k => new Promise(res=>{
     st.lab.tally = `${got} of 3`;
-    const tell = 1300 + Math.random()*1300, wind = 360, fake = e<=0 && Math.random()<(e<0 ? .5 : .25);
+    const tell = 1300 + Math.random()*1300, wind = clamp(520*(1 + e*.6), 400, 640), fake = e<0 && Math.random()<.4;
     const AX = [91 + Math.random()*8 - 4, 209 + Math.random()*8 - 4], aim = Math.random()<.5 ? 0 : 1;
     lgShow(st, "Offside trap", `Go ${k+1} of 3. Step up just before he plays the ball, and leave their strikers offside.`,
       lvField("bottom", `<path id="lgLn" d="M30 ${LY}h240" stroke="rgba(245,197,66,.55)" stroke-width="1.5" stroke-dasharray="6 5"/>
@@ -724,7 +724,7 @@ function lgOffside(st){
     });
     const resolve = async () => {
       lv$(".lv-act").disabled = true; lv$("#lgBang").setAttribute("opacity", 0);
-      const early = up && strike - (up + 250) > R, late = !up || strike - up < 136, ok = up && !early && !late, sx = AX[aim], to = [sx + (aim ? -12 : 12), 150];
+      const early = up && strike - (up + 250) > R, late = !up || strike - up < 120, ok = up && !early && !late, sx = AX[aim], to = [sx + (aim ? -12 : 12), 150];
       // his pass over the top, and their striker going for it
       lvKick("#lgPs .lv-man"); lv$(`#lgA${aim} .lv-legs`)?.classList.add("run");
       await Promise.all([lvFly("#lgB", [156, 42], to, 560, {h:24, spin:1}), lvGlide(`#lgA${aim}`, [sx, LY - 6], [sx + (aim ? -6 : 6), 144], 560, lvEaseOut)]);
@@ -748,17 +748,17 @@ lgAdd({id:"offside", t:"Offside trap", d:"Lead your back four up just before he 
 
 /* ---------- 16. Clear the cross: read where it's dropping and get your head on it first ---------- */
 function lgClear(st){
-  const kit = lvKits(st), e = st.lab.ease, R = clamp(15*(1 + e*1.1), 10, 21), vMe = clamp(118*(1 + e*.5), 95, 140), vAt = clamp(64*(1 - e*.6), 50, 80), goal = lgTarget(st, 3, .8);
+  const kit = lvKits(st), e = st.lab.ease, R = clamp(15*(1 + e*1.1), 10, 21), vMe = clamp(118*(1 + e*.5), 95, 140), vAt = clamp(52*(1 - e*.8), 40, 66), goal = lgTarget(st, 3, .8);
   let won = 0;
   const one = k => new Promise(res=>{
     st.lab.tally = `${won} of 5`;
     const left = k%2===0, from = [left ? 16 : 284, 58 + Math.random()*18], land = [96 + Math.random()*108, 128 + Math.random()*22], T = clamp(1500*(1 + e*.4) - k*60, 1100, 1900), h = 52;
-    const att = [clamp(land[0] + (Math.random()<.5 ? -1 : 1)*(30 + Math.random()*24), 70, 230), 102 + Math.random()*10], me = [150, 150];
+    const att = [clamp(land[0] + (Math.random()<.5 ? -1 : 1)*(34 + Math.random()*26), 70, 230), 100 + Math.random()*10], me = [150, 150];
     lgShow(st, "Clear the cross", `Cross ${k+1} of 5. Tap where it's dropping: get there before their striker and head it clear.`,
       lvField("bottom", `<circle id="lgLand" r="${R}" fill="rgba(245,197,66,.12)" stroke="#F5C542" stroke-width="1.6" stroke-dasharray="4 4" opacity="0"/>
         <g id="lgWg">${lvMan(0, 0, kit.them)}</g><g id="lgAt">${lvMan(0, 0, kit.them, {num:9})}</g><g id="lgMe">${lvMan(0, 0, kit.us, {ring:"#F5C542"})}</g>${lvBallSvg("lgB", from[0], from[1], 4)}`)
         + `<div class="lg-aimpad"></div>` + lgHud(won, "cleared"));
-    let done = false, tgt = null;
+    let done = false, tgt = null, meIn = 0, atIn = 0;
     const fin = r => { done = true; off(); res(r); }, off = lgKeys(key=>{ const d = {ArrowLeft:[-40, 0], ArrowRight:[40, 0], ArrowUp:[0, -30], ArrowDown:[0, 30]}[key]; if (d){ tgt = [clamp((tgt || me)[0] + d[0], 20, 280), clamp((tgt || me)[1] + d[1], 60, 172)]; return 1; } });
     lvSkippable(fin);
     const stage = lv$(".lv-stage"), t0 = performance.now() + 700; let last = t0, kicked = false;
@@ -778,12 +778,15 @@ function lgClear(st){
       lvMove("#lgMe", me[0], me[1]); lvMove("#lgAt", att[0], att[1]);
       lv$("#lgMe .lv-legs")?.classList.toggle("run", !!mm); lv$("#lgAt .lv-legs")?.classList.toggle("run", !!am);
       lgDepth(["#lgMe", "#lgAt"], [me[1], att[1]]);
+      // when each of you got under it
+      if (!meIn && Math.hypot(me[0] - land[0], me[1] - land[1])<=R) meIn = now; if (meIn && Math.hypot(me[0] - land[0], me[1] - land[1])>R) meIn = 0;
+      if (!atIn && Math.hypot(att[0] - land[0], att[1] - land[1])<=R) atIn = now;
       if (k2>=1){ resolve(); return false; }
     });
     const resolve = async () => {
       lvEl.querySelectorAll(".lv-legs.run").forEach(l=>l.classList.remove("run"));
       const dMe = Math.hypot(me[0] - land[0], me[1] - land[1]), dAt = Math.hypot(att[0] - land[0], att[1] - land[1]);
-      if (dMe<=R && dMe<=dAt + 4){ won++; lgSetHud(won); lvHop("#lgMe .lv-man"); lgImpact(land[0], land[1] - 30, "#F5C542");
+      if (dMe<=R && (!atIn || meIn<=atIn + 150 || dMe + 6<dAt)){ won++; lgSetHud(won); lvHop("#lgMe .lv-man"); lgImpact(land[0], land[1] - 30, "#F5C542");
         await lvFly("#lgB", land, [clamp(land[0] + Math.random()*120 - 60, 20, 280), -8], 560, {h:44, spin:2});
         return done || fin({ok:true, big:"Cleared!", small:dMe<R*.4 ? "Bang on it" : "Got enough on it"}); }
       if (dAt<=R + 4){ lvHop("#lgAt .lv-man"); const sc = Math.random()<.6; await lvFly("#lgB", land, [150 + Math.random()*30 - 15, sc ? 177 : 188], 380, {h:6, spin:1.5});
@@ -800,7 +803,7 @@ function lgClear(st){
 }
 lgAdd({id:"clear", t:"Clear the cross", d:"Five crosses into your box: read where each one drops and get your head on it before their striker.", ic:"head", run:lgClear},
   {t:"Clear the cross", steps:["Crosses come in from the wings, one at a time. Their striker (the 9) is after them too.", "Watch the ball's <b>shadow</b>: it runs along the ground to where the ball will drop. <b>Tap the pitch</b> to run there (or use the arrow keys).",
-    "Be under it, and nearer than him, when it comes down to head height. On easy a ring shows where it's dropping."]});
+    "Be under it when it comes down to head height, and get there before he does. On easy a ring shows where it's dropping."]});
 
 /* ---------- 17. Rondo: keep the ball from the two in the middle ---------- */
 function lgRondo(st){
