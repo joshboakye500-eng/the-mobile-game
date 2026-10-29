@@ -50,6 +50,20 @@ const SHOP_PACKS = [
   {id:"vault", t:"Vault", coins:15000, price:"£14.99", bonus:"+80%", tag:"Best value"}
 ];
 async function shopCheckout(pack){ return !SHOP_PAYMENTS; }
+/* The Editor pen: a one-off buy for real money, kept on the account like boots. Only with it can you enter your
+   season and tournament stats by hand, and edit your player (attributes and potential) whenever you like. Paid for like
+   a coin pack: until payments are on, pressing it just gives you the pen. */
+const SHOP_PEN = {id:"pen", t:"Editor pen", price:"£5.99"};
+const penOwned = () => !!(typeof Account!=="undefined" && Account.locker().pen);
+const PEN_IC = (cls = "pen-ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(45 12 12)"><rect x="9.6" y="1.5" width="4.8" height="13" rx="1.6" fill="#15171A" stroke="#F5C542" stroke-width="1.1"/><rect x="9.6" y="5" width="4.8" height="1.6" fill="#F5C542"/><path d="M13.3 2.6v8.5" stroke="#F5C542" stroke-width=".9" stroke-linecap="round"/><path d="M9.6 14.5h4.8L12 21.8z" fill="#F5C542"/><path d="M12 16.6v4" stroke="#15171A" stroke-width=".7"/><circle cx="12" cy="16.8" r=".7" fill="#15171A"/></g></svg>`;
+async function shopBuyPen(){
+  if (penOwned() || !(await shopCheckout(SHOP_PEN))) return;
+  const L = Account.locker(); L.pen = 1; Account.setLocker(L);
+  shopMsg = `The Editor pen is yours.${SHOP_PAYMENTS ? "" : " Free for now, while payments are being set up."} Edit your player from your player card, and enter your stats by hand from the match centre.`;
+  shopRepaint();
+}
+// the shop, opened on the pen, from anything that needs it
+function shopOpenPen(){ SUB.shop = "pen"; shopOpen(); }
 async function shopBuyPack(id){
   const P = SHOP_PACKS.find(p=>p.id===id); if (!P || !(await shopCheckout(P))) return;
   Account.addCoins(P.coins);
@@ -99,6 +113,7 @@ function shopHTML(){
     ["boosts", "Training", boosts.length ? `<div class="shop-grid">${boosts.map(b=>`<div class="shop-card"><div class="shop-top"><b>${b.t}</b></div><p>${b.d}</p>
         <div class="row"><button type="button" class="btn small ${!b.off && have>=b.cost ? "primary" : ""}" data-shop="boost" data-k="${b.id}" ${!b.off && have>=b.cost ? "" : "disabled"}>${b.off || `Buy · <i class="coin" aria-hidden="true"></i> ${b.cost}`}</button></div></div>`).join("")}</div>`
       : `<p class="hint">Training boosts work during a season in the match centre. Start or carry on your career to use them.</p>`],
+    ["pen", "Editor pen", shopPenHTML()],
     ["coins", "Coins", `<p class="hint">Or earn them by playing key moments: win 50, draw 10, each goal 20, each assist 15, own goal −10.</p>
       ${SHOP_PAYMENTS ? "" : `<p class="ref" style="margin:0 0 10px"><strong>Payments aren't set up yet,</strong> so coin packs are free while the game's being tested. Tap one and the coins are yours.</p>`}
       <div class="shop-grid packs">${SHOP_PACKS.map((P,i)=>`<div class="shop-card pack ${P.tag?"hot":""}">
@@ -107,6 +122,17 @@ function shopHTML(){
         <b class="pack-n">${P.coins.toLocaleString()}</b><span class="pack-t">${P.t}${P.bonus ? ` · <em>${P.bonus} extra</em>` : ""}</span>
         <button type="button" class="btn small primary" data-shop="pack" data-k="${P.id}" aria-label="Buy ${P.coins} coins for ${P.price}">${P.price}${SHOP_PAYMENTS ? "" : " · Free now"}</button></div>`).join("")}</div>`]])}
   </div>`;
+}
+function shopPenHTML(){
+  const pen = penOwned();
+  return `<div class="shop-card pen-card ${pen ? "on" : ""}">
+      <div class="shop-top">${PEN_IC("pen-ic big")}<b>Editor pen</b>${pen ? `<span class="pill gold">Yours</span>` : `<span class="pen-price">${SHOP_PEN.price}</span>`}</div>
+      <ul class="pen-list"><li><b>Enter your stats by hand</b> each season and at tournaments: handy for logging a real FC career.</li>
+        <li><b>Edit your player</b> whenever you like: every attribute and your potential.</li></ul>
+      <p class="hint" style="margin:0">Yours to keep on this account, in every career. Without it, seasons are played in the match centre and tournaments are played out for you.</p>
+      <div class="row">${pen ? `<button type="button" class="btn small primary" data-penact="open">${PEN_IC()} Edit your player</button>`
+        : `<button type="button" class="btn small primary" data-shop="pen" aria-label="Buy the Editor pen for ${SHOP_PEN.price}">${SHOP_PEN.price}${SHOP_PAYMENTS ? "" : " · Free now"}</button>`}</div></div>
+    ${pen || SHOP_PAYMENTS ? "" : `<p class="ref" style="margin:10px 0 0"><strong>Payments aren't set up yet,</strong> so the pen is free while the game's being tested. Tap it and it's yours.</p>`}`;
 }
 function shopOpen(){
   const d = document.getElementById("shopDlg"); shopMsg = ""; d.innerHTML = shopHTML();
@@ -139,8 +165,59 @@ document.addEventListener("click", e=>{
   else if (a==="wear"){ const L = Account.locker(); L.on = k || null; Account.setLocker(L); shopMsg = k ? `Now wearing ${shopBootName(k)}.` : "Boots off."; }
   else if (a==="boost") shopBuyBoost(k);
   else if (a==="pack") return shopBuyPack(k);
+  else if (a==="pen") return shopBuyPen();
   else if (a==="get") SUB.shop = "coins";
   shopRepaint();
 });
 document.getElementById("shopDlg")?.addEventListener("click", e=>{ if (e.target.id==="shopDlg") shopClose(); });
 document.getElementById("shopDlg")?.addEventListener("close", ()=>{ if (S && !S.newing) render(); });   // show new boots and boosts on the career screen
+
+/* ---------- the Editor pen's player editor ----------
+   Your attributes and potential, each from a slider or typed in, with your overall worked out as you go (boots
+   included). Opened from your player card, the You tab and the shop; without the pen those open the shop on it. */
+function penOpen(){
+  if (!penOwned()) return shopOpenPen();
+  if (!S || S.newing || S.phase==="retired") return;
+  if (typeof shopClose==="function" && document.getElementById("shopDlg")?.open) shopClose();
+  mcInit();
+  const d = document.getElementById("penDlg"), a = S.attr, row = (k, t, v, lo) => `<div class="pen-row"><label for="pen-${k}">${esc(t)}</label>
+      <input type="range" min="${lo}" max="99" step="1" value="${Math.round(v)}" data-pk="${k}" aria-label="${esc(t)}"><input type="number" id="pen-${k}" min="${lo}" max="99" step="1" inputmode="numeric" value="${Math.round(v)}" data-pk="${k}"></div>`;
+  d.innerHTML = `<div class="dlg-in">
+    <div class="dlg-head">${PEN_IC("pen-ic big")}<div style="min-width:0"><h2 id="penDlgTitle">Edit your player</h2><p class="hint">${esc(S.player.name)} · ${esc(S.player.pos)} · with the Editor pen</p></div>
+      <button type="button" class="dlg-x" data-penact="close" aria-label="Close">×</button></div>
+    <form id="penForm" class="pen-form">
+      ${MC_ATTR.map(([k])=>row(k, mcAttrName(k), a[k], 20)).join("")}
+      ${row("pot", "Potential", a.pot, 40)}
+      <p class="hint" style="margin:0">Attributes go from 20 to 99. Potential is how good you can become through training. Boots still add their boost in matches.</p>
+      <div class="pen-sum"><span>Overall <b id="penOvr">${mcOvr()}</b></span><span id="penWas" class="hint"></span></div>
+      <div class="row"><button class="btn primary" type="submit">Save changes</button><button type="button" class="btn" data-penact="close">Cancel</button></div>
+    </form></div>`;
+  if (d.showModal){ if (!d.open) d.showModal(); } else d.setAttribute("open", "");
+}
+// the numbers on the form, as they'd stand
+function penRead(){ const a = {...S.attr}; [...MC_ATTR.map(([k])=>k), "pot"].forEach(k=>{ const v = Math.round(+document.getElementById(`pen-${k}`)?.value); if (Number.isFinite(v)) a[k] = clamp(v, k==="pot" ? 40 : 20, 99); }); return a; }
+function penSave(){
+  if (!penOwned()) return;
+  const a = penRead(), was = mcOvr();
+  // the green and red changes since August stay about training: the season's starting point moves with your edit
+  if (S.attr0) MC_ATTR.forEach(([k])=>{ if (S.attr0[k]!=null) S.attr0[k] += a[k] - S.attr[k]; });
+  S.attr = a; save();
+  const d = document.getElementById("penDlg"); if (d.close) d.close(); else d.removeAttribute("open");
+  flash = `Player edited: overall ${was} → ${mcOvr()}.`; render();
+}
+document.addEventListener("input", e=>{
+  const k = e.target.dataset && e.target.dataset.pk; if (!k) return;
+  document.querySelectorAll(`#penForm [data-pk="${k}"]`).forEach(el=>{ if (el!==e.target) el.value = e.target.value; });
+  const a = penRead(), b = mcBoot(); if (b) a[b.k] = Math.min(99, a[b.k] + b.n);
+  const now = mcOvr(a), was = mcOvr(), o = document.getElementById("penOvr"), w = document.getElementById("penWas");
+  if (o) o.textContent = now; if (w) w.textContent = now===was ? "" : `was ${was}`;
+});
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-penact]"); if (!b) return;
+  const a = b.dataset.penact;
+  if (a==="open") penOpen();
+  else if (a==="shop") shopOpenPen();
+  else if (a==="close"){ const d = document.getElementById("penDlg"); if (d.close) d.close(); else d.removeAttribute("open"); }
+});
+document.addEventListener("submit", e=>{ if (e.target.id==="penForm"){ e.preventDefault(); penSave(); } });
+document.getElementById("penDlg")?.addEventListener("click", e=>{ if (e.target.id==="penDlg") e.target.close(); });

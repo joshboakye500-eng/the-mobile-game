@@ -1198,3 +1198,24 @@ small.boot{display:inline-flex;align-items:center}
 /* dragging: the teammate a drag is pointing at */
 .lv-mate.aim,.lv-run-btn.aim{box-shadow:0 0 0 3px #F5C542,0 0 18px rgba(245,197,66,.7);border-radius:50%}
 .lv-stage{touch-action:none}
+
+/* the Editor pen (shop.js): its shop card, the edit buttons and the player editor */
+.pen-ic{width:18px;height:18px;flex:none;vertical-align:-4px}
+.pen-ic.big{width:40px;height:40px}
+.pen-ic.tiny{width:14px;height:14px;vertical-align:-2px}
+.btn .pen-ic{margin-right:4px}
+.pen-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0}
+.pen-line .hint{margin:0;font-size:13px}
+.card-extra .pen-line{margin:0}
+.card-pen{display:inline-grid;place-items:center;width:30px;height:30px;margin-left:auto;border-radius:50%;border:1px solid rgba(245,197,66,.45);background:rgba(245,197,66,.08);cursor:pointer;padding:0}
+.card-pen .pen-ic{width:17px;height:17px;vertical-align:0}
+.pen-card .pen-list{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px;color:var(--muted)}
+.pen-card .pen-list b{color:var(--ink)}
+.pen-price{font-family:var(--f-display);font-weight:800;font-size:20px;color:#F5C542}
+.pen-form{display:grid;gap:10px;margin-top:14px}
+.pen-row{display:grid;grid-template-columns:minmax(84px,auto) minmax(0,1fr) 64px;gap:10px;align-items:center}
+.pen-row label{font-size:14px;font-weight:600}
+.pen-row input[type=number]{text-align:center;padding:7px 4px}
+.pen-sum{display:flex;align-items:baseline;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(245,197,66,.08);border:1px solid rgba(245,197,66,.3)}
+.pen-sum b{font-family:var(--f-display);font-weight:900;font-size:28px;color:#F5C542;margin-left:4px}
+@media (max-width:420px){ .pen-row{grid-template-columns:minmax(0,1fr) 64px} .pen-row input[type=range]{grid-column:1/-1;grid-row:2} }

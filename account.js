@@ -6,7 +6,7 @@
    calls Account.boot(start) once it has loaded, and this file calls back into the game (render, exportBackup…)
    only after that. */
 const Account = (() => {
-  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1", VERSION = "1.21";
+  const LIST = "efp-accounts-v1", SESSION = "efp-session-v1", VERSION = "1.22";
   const OLD = {career:"efp-career-v1", hall:"efp-hall-v1"};   // where saves lived before accounts existed
   const $id = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -302,7 +302,7 @@ const Account = (() => {
     spend: n => { if (coins() < n) return false; setCoins(coins() - n); return true; },
     locker, setLocker,
     // a backup's boots: keep the best level of each pair
-    mergeLocker: L => { if (!L || !L.boots) return; const mine = locker(); for (const k in L.boots) mine.boots[k] = Math.max(mine.boots[k]||0, Math.min(3, +L.boots[k]||0)); mine.on ||= L.on || null; setLocker(mine); },
+    mergeLocker: L => { if (!L || !L.boots) return; const mine = locker(); for (const k in L.boots) mine.boots[k] = Math.max(mine.boots[k]||0, Math.min(3, +L.boots[k]||0)); mine.on ||= L.on || null; if (L.pen) mine.pen = 1; setLocker(mine); },
     fileTag: () => me.name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "player",
     saveFailed: () => paintLine("error")
   };

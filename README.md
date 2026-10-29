@@ -70,6 +70,12 @@ The Season screen keeps it short: this week's match (both badges, the competitio
   | Injury treatment | Halves the time left on your current injury | 300 |
 
   The shop also sells **coin packs** for real money: 500 coins for £0.99 up to 15,000 for £14.99. Payments aren't connected yet, so for now tapping a pack just adds the coins, and the shop says so. To take real payments later, connect a provider (for example Stripe Checkout) in `shopCheckout()` in `shop.js` and set `SHOP_PAYMENTS` to `true`. Coins and accounts currently live only on the player's phone, so before charging money you'll also want online accounts, so paid coins can't be lost or edited.
+
+  **The Editor pen** (£5.99, in the shop's *Editor pen* tab) is yours to keep on the account. Only with it can you:
+  - enter your season and tournament stats by hand;
+  - edit your player whenever you like: every attribute and your potential, from the *Edit your player* button on your player card or under *Season → You*, with your overall worked out as you go.
+
+  Without it, seasons are played in the match centre and international tournaments are played out for you, with your games, goals and assists following your role and your level. Like the coin packs, it's free for now: tapping it just gives you the pen.
 - **Results count.** Your club's league points and cup runs come from these fixtures, and your half-season numbers feed the same reviews, transfer offers and awards as before. Trophies are hard to win: one great player lifts a team only so far, and form swings matches less than it did. A big club wins about one trophy every season or two, as real ones do.
 
 - **Targets and clauses.** Each season the manager sets three targets: appearances, an output target for your position (goals, goals and assists, assists or clean sheets) and an average rating. Meeting them wins his trust, so you start more; missing them costs it. Time out injured is allowed for, and a January move brings new half-season targets. Your agent also adds clauses: hit a stretch number and a bigger club will bid for you in the summer, or make enough appearances and your wage goes up. Progress shows in the match centre, with inbox updates at the halfway point and at the end of the season.
@@ -102,7 +108,7 @@ Each game has a card with how to play it, a score at the end, and *Play again*.
 
 **Legacy profiles.** Every career on the account is in *Legacy*: tap a player (or your own name on your card) for their profile, with their totals, average rating, Player of the Match awards, a career timeline, their trophies and every season's numbers, including minutes and rating.
 
-Prefer to log a real FC career? Use *Enter your stats by hand* under the match centre. A season is played in one mode throughout, so switching mid-season takes effect the next season.
+Prefer to log a real FC career? With the Editor pen, use *Enter your stats by hand* under the match centre. A season is played in one mode throughout, so switching mid-season takes effect the next season. A save that was already entering stats by hand finishes that season that way, then goes back to the match centre unless you have the pen.
 
 ## Installing it on a phone
 
@@ -142,7 +148,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `drills.js` | Weekly training drills: easier mini-games that grow your attributes and earn you game time |
 | `crests.js` | Every club's badge, drawn from its colours |
 | `targets.js` | The manager's season targets and your agent's clauses |
-| `shop.js` | The shop: boots (and their icons) and training boosts bought with gold coins |
+| `shop.js` | The shop: boots (and their icons) and training boosts bought with gold coins, coin packs, and the Editor pen with its player editor |
 | `sw.js` | Offline support: keeps a copy of the game on the phone |
 | `manifest.webmanifest`, `icons/` | App name, colours and home-screen icons |
 | `fonts/` | The game's fonts (Big Shoulders Display, Barlow, Barlow Condensed), served from here under the SIL Open Font License |

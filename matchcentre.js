@@ -55,7 +55,8 @@ function mcPotLabel(){ const d = S.attr.pot - mcOvr(); return d>=10 ? "Huge pote
 // a season is played in one mode throughout; a save that's already midway through one stays manual until it ends
 function seasonMode(){
   const s = seasonLabel(S.season);
-  if (!S.modeSeason || S.modeSeason.s!==s) S.modeSeason = {s, m: halfOf()===1 && !S.h1 ? (S.mode || "centre") : "manual"};
+  // entering your stats by hand takes the Editor pen (shop.js): without it a new season is played in the match centre
+  if (!S.modeSeason || S.modeSeason.s!==s) S.modeSeason = {s, m: halfOf()===1 && !S.h1 ? (S.mode==="manual" && penOwned() ? "manual" : "centre") : "manual"};
   return S.modeSeason.m;
 }
 // switching is allowed before this half's first week; back to manual entry only before the season starts
@@ -63,6 +64,7 @@ function mcCanSwitch(to){ return !(S.mc && S.mc.key===mcKey() && S.mc.wi>0) && (
 function mcModeSwitch(){
   const now = seasonMode(), other = now==="centre" ? "manual" : "centre";
   const what = m => m==="manual" ? "enter your stats by hand (handy for logging a real FC career)" : "play your seasons in the match centre";
+  if (other==="manual" && !penOwned()) return `<p class="hint" style="margin-top:14px">Prefer to ${what(other)}? That takes the <button type="button" class="linkbtn" data-penact="shop">${PEN_IC("pen-ic tiny")} Editor pen</button> from the shop.</p>`;
   if (mcCanSwitch(other)) return `<p class="hint" style="margin-top:14px">Prefer to ${what(other)}? <button type="button" class="linkbtn" data-act="mc-mode" data-k="${other}">Switch for this season</button></p>`;
   if ((S.mode || "centre")!==now) return `<p class="hint" style="margin-top:14px">From next season you'll ${what(S.mode)}. <button type="button" class="linkbtn" data-act="mc-mode" data-k="${now}">Keep things as they are</button></p>`;
   return `<p class="hint" style="margin-top:14px">Prefer to ${what(other)}? <button type="button" class="linkbtn" data-act="mc-mode" data-k="${other}">Switch from next season</button></p>`;
@@ -489,7 +491,8 @@ function mcPanel(){
         <h3>Your attributes</h3>
         <div class="attrs">${MC_ATTR.map(([k])=>{ const d = a0 ? Math.round(a[k]-a0[k]) : 0, bt = mcBoot(), bn = bt && bt.k===k ? bt.n : 0;
           return `<div class="attr"><span>${esc(mcAttrName(k))}</span><div class="meter"><span style="width:${Math.min(99, a[k]+bn)}%"></span></div><span class="v">${Math.round(Math.min(99, a[k]+bn))}${bn ? `<small class="boot" title="From your boots">${shopBootIcon(mcBoot().k, Account.locker().boots[mcBoot().k], "boot-ic tiny")}+${bn}</small>` : ""}${d ? `<small class="${d>0?"":"neg"}">${d>0?"+":""}${d}</small>` : ""}</span></div>`; }).join("")}</div>
-        <p class="hint" style="margin-top:8px">Numbers are this half of the season. Green and red show changes since August.${mcBoot() ? ` ${shopBootIcon(mcBoot().k, Account.locker().boots[mcBoot().k], "boot-ic tiny")} is your ${esc(shopBootName(mcBoot().k))}.` : ""} ${mcPotLabel()}.</p>`],
+        <p class="hint" style="margin-top:8px">Numbers are this half of the season. Green and red show changes since August.${mcBoot() ? ` ${shopBootIcon(mcBoot().k, Account.locker().boots[mcBoot().k], "boot-ic tiny")} is your ${esc(shopBootName(mcBoot().k))}.` : ""} ${mcPotLabel()}.</p>
+        <p class="pen-line">${penOwned() ? `<button type="button" class="btn small" data-penact="open">${PEN_IC()} Edit your player</button>` : `<button type="button" class="btn small" data-penact="shop">${PEN_IC()} Edit your player</button><span class="hint">Needs the Editor pen from the shop</span>`}</p>`],
       ["fixtures", "Fixtures", `${fx(list)}<p class="hint" style="margin-top:8px">★ marks the big games. Cup ties only appear while the team is still in the competition.</p>`]
     ])}
     ${mcModeSwitch()}
@@ -504,6 +507,7 @@ function mcAction(a, b){
   else if (a==="mc-focus"){ S.train.focus = k; save(); render(); }
   else if (a==="mc-hard"){ S.train.hard = k==="1"; save(); render(); }
   else if (a==="mc-mode"){
+    if (k==="manual" && !penOwned()) return shopOpenPen();
     if (mcCanSwitch(k)){ S.modeSeason = {s:seasonLabel(S.season), m:k}; if (k==="manual" && S.tg && S.tg.s===seasonLabel(S.season)) S.tg = null; }   // no targets for a season you log by hand
     S.mode = k; save(); render();
   }

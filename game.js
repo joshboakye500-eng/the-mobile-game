@@ -1181,7 +1181,7 @@ function renderCreate(){
   <div class="intro">
     <div class="eyebrow">New career · ${seasonLabel(2026)}</div>
     <h2 class="intro-h">Build your player</h2>
-    <p class="intro-p">Start anywhere from the National League to the Champions League. Enter your stats each season and the football world reacts: values, offers, trophies, call-ups.</p>
+    <p class="intro-p">Start anywhere from the National League to the Champions League. Play your seasons match by match and the football world reacts: values, offers, trophies, call-ups.</p>
   </div>
   <div class="board create-board">
     <div class="col create-side">
@@ -1496,9 +1496,11 @@ function tournamentPanel(){
   return `<section class="panel pop win-tourney" id="actionPanel">
     <div class="win-tag">★ ${esc(T.name)}</div>
     <h2>${esc(T.nation)} · ${esc(T.role)}</h2>
-    <p class="hint">${roleHint} Play the tournament, then enter your numbers. The summer transfer window opens afterwards.</p>
+    <p class="hint">${roleHint} ${penOwned() ? "Play the tournament, then enter your numbers, or have it played out for you." : "It's played out for you: your games, goals and assists follow your role and your level."} The summer transfer window opens afterwards.</p>
     <p class="hint">${TOUR_FMT[T.key].rounds.join(" → ")} · up to ${max} games</p>
-    <form id="tourForm" class="col" style="gap:14px;margin-top:14px">
+    ${penOwned() ? "" : `<div class="row" style="margin-top:14px"><button type="button" class="btn primary" data-act="tour-sim">Play the tournament</button></div>
+      <p class="hint" style="margin-top:10px">Want to type in your own numbers? That takes the <button type="button" class="linkbtn" data-penact="shop">${PEN_IC("pen-ic tiny")} Editor pen</button>.</p>`}
+    ${!penOwned() ? "" : `<form id="tourForm" class="col" style="gap:14px;margin-top:14px">
       <div class="statgrid sheet"><div class="statrow sheet-h" style="--cols:${showCS?4:3}" aria-hidden="true"><span>Tournament</span><span>Apps</span><span>Goals</span><span>Assists</span>${showCS?`<span>Clean sh.</span>`:""}</div><div class="statrow" style="--cols:${showCS?4:3}">
         <div class="cname">${esc(T.name)}<small>up to ${max} games</small></div>
         <div class="field"><label for="tr-apps">Apps</label><input id="tr-apps" type="number" min="0" max="${max}" inputmode="numeric" value="0"></div>
@@ -1506,20 +1508,34 @@ function tournamentPanel(){
         <div class="field"><label for="tr-a">Assists</label><input id="tr-a" type="number" min="0" inputmode="numeric" value="0"></div>
         ${showCS?`<div class="field"><label for="tr-cs">Clean sh.</label><input id="tr-cs" type="number" min="0" inputmode="numeric" value="0"></div>`:""}
       </div></div>
-      <div class="row"><button class="btn primary" type="submit">Play the tournament</button><span class="err" id="tourErr" role="alert"></span></div>
-    </form>
+      <div class="row"><button class="btn primary" type="submit">Play the tournament</button><button type="button" class="btn" data-act="tour-sim">Play it out for me</button><span class="err" id="tourErr" role="alert"></span></div>
+    </form>`}
   </section>`;
 }
-function submitTournament(){
+// a tournament played out for you (typing in your own numbers takes the Editor pen): your games follow your role and
+// how far the team goes, your goals and assists your position and how good you are
+function tourAuto(T, games){
+  const pos = S.player.pos, ovr = S.attr ? mcOvr() : 70, q = clamp(1 + (ovr - 75)/35, .45, 1.7), [gs, as] = MC_SHARE[pos] || MC_SHARE.CM;
+  const apps = T.role==="Starter" ? games : T.role==="Bench" ? Math.round(games*(.45 + Math.random()*.4)) : Math.min(games, Math.floor(Math.random()*3));
+  const mins = T.role==="Starter" ? .92 : .35, team = 1.4;
+  const g = mcPoisson(apps*team*gs*mins*q), a = mcPoisson(apps*team*as*mins*q);
+  const cs = DEF.includes(pos) ? [...Array(apps)].filter(()=>Math.random()<.32*clamp(q, .7, 1.3)).length : 0;
+  return {apps, g, a, cs};
+}
+function submitTournament(auto){
   const T = S.tourney, max = tourMax(T.key), err = $("#tourErr");
-  const v = id => { const el = $("#"+id); return el ? +el.value.trim() : 0; };
-  const st = {apps:v("tr-apps"), g:v("tr-g"), a:v("tr-a"), cs:v("tr-cs")};
-  if ([st.apps,st.g,st.a,st.cs].some(n=>!Number.isInteger(n)||n<0)){ err.textContent = "Use whole numbers of 0 or more."; return; }
-  if (st.apps>max){ err.textContent = `${T.name} has at most ${max} games.`; return; }
-  if (st.cs>st.apps){ err.textContent = "Clean sheets can't be more than appearances."; return; }
-  if (!st.apps && (st.g||st.a)){ err.textContent = "Goals or assists need at least one appearance."; return; }
-  const perfBoost = T.role==="Starter" ? clamp(((st.g+st.a)/Math.max(1,st.apps) - .4)*3, -1, 2.5) : 0;
-  const run = runTourney(T, T.str + perfBoost, st.apps);
+  let st, run;
+  if (auto || !penOwned()){ run = runTourney(T, T.str, 0); st = tourAuto(T, run.games); }
+  else {
+    const v = id => { const el = $("#"+id); return el ? +el.value.trim() : 0; };
+    st = {apps:v("tr-apps"), g:v("tr-g"), a:v("tr-a"), cs:v("tr-cs")};
+    if ([st.apps,st.g,st.a,st.cs].some(n=>!Number.isInteger(n)||n<0)){ err.textContent = "Use whole numbers of 0 or more."; return; }
+    if (st.apps>max){ err.textContent = `${T.name} has at most ${max} games.`; return; }
+    if (st.cs>st.apps){ err.textContent = "Clean sheets can't be more than appearances."; return; }
+    if (!st.apps && (st.g||st.a)){ err.textContent = "Goals or assists need at least one appearance."; return; }
+    const perfBoost = T.role==="Starter" ? clamp(((st.g+st.a)/Math.max(1,st.apps) - .4)*3, -1, 2.5) : 0;
+    run = runTourney(T, T.str + perfBoost, st.apps);
+  }
   addCaps(st.apps, st);
   const rec = {name:T.name, year:T.year, nation:T.nation, role:T.role, apps:st.apps, g:st.g, a:st.a, result:run.reached};
   (S.intl.tours ||= []).push(rec);
@@ -2854,7 +2870,7 @@ function renderCareer(){
         <div class="card-body">
           <p class="pname">${S.history.length ? `<button type="button" class="pname-link" data-act="my-profile" aria-label="Open ${esc(pl.name)}'s career profile">${esc(pl.name)}</button>` : esc(pl.name)}</p>
           <div class="clubline">${clubBadge(club.n, 20)}${esc(club.n)}${S.loan?`<span class="pill gold">On loan</span>`:""}</div>
-          <div class="card-key">${S.attr?`<span><b>${mcOvr()}</b> OVR</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span><b>${mcSeasonRating().toFixed(2)}</b> avg</span>`:""}<span><b>${money(S.value)}</b></span><span>Age <b>${S.age}</b></span></div>
+          <div class="card-key">${S.attr?`<span><b>${mcOvr()}</b> OVR</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span><b>${mcSeasonRating().toFixed(2)}</b> avg</span>`:""}<span><b>${money(S.value)}</b></span><span>Age <b>${S.age}</b></span>${S.phase!=="retired" ? `<button type="button" class="card-pen" data-penact="${penOwned() ? "open" : "shop"}" aria-label="${penOwned() ? "Edit your player" : "Edit your player: needs the Editor pen"}" title="${penOwned() ? "Edit your player" : "Needs the Editor pen"}">${PEN_IC()}</button>` : ""}</div>
           <button type="button" class="card-more" data-act="card-more" aria-expanded="${cardOpen}">${cardOpen?"Show less":"Full profile"}</button>
           <div class="card-extra">
           ${S.loan?`<div class="label">On loan from ${esc(S.loan.parent)}</div>`:`<div class="loyal"><span class="label">Loyalty · ${loyaltyLevel(loyaltyOf(S.club))}</span><div class="meter"><span style="width:${loyaltyOf(S.club)}%"></span></div></div>`}
@@ -2871,6 +2887,7 @@ function renderCareer(){
           </div>
           ${S.release?`<div class="label">Release clause · ${money(S.release)}</div>`:""}
           <div class="pills">${S.attr?`<span class="pill gold">Overall ${mcOvr()}</span>`:""}${S.attr&&mcSeasonRating()!=null?`<span class="pill gold">Rating ${mcSeasonRating().toFixed(2)}</span>`:""}${S.attr&&mcBoot()?`<span class="pill boot-pill">${shopBootIcon(mcBoot().k, Account.locker().boots[mcBoot().k], "boot-ic tiny")}${esc(shopBootName(mcBoot().k))} +${mcBoot().n}</span>`:""}${S.phase==="stats"&&availability()<.999?`<span class="pill down">Injured</span>`:""}<span class="pill">Injury record: ${proneLabel(S.prone??1)}</span>${pressure()>=.3?`<span class="pill ${pressure()>=.6?"down":""}">Pressure: ${pressureLabel(pressure())}</span>`:""}</div>
+          ${S.phase!=="retired" ? `<p class="pen-line">${penOwned() ? `<button type="button" class="btn small" data-penact="open">${PEN_IC()} Edit your player</button>` : `<button type="button" class="btn small" data-penact="shop">${PEN_IC()} Edit your player</button><span class="hint">Needs the Editor pen from the shop</span>`}</p>` : ""}
           <div class="value-box">
             <div><div class="label">Market value</div><div class="value-big">${money(S.value)}</div></div>
             ${last?`<div class="delta ${diff>=0?"up":"down"}">${diff>=0?"▲":"▼"} ${money(Math.abs(diff))}</div>`:""}
@@ -2954,6 +2971,7 @@ document.addEventListener("click", e=>{
   const b = e.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act;
   if (a.startsWith("mc-")){ mcAction(a, b); return; }
+  if (a==="tour-sim"){ if (S && S.tourney) submitTournament(true); return; }
   if (a==="tab" && b.dataset.k==="lab"){ labOpen(); return; }
   if (a==="tab"){ tab = b.dataset.k; render(); uiEnter(document.getElementById("tabBody")); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
   else if (a==="backup-export"){ exportBackup(); }
