@@ -88,32 +88,44 @@ function sqOver(club, i, season){ const L = S.xf && S.xf.slots[`${club}|${i}`]; 
 function sqPlayer(club, i, season, H){
   const t = sqTime(club, i), k = season - 2026 + t.off, gen = Math.floor(k/t.stay), ov = sqOver(club, i, season);
   if (ov && ov.p){ const q = ov.p, age = q.age + season - ov.since;
-    return {i, name:q.name, nat:q.nat, pos:SQ_SLOTS[i][0], num:q.num, r:+(q.ab + sqAgeAdj(age) - strOf(club)).toFixed(1), age, since:ov.since, from:q.from, fee:q.fee, hist:q.hist, mv:true}; }
+    return {i, id:`${club}|${i}|mv${ov.since}`, name:q.name, nat:q.nat, pos:SQ_SLOTS[i][0], num:q.num, r:+(q.ab + sqAgeAdj(age) - strOf(club)).toFixed(1), age, since:ov.since, from:q.from, fee:q.fee, hist:q.hist, mv:true}; }
   const yrs = ov ? season - ov.since : k - gen*t.stay;
-  const R = seeded(hashStr(ov ? `${club}|${i}|${ov.tag || "n" + ov.since}` : `${club}|${i}|${gen}`)), one = a => a[Math.floor(R()*a.length)];
+  const id = ov ? `${club}|${i}|${ov.tag || "n" + ov.since}` : `${club}|${i}|${gen}`, R = seeded(hashStr(id)), one = a => a[Math.floor(R()*a.length)];
   let nat = H.home;
   if (!H.home || R()>=H.dom){ const pool = H.near ? SQ_NEAR : SQ_FOREIGN; do { nat = one(pool); } while (nat===H.home); }
   const [F, L] = sqNames(nat), age = 18 + Math.floor(R()*12) + yrs;
   // most players are a little below the club's level; about one in ten is its star
   const r = (R()<.1 ? 4 + R()*5 : (R() - .6)*10) + sqAgeAdj(age);
-  return {i, name:`${one(F)} ${one(L)}`, nat, pos:SQ_SLOTS[i][0], num:R()<.7 ? SQ_SLOTS[i][1] : 12 + Math.floor(R()*28), r:+r.toFixed(1), age, since:season - yrs, R};
+  return {i, id, name:`${one(F)} ${one(L)}`, nat, pos:SQ_SLOTS[i][0], num:R()<.7 ? SQ_SLOTS[i][1] : 12 + Math.floor(R()*28), r:+r.toFixed(1), age, since:season - yrs, R};
 }
-// a club's XI in a season (this one unless given), cached: [{i, name, nat, pos, num, r (rating against the club's
-// strength), age, since, and for a signing mv, from and fee}]
+// a club's XI in a season (this one unless given), cached: [{i, id, name, nat, pos, num, r (rating against the
+// club's strength), age, since, and for a signing mv, from and fee}]
 function sqSquad(club, season = S.season){
   const key = `${club}|${season}`;
   if (sqCache.has(key)) return sqCache.get(key);
   const H = sqHome(club), xi = SQ_SLOTS.map((_, i)=>sqPlayer(club, i, season, H));
-  // signings keep their names; anyone else who shares a name with a team-mate gets another
-  const names = new Set(xi.filter(p=>p.mv).map(p=>p.name)), nums = new Set();
-  xi.forEach(p=>{
-    if (!p.mv){ const [F, L] = sqNames(p.nat); for (let k=0; names.has(p.name) && k<8; k++) p.name = `${F[Math.floor(p.R()*F.length)]} ${L[Math.floor(p.R()*L.length)]}`; names.add(p.name); delete p.R; }
-    while (nums.has(p.num)) p.num = p.num>=99 ? 12 : p.num + 1;
-    nums.add(p.num);
-  });
+  sqNameAll(club, xi, season);
   if (sqCache.size>400) sqCache.clear();
   sqCache.set(key, xi);
   return xi;
+}
+// everyone keeps the name and shirt number he arrived with (or had in 2026, when the game starts): a newcomer who'd
+// share either with a team-mate already there takes another, so nobody's name changes from one season to the next.
+// A signing keeps his own name, and takes a free number. Kept by player (id) for as long as the game's open
+const sqNamed = new Map();
+function sqNameAll(club, xi, season){
+  const names = new Set(), nums = new Set(), from = p => Math.max(p.since, 2026);
+  xi.slice().sort((a, b)=>from(a) - from(b) || a.i - b.i).forEach(p=>{
+    let got = sqNamed.get(p.id);
+    if (!got && from(p)<season){ sqSquad(club, from(p)); got = sqNamed.get(p.id); }   // as he was named when he arrived
+    if (!got){
+      let name = p.name, num = p.num;
+      if (!p.mv){ const [F, L] = sqNames(p.nat); for (let k=0; names.has(name) && k<8; k++) name = `${F[Math.floor(p.R()*F.length)]} ${L[Math.floor(p.R()*L.length)]}`; }
+      while (nums.has(num)) num = num>=99 ? 12 : num + 1;
+      got = [name, num]; sqNamed.set(p.id, got);
+    }
+    p.name = got[0]; p.num = got[1]; names.add(p.name); nums.add(p.num); delete p.R;
+  });
 }
 const sqSlotOf = pos => Math.max(0, SQ_SLOTS.findIndex(s=>s[0]===pos));
 // a player's rating: his club's strength (or a European opponent's) plus his own edge
@@ -181,12 +193,12 @@ function sqMatch(f, ev){
   const tally = sides.map(sd=>sd.xi.map(()=>[0,0]));
   f.sc = evs.map(e=>{
     const s = e.us ? 0 : 1, name = i => i<0 ? "You" : sqSurname(sides[s].xi[i].name);
-    if (e.og) return {m:e.min, u:0, s:"You", og:1};
+    if (e.og) return {m:e.min, u:0, s:"You", og:1, me:1};
     const by = e.me==="g" ? -1 : sqPick(sides[s].xi, on[s], 0, -1);
     const from = e.me==="a" ? -1 : Math.random()<.72 ? sqPick(sides[s].xi, on[s], 1, by) : null;
     if (by>=0) tally[s][by][0]++;
     if (from!=null && from>=0) tally[s][from][1]++;
-    return {m:e.min, u:e.us ? 1 : 0, s:name(by), a:from==null ? "" : name(from)};
+    return {m:e.min, u:e.us ? 1 : 0, s:name(by), a:from==null ? "" : name(from), me:by<0 ? 1 : 0};
   });
   const rt = sides.map((sd,s)=>sd.xi.map((p,i)=>on[s][i] ? sqRate(p.pos, sd.q + p.r, sd.oq, tally[s][i][0], tally[s][i][1], s ? ga : gf, s ? gf : ga) : null));
   let best = null;
@@ -195,10 +207,12 @@ function sqMatch(f, ev){
   f.potmBy = f.potm ? null : best;
   return sides.map((sd,s)=>sd.xi.map((p,i)=>rt[s][i]==null ? null : [tally[s][i][0], tally[s][i][1], rt[s][i]]));
 }
-// the full-time goal list: "Smith 12', You 54'" under each side
+// your name where a list would say "you": glowing gold, so it's easy to spot
+const sqMeName = (n = S.player.name) => `<b class="me-name">${esc(n)}</b>`;
+// the full-time goal list: "Smith 12', Your Name 54'" under each side (yours glowing)
 function sqScorers(f){
   if (!f.sc || !f.sc.length) return "";
-  const line = us => f.sc.filter(g=>!!g.u===us).map(g=>`${esc(g.s)}${g.og ? " (og)" : ""} ${g.m}'`).join(", ");
+  const line = us => f.sc.filter(g=>!!g.u===us).map(g=>`${g.me || g.s==="You" ? sqMeName() : esc(g.s)}${g.og ? " (og)" : ""} ${g.m}'`).join(", ");
   const [l, r] = f.home || f.neutral ? [line(true), line(false)] : [line(false), line(true)];
   return `<div class="sq-goals"><span>${l}</span><i aria-hidden="true">⚽</i><span>${r}</span></div>`;
 }
@@ -254,7 +268,7 @@ function sqSquadPanel(){
   const club = S.club, lk = sqLeague(club), L = lk && lk[1];
   const row = (key, num, name, sub, rt, x, me) => { const n = x && x[0], avg = n ? (x[3]/10/x[0]).toFixed(2) : "–";
     return `<li class="${me ? "me" : ""}" data-pl="${esc(key)}" tabindex="0" role="button" aria-label="${esc(`${name}${me ? " (you)" : ""}, ${sub}, rated ${rt}${n ? `: ${x[1]} goals, ${x[2]} assists, average rating ${avg}` : ""}. Open card`)}">
-    <span class="lg-rk">${esc(num)}</span><span class="lg-who"><b>${esc(name)}${me ? " (you)" : ""}</b><small>${esc(sub)}</small></span>
+    <span class="lg-rk">${esc(num)}</span><span class="lg-who"><b class="${me ? "me-name" : ""}">${esc(name)}</b><small>${esc(sub)}</small></span>
     <span class="sq-n sq-g">${n ? x[1] : "–"}</span><span class="sq-n sq-a">${n ? x[2] : "–"}</span><span class="sq-n sq-av">${avg}</span><span class="lg-v">${rt}</span></li>`; };
   return `<section class="panel"><h2>${esc(club)} squad</h2>
     <p class="hint" style="margin-bottom:12px">Ratings, and this season's league goals, assists and average match rating. When you start, you replace the player in your position. Tap a player for their card.</p>

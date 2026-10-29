@@ -1257,3 +1257,14 @@ small.boot{display:inline-flex;align-items:center}
 .p9-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .p9-btns .btn:disabled{opacity:.45}
 .p9-help{margin:8px 0 0;font-size:13px}
+.p9-pause{position:absolute;right:8px;top:8px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(6,14,10,.75);color:#F2F6F3;font-weight:900;font-size:13px;letter-spacing:-1px;cursor:pointer;display:grid;place-items:center}
+
+/* your own name in a scoresheet or a scorers' list: glowing gold */
+.me-name{color:var(--gold);font-weight:800;white-space:nowrap;text-shadow:0 0 6px rgba(245,197,66,.55);animation:meGlow 2.6s ease-in-out infinite}
+.lv .me-name{color:#FFE08A}
+@keyframes meGlow{0%,100%{text-shadow:0 0 5px rgba(245,197,66,.45)}50%{text-shadow:0 0 12px rgba(245,197,66,.95),0 0 2px rgba(255,236,170,.85)}}
+@media (prefers-reduced-motion: reduce){ .me-name{animation:none;text-shadow:0 0 8px rgba(245,197,66,.7)} }
+/* in your own (gold) row, the name is dark with a white glow, so it still reads */
+.me .me-name,.lv .me .me-name{color:var(--accent-ink);animation-name:meGlowOn}
+@keyframes meGlowOn{0%,100%{text-shadow:0 0 4px rgba(255,255,255,.55)}50%{text-shadow:0 0 11px rgba(255,255,255,1),0 0 2px #fff}}
+@media (prefers-reduced-motion: reduce){ .me .me-name,.lv .me .me-name{text-shadow:0 0 8px rgba(255,255,255,.9)} }

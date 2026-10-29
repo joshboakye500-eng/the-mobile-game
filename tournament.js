@@ -274,7 +274,7 @@ function tBracketHTML(P){
 function tPanelHTML(T, roleHint){
   const P = tGet(), c = tNext(P), me = P.meClub, g0 = tGroupOf(P, me), F = TOUR_FMT[T.key];
   const top = cpLeaders(P, 0), mine = top.findIndex(p=>p.me);
-  const row = p => `<li class="${p.me ? "me" : ""}"><span class="lg-rk">${p.rank}</span>${clubBadge(p.club, 18)}<span class="lg-who"><b>${esc(p.name)}${p.me ? " (you)" : ""}</b><small>${esc(p.club)}</small></span><span class="lg-v">${p.n}</span></li>`;
+  const row = p => `<li class="${p.me ? "me" : ""}"><span class="lg-rk">${p.rank}</span>${clubBadge(p.club, 18)}<span class="lg-who"><b class="${p.me ? "me-name" : ""}">${esc(p.name)}</b><small>${esc(p.club)}</small></span><span class="lg-v">${p.n}</span></li>`;
   const sel = c && (c.me.st==="start" ? "You're in the starting line-up." : c.me.st==="sub" ? `You'll come off the bench, around the ${ord(90 - c.me.mins)} minute.` : "You're on the bench and won't get on in this one.");
   const results = P.mine.map(x=>`<li><span>${esc(x.round)}</span><span>${clubBadge(x.opp, 16)} ${esc(x.opp)}</span><b>${x.gf}–${x.ga}${x.pens ? ` (${x.pens==="won" ? "won" : "lost"} on pens)` : ""}</b><small>${x.mins ? `${x.r.toFixed(1)} · ${[x.g ? `${x.g}G` : "", x.a ? `${x.a}A` : ""].filter(Boolean).join(" ") || "played"}` : "didn't play"}</small></li>`).join("");
   const over = !c;

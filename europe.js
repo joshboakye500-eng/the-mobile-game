@@ -251,7 +251,7 @@ function euBox(k){
     : T ? `You're ${ord(myRow + 1)} with ${T[myRow].pts} point${T[myRow].pts===1 ? "" : "s"} from ${T[myRow].p} game${T[myRow].p===1 ? "" : "s"}.` : `You're in the draw: ${C.md} games in the league phase.`;
   const top = cpLeaders(C, 0), mine = top.findIndex(p=>p.me);
   const row = p => `<li class="${p.me ? "me" : ""}" data-pl="${esc(p.me ? "me" : `${p.club}|${p.i}`)}" tabindex="0" role="button" aria-label="Open ${esc(p.name)}'s card"><span class="lg-rk">${p.rank}</span>${clubBadge(p.club, 18)}
-    <span class="lg-who"><b>${esc(p.name)}${p.me ? " (you)" : ""}</b><small>${esc(p.club)}</small></span><span class="lg-v">${p.n}</span></li>`;
+    <span class="lg-who"><b class="${p.me ? "me-name" : ""}">${esc(p.name)}</b><small>${esc(p.club)}</small></span><span class="lg-v">${p.n}</span></li>`;
   const hon = (S.euHon || []).filter(h=>h[k] && h.s!==G.s).slice(-5).reverse();
   return `<div class="cp-head"><span class="pill ${C.win ? "gold" : "eu"}">${stage}</span></div>
     ${you ? `<p class="hint" style="margin:0 0 8px">${you}</p>` : ""}

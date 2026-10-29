@@ -176,7 +176,7 @@ function lgTableHTML(L, k, mini){
 function lgLeadersHTML(L, k){
   const list = lgLeaders(L, k), mine = list.findIndex(p=>p.me), min = Math.max(3, Math.round(L.r*.4));
   const row = p => `<li class="${p.me ? "me" : ""}" data-pl="${esc(p.me ? "me" : `${p.club}|${p.i}`)}" tabindex="0" role="button" aria-label="Open ${esc(p.name)}'s card"><span class="lg-rk">${p.rank}</span>${clubBadge(p.club, 22)}
-    <span class="lg-who"><b>${esc(p.name)}${p.me ? " (you)" : ""}</b><small>${esc(p.club)} · ${p.pos} · ${p.apps} game${p.apps===1 ? "" : "s"}</small></span><span class="lg-v">${k==="avg" ? p.avg.toFixed(2) : p[k]}</span></li>`;
+    <span class="lg-who"><b class="${p.me ? "me-name" : ""}">${esc(p.name)}</b><small>${esc(p.club)} · ${p.pos} · ${p.apps} game${p.apps===1 ? "" : "s"}</small></span><span class="lg-v">${k==="avg" ? p.avg.toFixed(2) : p[k]}</span></li>`;
   if (!list.length) return `<p class="empty">${k==="avg" ? `Ratings show once players have ${min} games.` : "Nobody yet."}</p>`;
   return `<ol class="lg-lead">${list.slice(0, 10).map(row).join("")}${mine>=10 ? `<li class="lg-gap" aria-hidden="true">⋯</li>${row(list[mine])}` : ""}</ol>
     ${k==="avg" ? `<p class="hint" style="margin-top:8px">Average match rating, for players with at least ${min} games.</p>` : ""}`;

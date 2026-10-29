@@ -213,7 +213,7 @@ function cpBox(k){
   const left = C.win ? `Won by ${esc(C.win)}` : C.cur ? `${esc(R[C.cur.i])} being played` : `${C.al.length} club${C.al.length===1 ? "" : "s"} left · next: ${esc(R[C.r] || "")}`;
   const top = cpLeaders(C, 0), mine = top.findIndex(p=>p.me);
   const row = p => `<li class="${p.me ? "me" : ""}" data-pl="${esc(p.me ? "me" : `${p.club}|${p.i}`)}" tabindex="0" role="button" aria-label="Open ${esc(p.name)}'s card"><span class="lg-rk">${p.rank}</span>${clubBadge(p.club, 18)}
-    <span class="lg-who"><b>${esc(p.name)}${p.me ? " (you)" : ""}</b><small>${esc(p.club)}</small></span><span class="lg-v">${p.n}</span></li>`;
+    <span class="lg-who"><b class="${p.me ? "me-name" : ""}">${esc(p.name)}</b><small>${esc(p.club)}</small></span><span class="lg-v">${p.n}</span></li>`;
   const list = [...(yourTie ? [yourTie] : []), ...ties.filter(t=>t!==yourTie)].map(t=>`<li class="${t===yourTie ? "me" : ""}">${cpTieText(k, last, t)}</li>`).join("");
   return `<div class="cp-head"><span class="pill ${C.win ? "gold" : ""}">${left}</span></div>
     ${you ? `<p class="hint" style="margin:0 0 8px">${you}</p>` : ""}

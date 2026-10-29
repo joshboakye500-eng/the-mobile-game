@@ -23,10 +23,11 @@ function p9New(st, mins){
   const team = (side, them) => P9_SHAPE.map(([x, y, pos, num], i)=>{ const hx = them ? P9_W - x : x, hy = them ? P9_L - y : y;
     return {side, i, pos, num, hx, hy, x:hx, y:hy, vx:0, vy:0, fx:0, fy:them ? 1 : -1, cool:0, stun:0}; });
   const M = {us:team(0, false), them:team(1, true), ball:{x:P9_W/2, y:P9_L/2, vx:0, vy:0, owner:null, last:null, pass:null, shot:null},
-    t:0, len:mins*60, score:[0, 0], half:1, kick:0, me:{g:0, a:0, sh:0, ps:0, pc:0, tk:0, tw:0, touches:0}, msg:null, msgT:0, call:0,
+    t:0, len:mins*60, score:[0, 0], half:1, kick:0, me:{g:0, a:0, sh:0, ps:0, pc:0, tk:0, tw:0, sv:0, touches:0}, msg:null, msgT:0, call:0, freeze:0, kickNext:0, hold:false, saveDue:null,
     kit, str:[1, clamp(1 - e*.6, .8, 1.2)], you:null, joy:null, key:{x:0, y:0}, done:false, lastPass:null, log:[],
     stat:{sh:[0, 0], pa:[0, 0], pc:[0, 0], pos:[0, 0]}, tempo:clamp(5.5/mins, .7, 2)};
   M.you = M.us[P9_YOU[st.lab.pos] ?? 9]; M.you.me = true;
+  M.myName = typeof S!=="undefined" && S && S.player && !S.newing && S.player.name ? S.player.name : "You";   // for the scorers
   M.speedMe = (6.4 + (a.pac - 60)/40)*P9_PACE;   // your pace, in metres a second
   p9Kickoff(M, 0);
   return M;
@@ -104,6 +105,8 @@ function p9Shot(M, p){
   const gy = p9GoalY(p.side), d = Math.hypot(p.x - P9_W/2, p.y - gy), ang = Math.abs(p.x - P9_W/2)/Math.max(4, Math.abs(p.y - gy));
   const q = clamp(.4 - (d - 6)*.012 - ang*.06, .04, .5)*(p.header ? .8 : 1)*(p.side ? M.str[1] : 1/M.str[1])*M.tempo; p.header = false;
   const goal = Math.random()<q, onT = goal || Math.random()<.55, tx = goal ? P9_GOAL[0] + .6 + Math.random()*6.1 : onT ? P9_W/2 + gauss()*1.5 : (Math.random()<.5 ? P9_GOAL[0] - 1 - Math.random()*4 : P9_GOAL[1] + 1 + Math.random()*4);
+  // you're in goal and it's on target: it's yours to save (the save mini-game), not the dice's
+  if (p.side===1 && onT && M.you.pos==="GK" && !M.cpu){ M.saveDue = p; M.stat.sh[1]++; p.cool = .5; p9Say(M, "Shot!", .6); return; }
   p9Kick(M, p, tx, gy + (p.side ? 1.5 : -1.5), 30, "shot");
   M.ball.shot = {by:p, goal, onT, x:tx}; M.stat.sh[p.side]++;
   if (p.side===1) p9Say(M, "Shot!", .8);
@@ -123,15 +126,26 @@ async function p9YouShoot(M, st){
   else { p9Say(M, r.big, 1.2); p9Restart(M, gk, gk.x, gk.y); }
   M.paused = false; p9Draw(M, st, true);
 }
+// a shot at you in goal: the match stops for the save mini-game
+async function p9YouSave(M, st, by){
+  M.paused = true;
+  const r = await lvGameSave(st, {min:p9Min(M), q:1, g:"save", v:"box"});
+  if (r==="skip" || st.lab.quit){ M.done = true; return; }
+  if (r.ok){ M.me.sv++; p9Say(M, r.big, 1.2); p9Restart(M, M.you, M.you.x, M.you.y); }
+  else p9Goal(M, 1, by);
+  M.paused = false; p9Draw(M, st, true);
+}
 function p9Goal(M, side, by){
   M.score[side]++;
   if (side===0){
     if (by && by.me){ M.me.g++; p9Say(M, "GOAL! You scored!", 2.2); }
     else p9Say(M, "GOAL!", 2);
     const lp = M.lastPass; if (lp && lp.from.me && by && !by.me && M.t - lp.t<10 && lp.to===by){ M.me.a++; p9Say(M, "GOAL! Your assist!", 2.2); }
-    M.log.push(`${p9Min(M)}' ${by && by.me ? "You" : `#${by ? by.num : "?"}`} scored`);
+    M.log.push(`${p9Min(M)}' ${by && by.me ? M.myName : `#${by ? by.num : "?"}`} scored`);
   } else { p9Say(M, "They score", 1.8); M.log.push(`${p9Min(M)}' They scored`); }
-  p9Kickoff(M, side ? 0 : 1);
+  Object.assign(M.ball, {owner:null, vx:0, vy:0, pass:null, shot:null, x:clamp(M.ball.x, P9_GOAL[0] + .5, P9_GOAL[1] - .5), y:side ? P9_L + .8 : -.8});
+  p9All(M).forEach(p=>{ p.vx = p.vy = 0; });
+  M.freeze = 1.6; M.kickNext = side ? 0 : 1;
 }
 // a goal kick, a save held, a throw-in: the ball to p, standing at (x, y)
 function p9Restart(M, p, x, y){
@@ -143,7 +157,9 @@ const p9Min = M => Math.min(90, Math.floor(M.t/M.len*90));
 /* ---------- one step of the match ---------- */
 function p9Step(M, dt){
   M.t += dt; M.call = Math.max(0, M.call - dt); M.msgT = Math.max(0, M.msgT - dt);
-  if (M.half===1 && M.t>=M.len/2){ M.half = 2; p9Say(M, "Half time", 2); p9Kickoff(M, 1); }
+  // a moment to take in a goal, or half time, then the kick-off
+  if (M.freeze>0){ M.freeze -= dt; if (M.freeze<=0) p9Kickoff(M, M.kickNext); if (M.t<M.len) return; }
+  if (M.half===1 && M.t>=M.len/2){ M.half = 2; p9Say(M, "Half time", 2); p9All(M).forEach(p=>{ p.vx = p.vy = 0; }); M.freeze = 2; M.kickNext = 1; return; }
   if (M.t>=M.len){ M.done = true; return; }
   const b = M.ball, carrier = b.owner;
   if (carrier) M.stat.pos[carrier.side] += dt;
@@ -325,7 +341,7 @@ function p9Draw(M, st, again){
       <line id="p9pass" stroke="#F5C542" stroke-width=".35" stroke-dasharray="1 1" opacity="0"/>
       ${[...M.us, ...M.them].map(p=>p9Token(p, M.kit)).join("")}
       <g id="p9ball"><circle r=".75" fill="#fff" stroke="#15171A" stroke-width=".25"/></g></svg>
-      <div class="p9-score" aria-live="polite"></div><div class="p9-msg" aria-live="assertive"></div><div class="p9-joy" hidden><i></i></div></div>
+      <div class="p9-score" aria-live="polite"></div><button type="button" class="p9-pause" aria-label="Pause">II</button><div class="p9-msg" aria-live="assertive"></div><div class="p9-joy" hidden><i></i></div></div>
     <div class="p9-btns"><button type="button" class="btn big p9-b2">Pass</button><button type="button" class="btn big primary p9-b1">Shoot</button></div>
     <p class="hint p9-help">Drag anywhere on the pitch to run. ${again ? "" : "Arrow keys and Space / Enter work too."}</p>`);
   p9Wire(M, st);
@@ -337,12 +353,13 @@ function p9Paint(M){
   $("#p9ball")?.setAttribute("transform", `translate(${b.x.toFixed(2)} ${b.y.toFixed(2)})`);
   const ln = $("#p9pass"); if (ln){ const t = b.pass && b.pass.to; if (t && b.pass.from.side===0){ ln.setAttribute("x1", b.x); ln.setAttribute("y1", b.y); ln.setAttribute("x2", t.x); ln.setAttribute("y2", t.y); ln.setAttribute("opacity", .7); } else ln.setAttribute("opacity", 0); }
   const sc = $(".p9-score"); if (sc) sc.innerHTML = `<b>${M.score[0]}–${M.score[1]}</b><span>${p9Min(M)}'</span>`;
-  const m = $(".p9-msg"); if (m){ m.textContent = M.msgT>0 ? M.msg : ""; m.classList.toggle("on", M.msgT>0); }
-  const has = b.owner===M.you, b1 = $(".p9-b1"), b2 = $(".p9-b2");
+  const m = $(".p9-msg"), show = M.hold || M.msgT>0; if (m){ m.textContent = M.hold ? "Paused" : M.msgT>0 ? M.msg : ""; m.classList.toggle("on", show); }
+  const pz = $(".p9-pause"); if (pz){ pz.textContent = M.hold ? "▶" : "II"; pz.setAttribute("aria-label", M.hold ? "Carry on" : "Pause"); }
+  const has = b.owner===M.you, gk = M.you.pos==="GK", b1 = $(".p9-b1"), b2 = $(".p9-b2");
   if (b1 && b2){
-    const near = b.owner && b.owner.side===1 && p9Dist(M.you, b.owner)<2.4;
-    b1.textContent = has ? "Shoot" : "Tackle"; b1.disabled = !has && !near; b1.classList.toggle("primary", has || near);
-    b2.textContent = has ? "Pass" : M.call>0 ? "Calling…" : "Call for it"; b2.disabled = !has && !(b.owner && b.owner.side===0 && b.owner!==M.you);
+    const near = !gk && b.owner && b.owner.side===1 && p9Dist(M.you, b.owner)<2.4;
+    b1.textContent = has ? (gk ? "Long kick" : "Shoot") : gk ? "In goal" : "Tackle"; b1.disabled = !has && !near; b1.classList.toggle("primary", has || near);
+    b2.textContent = has ? "Pass" : M.call>0 ? "Calling…" : "Call for it"; b2.disabled = !has && (gk || !(b.owner && b.owner.side===0 && b.owner!==M.you));
   }
 }
 // the joystick, the buttons and the keys
@@ -355,11 +372,18 @@ function p9Wire(M, st){
   const up = () => { if (M.joy) M.joy.on = false; joy.hidden = true; };
   stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
   lvEl.querySelector(".p9-b1").addEventListener("click", ()=>p9Act(M, st, 1));
+  lvEl.querySelector(".p9-pause").addEventListener("click", ()=>{ if (!M.paused) M.hold = !M.hold; p9Paint(M); });
   lvEl.querySelector(".p9-b2").addEventListener("click", ()=>p9Act(M, st, 2));
 }
 function p9Act(M, st, k){
   if (M.paused || M.done) return;
   const b = M.ball, p = M.you;
+  if (M.hold) return;
+  if (b.owner===p && p.pos==="GK"){
+    // in goal: a long kick up to the most open forward, or a short pass
+    if (k===1){ const fw = M.us.filter(q=>["RW", "ST", "LW"].includes(q.pos)).sort((x, y)=>Math.min(...M.them.map(f=>p9Dist(f, y))) - Math.min(...M.them.map(f=>p9Dist(f, x))))[0]; return p9Pass(M, p, fw, .6 + st.lab.a.pas/250); }
+    const [to, pt] = p9BestPass(M, p); if (to) p9Pass(M, p, to, .7 + st.lab.a.pas/200, pt); return;
+  }
   if (b.owner===p){
     if (k===1) return p9YouShoot(M, st);
     const i = p9Input(M), [to, pt] = p9BestPass(M, p, i && i[2] ? [i[0], i[1]] : [p.fx, p.fy]);
@@ -386,6 +410,7 @@ async function p9Run(st){
     const m = {ArrowLeft:[-1, 0], ArrowRight:[1, 0], ArrowUp:[0, -1], ArrowDown:[0, 1], a:[-1, 0], d:[1, 0], w:[0, -1], s:[0, 1]}[k];
     if (m){ if (m[0]) M.key.x = m[0]; if (m[1]) M.key.y = m[1]; return true; }
     if (k===" "){ p9Act(M, st, 1); return true; } if (k==="Enter" || k==="x"){ p9Act(M, st, 2); return true; }
+    if (k==="p" || k==="Escape"){ if (!M.paused){ M.hold = !M.hold; p9Paint(M); } return true; }
   }, k=>{ if (["ArrowLeft", "ArrowRight", "a", "d"].includes(k)) M.key.x = 0; if (["ArrowUp", "ArrowDown", "w", "s"].includes(k)) M.key.y = 0; });
   try{
     await new Promise(res=>{
@@ -393,7 +418,7 @@ async function p9Run(st){
       const tick = now=>{
         if (st.lab.quit || !lvEl){ M.done = true; return res(); }
         const dt = Math.min(.05, (now - last)/1000); last = now;
-        if (!M.paused){ p9Step(M, dt); p9Paint(M); }
+        if (!M.paused && !M.hold){ p9Step(M, dt); p9Paint(M); if (M.saveDue){ const by = M.saveDue; M.saveDue = null; p9YouSave(M, st, by); } }
         if (M.done) return res();
         requestAnimationFrame(tick);
       };
@@ -402,9 +427,9 @@ async function p9Run(st){
   } finally { off(); }
   if (st.lab.quit) return "skip";
   const [f, a] = M.score, me = M.me, win = f>a;
-  const rt = clamp(6.3 + (f - a)*.25 + me.g*.95 + me.a*.6 + me.tw*.12 + me.pc*.03 - (me.ps - me.pc)*.04, 3.5, 10).toFixed(1);
+  const gk = M.you.pos==="GK", rt = clamp(6.3 + (f - a)*.25 + me.g*.95 + me.a*.6 + me.tw*.12 + me.pc*.03 - (me.ps - me.pc)*.04 + (gk ? me.sv*.35 - a*.25 + (a===0 ? .7 : 0) : 0), 3.5, 10).toFixed(1);
   return {ok:win, big:win ? `Won ${f}–${a}` : f===a ? `Drew ${f}–${a}` : `Lost ${f}–${a}`,
-    small:`You: ${me.g} goal${me.g===1 ? "" : "s"}, ${me.a} assist${me.a===1 ? "" : "s"}, ${me.pc}/${me.ps} passes, ${me.tw}/${me.tk} tackles · rating ${rt}`,
+    small:gk ? `You: ${me.sv} save${me.sv===1 ? "" : "s"}, ${a} conceded${a===0 ? " (a clean sheet)" : ""}, ${me.pc}/${me.ps} passes · rating ${rt}` : `You: ${me.g} goal${me.g===1 ? "" : "s"}, ${me.a} assist${me.a===1 ? "" : "s"}, ${me.pc}/${me.ps} passes, ${me.tw}/${me.tk} tackles · rating ${rt}`,
     score:`${M.log.length ? M.log.join(" · ") : "No goals"} · shots ${M.stat.sh[0]}–${M.stat.sh[1]} · possession ${Math.round(M.stat.pos[0]/Math.max(1, M.stat.pos[0] + M.stat.pos[1])*100)}%`};
 }
 const LAB_P90 = [{id:"p90", t:"Play the 90", d:"A whole match, top-down, 11 against 11: you control your own player, the rest play themselves. Your shots are played as the shot mini-game.", cat:"full", ic:"move", help:"p90", run:p9Run}];
