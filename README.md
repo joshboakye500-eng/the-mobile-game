@@ -42,6 +42,8 @@ The Season screen keeps it short: this week's match (both badges, the competitio
   - **Defence:** tackles and blocks (timing) and interceptions (read the passer's eyes).
   - **Keepers:** saves and penalties (react to the shot), claiming crosses (ring timing) and rushing out (wait for the heavy touch).
 
+  The keeper you shoot at is their real number one, with his name and rating on the goal. He's as good as his level: a non-league keeper is much easier to beat than a Premier League one, and a poor keeper now and then gets a hand to it and still lets it in. Your teammates' chances are the same: they score more often against a weak keeper.
+
   Your attributes, boots, form and sharpness set how forgiving each one is. How many attacking or defending moments you get, and how good the chances are, follow how the match is going for your team. The rest of the match is simulated around your moments, so the final score includes what you did. *Play next week* plays one week; *Play to January* plays straight through. To skip a game, tap *Sim the match* on its intro, or *Sim the rest* partway through.
 - **Team form.** Your team's last five results show in the match centre and before each match, next to your opponent's. A team on a run plays with more confidence, and you get more chances.
 - **Squads and line-ups.** Every club has a starting XI of made-up players, named for the country it plays in, with shirt numbers and ratings built around the club's strength. Squads change gradually: each player stays a few seasons before someone new arrives. Before each match you see both line-ups on a pitch, each side's average rating and the opponent's key man. You take the place of the player in your position.

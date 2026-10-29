@@ -4,7 +4,7 @@
    Development. The lab is a sandbox: each game gets a pretend match of its own (st.lab, read by moments.js), so
    nothing played here touches the career: no coins, no stats, no training, no saves, and the "first time" guides
    aren't ticked off. Loaded after moments.js, drills.js and labgames.js; only called once the page is running. */
-const LAB_DIFF = {easy:{t:"Easy", ease:.25, a:82}, normal:{t:"Normal", ease:0, a:70}, hard:{t:"Hard", ease:-.25, a:58}};
+const LAB_DIFF = {easy:{t:"Easy", ease:.25, a:82, kr:58}, normal:{t:"Normal", ease:0, a:70, kr:72}, hard:{t:"Hard", ease:-.25, a:58, kr:82}};
 let labDiff = "normal", labCat = "all";
 
 // small pictures for the lab's cards: lines and shapes in a 24-point square
@@ -92,7 +92,7 @@ function labCtx(g){
   const them = lvNear(club.c1, "#1D4ED8") || lvNear(club.c1, "#0F172A") ? "#DC2626" : "#1D4ED8";
   const a = Object.fromEntries(["fin","pas","pac","def","sta"].map(k=>[k, D.a]));
   return {f:{opp:"Lab XI", oppStr:70, home:true}, X:{base:70, lf:1.4, la:1.2, t:1, pG:.3, pA:.2}, ev:[], g:0, a:0, og:0, bonus:0, left:1, log:[],
-    lab:{a, ease:D.ease, pos:career ? S.player.pos : "ST", game:g, next:"Continue",
+    lab:{a, ease:D.ease, kr:D.kr, pos:career ? S.player.pos : "ST", game:g, next:"Continue",
       kits:{us:club.c1, them, usTrim:club.c2 || "#15171A", themTrim:"#F8FAFC"}, cols:[club.c1, club.c2 || "#FFFFFF", "#F5C542", "#FFFFFF"]}};
 }
 // the lab's scoreboard: which game, the difficulty, any steps, and the way out

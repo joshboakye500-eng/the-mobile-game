@@ -520,16 +520,28 @@ function lvKeeperTo(tx, ty, reach, kcol){
   const k = {l:-1, c:0, r:1}[kcol];
   return [150 + k*80, LV_ROWS.b - 4, k*62];
 }
+// the keeper you're up against: their number one in a match (rated from their squad, so a non-league keeper is no
+// Neuer), a reserve keeper in training, and in the lab one to suit the difficulty. q (0.1 to 0.88) is how hard he is
+// to beat: mostly his own level, and a little how it compares with the finishing of whoever's shooting (fin)
+function lvKeeper(st, fin){
+  let name = "", r = st.f.oppStr;
+  if (st.lab) r = st.lab.kr ?? 72;
+  else if (st.drill) r = strOf(S.mc.club) - 8;
+  else if (typeof sqSquad==="function"){ try{ const p = sqSquad(st.f.opp)[0]; name = sqSurname(p.name); r = sqRating(p, st.f.oppStr); }catch(e){} }
+  return {name, r:Math.round(r), q:clamp(.5 + (r - 75)/80 + (r - fin)/80, .1, .88)};
+}
+// a tag on the goal saying who's in it and how good he is
+const lvKeeperTag = GK => `<span class="lv-gk ${GK.r>=85 ? "elite" : GK.r<65 ? "weak" : ""}" aria-label="Their keeper${GK.name ? `, ${esc(GK.name)}` : ""}, rated ${GK.r}">GK${GK.name ? ` · ${esc(GK.name)}` : ""} <b>${GK.r}</b></span>`;
 // the shot itself, also used at the end of a take-on and an attacking move: resolves {goal, big, small} or "skip"
 function lvShotCore(st, m, v, head, title){
-  const K = LV_SHOT[v], f = st.f, attr = lvAttr(st).fin, e = lvEase(st, attr), kit = lvKits(st);
-  const zone = clamp(K.z*(1 + e*1.3), .05, .32), mid = .72, per = K.per*(1 + e*.8), kq = clamp(.5 + (f.oppStr - attr)/40, .2, .85);
+  const K = LV_SHOT[v], f = st.f, attr = lvAttr(st).fin, e = lvEase(st, attr), kit = lvKits(st), GK = lvKeeper(st, attr);
+  const zone = clamp(K.z*(1 + e*1.3), .05, .32), mid = .72, per = K.per*(1 + e*.8), kq = GK.q;
   const lo = mid-zone/2, hi = mid+zone/2;
   return new Promise(res=>{
     lvShow(`${head}<h2 class="lv-t">${title || K.t}</h2><p class="lv-s">${K.s}</p>
       <div class="lv-stage">${lvGoalSvg(kit.them, v==="freekick" ? kit.them : null)}
         <div class="lv-aims">${["tl","tc","tr","bl","bc","br"].map(z=>`<button type="button" class="lv-aim" data-z="${z}" aria-label="Aim ${{t:"high",b:"low"}[z[0]]} ${{l:"left",c:"centre",r:"right"}[z[1]]}"></button>`).join("")}</div>
-        <span class="lv-reticle" hidden></span></div>
+        <span class="lv-reticle" hidden></span>${lvKeeperTag(GK)}</div>
       ${lvBarHTML(mid, zone)}
       <button type="button" class="btn big lv-act" disabled>Drag the ball to aim</button>`);
     lvSkippable(res);
@@ -565,17 +577,19 @@ function lvShotCore(st, m, v, head, title){
       const save = clamp((kcol===col ? read : col==="c" ? .2 : .04)*(kq/.5)*K.k + weak, .02, .97);
       let goal = !over && !wall && Math.random()>save, tip = false;
       if (goal && Math.random()>m.q){ goal = false; tip = true; }   // in a match that's going against you, chances are harder
+      // a poor keeper sometimes gets to it and still lets it in
+      const howler = !goal && !over && !wall && !tip && Math.random() < Math.max(0, .5 - kq)*.35; if (howler) goal = true;
       const tx = clamp(pt[0] + (Math.random()*10-5), 36, 264), ty = over ? -14 : wall ? 140 : clamp(pt[1] + (Math.random()*8-4), 30, 116);
       const wx = wall ? clamp(tx, 128, 172) : tx;
-      const [kx, ky, rot] = lvKeeperTo(wx, ty, !goal && !over && !wall ? "save" : goal && kcol===col ? "near" : "wrong", kcol);
+      const [kx, ky, rot] = lvKeeperTo(wx, ty, howler || (!goal && !over && !wall) ? "save" : goal && kcol===col ? "near" : "wrong", howler ? col : kcol);
       await lvStrike(st);
       await Promise.all([
         lvFly("#lvBall", [150, 166], [wx, ty], over ? 520 : 470, {s0:1, s1:wall ? .85 : .6, h:row==="t" || over ? 14 : 4, curve:(col==="l" ? -1 : col==="r" ? 1 : 0)*(6 + Math.random()*8), spin:1.6}),
-        lvTween(330, k=>{ const q = lvEaseOut(k); lvMove("#lvKp", 150 + (kx-150)*q, 84 + (ky-84)*q, rot*q, 1 + .06*q); })
+        lvTween(330 + (1 - kq)*110, k=>{ const q = lvEaseOut(k); lvMove("#lvKp", 150 + (kx-150)*q, 84 + (ky-84)*q, rot*q, 1 + .06*q); })   // a better keeper gets down quicker
       ]);
       if (goal){ lvRipple(wx, ty); await lvWait(160); }
-      res({goal, big: goal ? "Goal!" : over ? "Over the bar" : wall ? "Hit the wall" : "Saved",
-        small: goal ? (kcol===col ? "Past the keeper's hands" : "Sent him the wrong way") : over ? (row==="t" ? "Too high" : "Overhit") : wall ? "Go higher or wider" : tip ? "Fingertip save" : weak>=.3 ? "Not enough on it" : kcol===col ? "The keeper read it" : "Brilliant save"});
+      res({goal, big: howler ? "Howler!" : goal ? "Goal!" : over ? "Over the bar" : wall ? "Hit the wall" : "Saved",
+        small: howler ? "It squirmed through the keeper's hands" : goal ? (kcol===col ? "Past the keeper's hands" : "Sent him the wrong way") : over ? (row==="t" ? "Too high" : "Overhit") : wall ? "Go higher or wider" : tip ? "Fingertip save" : weak>=.3 ? "Not enough on it" : kcol===col ? "The keeper read it" : "Brilliant save"});
     };
     act.addEventListener("click", fire);
     lv$(".lv-bar").addEventListener("pointerdown", fire);
@@ -609,9 +623,9 @@ function lvRing(st, o){
   });
 }
 async function lvGameHeader(st, m){
-  const kit = lvKits(st), a = lvAttr(st), kq = clamp(.5 + (st.f.oppStr - a.fin)/40, .2, .85);
+  const kit = lvKits(st), a = lvAttr(st), GK = lvKeeper(st, a.fin), kq = GK.q;
   const r = await lvRing(st, {head:lvHead(st, m.min), title:"Cross coming in", sub:"Tap Head it! when the closing ring meets the gold one.", btn:"Head it!",
-    attr:a.fin*.6 + a.def*.4, x:112, y:104, scene:lvGoalSvg(kit.them), ball:["#lvBall", 112, 104, .85]});
+    attr:a.fin*.6 + a.def*.4, x:112, y:104, scene:lvGoalSvg(kit.them) + lvKeeperTag(GK), ball:["#lvBall", 112, 104, .85]});
   if (r==="skip") return r;
   const perfect = r.d < r.tol*.45, on = r.d < r.tol;
   const save = perfect ? .1*kq/.5 : on ? clamp(.45*kq/.5, .2, .8) : 1;
@@ -681,7 +695,7 @@ function lvPassCore(st, head, title, sub, extra=0){
   });
 }
 // a teammate finishing a chance you made: better the stronger your team is against this opponent
-const lvConv = (st, m, base) => clamp(base + (st.X.base - st.f.oppStr)*.008, base*.55, base*1.5)*m.q;
+const lvConv = (st, m, base) => clamp(base + (st.X.base - st.f.oppStr)*.008, base*.55, base*1.5)*(1.2 - .4*lvKeeper(st, st.X.base).q)*m.q;
 async function lvGamePass(st, m){
   const title = {LB:"Overlap down the wing", RB:"Overlap down the wing", ST:"Hold it up and lay it off", LW:"Cutting inside", RW:"Cutting inside", CDM:"Switch the play"}[lvPos(st)] || "Teammate making a run";
   const r = await lvPassCore(st, lvHead(st, m.min), title, "Drag the ball to the teammate who's free before the defenders close him down.");
