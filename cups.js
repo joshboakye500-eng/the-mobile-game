@@ -94,7 +94,9 @@ function cpSide(C, club, gf){
 function cpTie(C, k, i, h, a){
   const neutral = CP_ROUNDS[k][i]==="Final"; let hg = 0, ag = 0;
   for (let l=0;l<cpLegs(k, i);l++){
-    const [x, y] = l ? [a, h] : [h, a], d = clamp(strOf(x) - strOf(y), -20, 20) + (neutral ? 0 : 1.5);   // as mcXg
+    // as mcXg: the gap counts up to 20, and before the semi-finals a much stronger side rests players
+    const [x, y] = l ? [a, h] : [h, a], g = strOf(x) - strOf(y), rot = i < CP_ROUNDS[k].length - 2 ? (g >= 6 ? -3 : g <= -6 ? 3 : 0) : 0;
+    const d = clamp(g, -20, 20) + rot + (neutral ? 0 : 1.5);
     const xg = mcPoisson(1.35*Math.exp(d/20)), yg = mcPoisson(1.35*Math.exp(-d/20));
     cpSide(C, x, xg); cpSide(C, y, yg);
     if (l){ hg += yg; ag += xg; } else { hg += xg; ag += yg; }

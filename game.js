@@ -436,6 +436,9 @@ const BOARD = [["apps","Appearances",v=>v],["caps","Caps",v=>v],["intlGoals","In
   ["cs","Clean sheets",v=>v],["bdor","Ballon d'Ors",v=>v],["trophies","Club trophies",v=>v],["leagues","League titles",v=>v],
   ["europe","European trophies",v=>v],["awards","Individual awards",v=>v],["avgR","Average rating",v=>v?v.toFixed(2):"–"],["potm","Player of the Match",v=>v],
   ["seasons","Seasons",v=>v],["peak","Peak value",v=>money(v)],["earnings","Career earnings",v=>gbp(v)]];
+// the Hall of fame's stats, grouped for its dropdown
+const BOARD_GROUPS = [["Career", ["apps","seasons","avgR","potm"]], ["Goals", ["goals","assists","ga","cs"]], ["Trophies", ["trophies","leagues","europe","awards","bdor"]],
+  ["Country", ["caps","intlGoals","intlTrophies"]], ["Money", ["peak","earnings"]]];
 let boardKey = "apps", profileId = null;
 function profileFind(id){
   if (S && S.id===id && S.history && S.history.length) return careerSummary();
@@ -443,7 +446,7 @@ function profileFind(id){
 }
 function timelineSVG(r){
   const D = r.detail, ss = D.seasons; if (!ss.length) return "";
-  const colW = 74, L = 14, W = L*2 + ss.length*colW, top = 18, vH = 92, bandY = top+vH+30, bandH = 24, evY = bandY+bandH+24, H = evY + 74;
+  const colW = 74, L = 14, W = L*2 + ss.length*colW, top = 18, vH = 92, bandY = top+vH+30, bandH = 24, evY = bandY+bandH+24;
   const maxV = niceMax(Math.max(D.start.value||1, ...ss.map(x=>x.v), 1));
   const x = i => L + i*colW + colW/2, y = v => top + vH*(1 - v/maxV);
   const pts = [[L, y(D.start.value||0)], ...ss.map((q,i)=>[x(i), y(q.v)])];
@@ -474,9 +477,12 @@ function timelineSVG(r){
     if (e.t==="bdor") return `<circle cx="${cx}" cy="${cy}" r="9" fill="var(--gold)"/><circle cx="${cx}" cy="${cy}" r="4" fill="none" stroke="#7a5a05" stroke-width="1.4"/>`;
     return `<circle cx="${cx}" cy="${cy}" r="6" fill="var(--muted)"/>`;
   };
+  // as tall as the events need: a row for every two in a season, and room for a fee under a move
+  const rows = Math.max(0, ...Object.values(ev).map(l=>Math.ceil(l.length/2))), fees = Object.values(ev).some(l=>l.some(e=>e.t==="move" && e.fee));
+  const H = rows ? evY + (rows-1)*24 + (fees ? 30 : 14) : bandY + bandH + 8;
   const evSvg = Object.entries(ev).map(([i,list])=>{ const cx = +i===ss.length-1 ? x(+i) : L + (+i+1)*colW;
     return list.map((e,k)=>`<g><title>${esc(e.label || (e.t==="trophy"?`${e.n} trophies in ${ss[i].s}`:e.t==="bdor"?"Ballon d'Or winner":""))}</title>${icon(e, cx + (k%2? 11:-11)*(list.length>1?1:0), evY + Math.floor(k/2)*24)}${e.t==="move"&&e.fee?`<text x="${cx}" y="${evY+Math.floor(k/2)*24+24}" text-anchor="middle" font-size="10" fill="var(--muted)">${money(e.fee)}</text>`:""}</g>`).join(""); }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${W}px;max-width:${Math.round(W*1.6)}px;height:auto" role="img" aria-label="Career timeline for ${esc(r.name)}">
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:${W}px;max-width:${Math.round(W*1.3)}px;height:auto" role="img" aria-label="Career timeline for ${esc(r.name)}">
     ${[0,.5,1].map(f=>`<line x1="${L}" x2="${W-L}" y1="${y(maxV*f)}" y2="${y(maxV*f)}" stroke="var(--line)"/><text x="${L+2}" y="${y(maxV*f)-3}" font-size="10" fill="var(--muted)">${money(maxV*f)}</text>`).join("")}
     <path d="${line} L${x(ss.length-1)} ${top+vH} L${L} ${top+vH} Z" fill="var(--accent)" fill-opacity=".16"/>
     <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
@@ -537,13 +543,13 @@ function boardPanel(){
   const col = (key, v) => `<td class="n ${key===k?"sorted":""}">${v}</td>`;
   return subTabs("legacy", [["hall", "Hall of fame", `<section class="panel">
     <h2>Legacy</h2>
-    <p class="hint">Every career on this account: ${hall.length} on record. Pick a stat to rank them, or tap a player for their profile.</p>
-    <div class="chips scrollx" role="group" aria-label="Rank by">${BOARD.map(([key,l])=>`<button class="chip ${key===k?"on":""}" data-act="board" data-k="${key}" aria-pressed="${key===k}">${l}</button>`).join("")}</div>
+    <p class="hint">Every career on this account (${hall.length} so far), ranked by the stat you pick. Tap a player for their profile.</p>
+    <div class="field board-pick"><label for="boardSel">Rank by</label><select id="boardSel">${BOARD_GROUPS.map(([g, keys])=>`<optgroup label="${g}">${keys.map(key=>{ const b = BOARD.find(x=>x[0]===key); return `<option value="${key}" ${key===k?"selected":""}>${b[1]}</option>`; }).join("")}</optgroup>`).join("")}</select></div>
     ${rows.length ? `<ol class="lb">${rows.map((r,i)=>`<li class="${S&&r.id===S.id?"me":""}" data-act="profile" data-k="${esc(r.id)}" tabindex="0" role="button" aria-label="Open ${esc(r.name)}'s profile">
         <span class="lb-pos">${i+1}</span>
         <span class="lb-who"><strong>${esc(r.name)}</strong><small>${esc(r.pos)} · ${esc(r.nation||"—")} · ${r.seasons} season${r.seasons===1?"":"s"} · ${r.status==="Retired"?"Retired":"Now at "+esc(r.club)}</small></span>
-        <span class="lb-val">${fmt(r[k]||0)}</span>
-        <span class="lb-sub">${r.apps} apps · ${r.goals} G · ${r.assists} A${DEF.includes(r.pos)?` · ${r.cs??0} CS`:""}${r.avgR?` · ${r.avgR.toFixed(2)} avg`:""} · ${r.trophies} 🏆${r.bdor?` · ${r.bdor} Ballon d'Or`:""}<span class="lb-go">Profile ›</span></span>
+        <span class="lb-val">${fmt(r[k]||0)}<small>${esc(label)}</small></span>
+        <span class="lb-sub"><span>${r.apps} apps</span><span>${r.goals} goals</span><span>${r.assists} assists</span>${DEF.includes(r.pos)?`<span>${r.cs??0} clean sheets</span>`:""}${r.avgR?`<span>${r.avgR.toFixed(2)} avg</span>`:""}<span>${r.trophies} trophies</span>${r.bdor?`<span>${r.bdor} Ballon d'Or</span>`:""}<span class="lb-go">Profile ›</span></span>
       </li>`).join("")}</ol>` : `<p class="empty">${k==="cs"?"Clean sheets only count for goalkeepers and defenders. Play a career as one and it'll appear here.":"No careers yet. Finish a season and it'll appear here."}</p>`}
   </section>`], rows.length>1 && ["h2h", "Head to head", `<section class="panel">
     <h2>Head to head</h2>
@@ -2925,6 +2931,7 @@ document.addEventListener("change", e=>{
   if (e.target.id==="backupFile" && e.target.files[0]){ importBackup(e.target.files[0]); e.target.value=""; return; }
   if (e.target.id==="confirmImport"){ confirmImport = e.target.checked; return; }
   if (e.target.id==="leagueSel"){ leagueView = e.target.value; render(); return; }
+  if (e.target.id==="boardSel"){ boardKey = e.target.value; render(); return; }
   if (e.target.id!=="c-photo" || !e.target.files[0]) return;
   const r = new FileReader();
   r.onload = () => { const img = new Image(); img.onload = () => {

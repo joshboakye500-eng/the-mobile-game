@@ -90,7 +90,7 @@ function lgRound(L, R, mine){
       const me = mine.me;
       if (me.mins){ const x = L.me; x[0]++; x[1] += me.g; x[2] += me.a; x[3] += Math.round(me.r*10); L.meClub = mine.club; }
     } else {
-      const d = strOf(h) - strOf(a) + 1.5 + (form(h) - form(a))*.8;
+      const d = strOf(h) - strOf(a) + 1.5 + (form(h) - form(a))*.6;
       hg = mcPoisson(1.35*Math.exp(d/20)); ag = mcPoisson(1.35*Math.exp(-d/20));
       lgSide(L, h, hg, ag, strOf(a)); lgSide(L, a, ag, hg, strOf(h));
     }

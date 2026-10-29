@@ -139,7 +139,7 @@ async function drRep(st, k){
     return {s:r.goal ? 1 : 0, big:r.big, small:r.small};
   }
   if (k==="pas"){
-    const r = await lvPassCore(st, drHead(st), "Passing drill", "Tap the teammate who's free. The bibs keep moving.", 700); if (r==="skip") return r;
+    const r = await lvPassCore(st, drHead(st), "Passing drill", "Drag the ball to the teammate who's free. The bibs keep moving.", 700); if (r==="skip") return r;
     return {s:r.ok ? 1 : 0, big:r.ok ? "Found him" : "Cut out", small:r.why};
   }
   if (k==="pac"){

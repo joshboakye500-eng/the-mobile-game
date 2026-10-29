@@ -1090,6 +1090,8 @@ details.nego-d[open] summary{margin-bottom:8px}
 .lab-ic.big{width:56px;height:56px;border-radius:14px}
 .lab-ic.big svg{width:34px;height:34px}
 .lab-card.new .lab-ic{background:linear-gradient(145deg,rgba(45,212,191,.25),rgba(45,212,191,.06));color:#5EEAD4;box-shadow:inset 0 0 0 1px rgba(45,212,191,.4)}
+.lab-card.drag .lab-tag{background:#C4B5FD;color:#1E1240}
+.lab-card.drag .lab-ic{background:linear-gradient(145deg,rgba(167,139,250,.28),rgba(167,139,250,.06));color:#C4B5FD;box-shadow:inset 0 0 0 1px rgba(167,139,250,.45)}
 .lab-pre-h{display:flex;align-items:center;gap:14px}
 .lab-pre-h .lv-t{margin:0}
 .lab-guide summary{cursor:pointer;font-family:var(--f-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:13px;color:#F5C542;padding:4px 0}
@@ -1177,3 +1179,17 @@ small.boot{display:inline-flex;align-items:center}
 @keyframes uidlg{from{opacity:0;transform:translateY(28px) scale(.98)}}
 @keyframes uifade{from{opacity:0}}
 @keyframes uipop{0%{transform:scale(.9)}100%{transform:none}}
+/* the Legacy tab's hall of fame */
+.board-pick{max-width:340px;margin:2px 0 14px}
+.lb li{grid-template-columns:32px minmax(0,1fr) auto;gap:4px 12px;padding:12px}
+.lb-pos{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:17px;background:var(--surface);border:1px solid var(--line);align-self:start;grid-row:span 2}
+.lb li:nth-child(1) .lb-pos{background:var(--gold);color:#1A1400;border-color:transparent}
+.lb-who strong{font-size:17px;line-height:1.2}
+.lb-val{line-height:1;align-self:start}
+.lb-val small{display:block;margin-top:3px;font-family:var(--f-label);font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lb-sub{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin-top:2px}
+.lb-sub>span:not(.lb-go){white-space:nowrap}
+.lb-go{float:none;margin-left:auto}
+/* dragging: the teammate a drag is pointing at */
+.lv-mate.aim,.lv-run-btn.aim{box-shadow:0 0 0 3px #F5C542,0 0 18px rgba(245,197,66,.7);border-radius:50%}
+.lv-stage{touch-action:none}

@@ -257,11 +257,13 @@ function mcSetup(f, w, specs){
 function mcXg(f){
   const base = strOf(S.mc.club), pos = S.player.pos, a = mcA(), me = f.me, t = me.mins/90, fa = mcFormAvg();
   // you lift the team in proportion to how much better you are than it, and how long you're on the pitch
-  const boost = clamp((mcOvr()-base)*.25*t + (me.mins ? (fa-6.6)*.5 : 0), -3, 4), att = MC_ATT[pos] ?? .5, ha = f.neutral ? 0 : f.home ? 1.5 : -1.5;
+  const boost = clamp((mcOvr()-base)*.18*t + (me.mins ? (fa-6.6)*.4 : 0), -3, 2.5), att = MC_ATT[pos] ?? .5, ha = f.neutral ? 0 : f.home ? 1.5 : -1.5;
   // a team on a run plays with confidence; one on a losing streak doesn't
-  const tf = mcTeamForm(S.mc.club).f, edge = (tf - mcTeamForm(f.opp).f)*.8;
-  // a cup tie against a club leagues below counts the gap up to 20: a giant expects about four goals, not a dozen
-  const gap = clamp(base - f.oppStr, -20, 20);
+  const tf = mcTeamForm(S.mc.club).f, edge = (tf - mcTeamForm(f.opp).f)*.6;
+  // a cup tie against a club leagues below counts the gap up to 20: a giant expects about four goals, not a dozen. And
+  // before the semi-finals a much stronger side rests players (yours, or theirs), so giant-killings happen (as cpTie)
+  const rot = f.cup && f.ri < f.nr - 2 ? (base - f.oppStr >= 6 ? -3 : f.oppStr - base >= 6 ? 3 : 0) : 0;
+  const gap = clamp(base - f.oppStr, -20, 20) + rot;
   const lf = 1.35*Math.exp((gap + edge + boost*att + ha)/20), la = 1.35*Math.exp((-gap - edge - boost*(1-att) - ha)/20);
   // your goals and assists are a share of the team's, bigger the sharper your finishing and passing
   const [gs, as] = MC_SHARE[pos] || MC_SHARE.CM, w = mcWeights(), form = clamp(1 + (fa-6.6)*.1, .85, 1.15), damp = mcDamp(lf);

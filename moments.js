@@ -176,6 +176,31 @@ function lvStrike(st){
     requestAnimationFrame(f);
   });
 }
+/* ---------- dragging the ball ----------
+   Shots, passes, crosses and the square ball are played by dragging: put a finger on the pitch (the ball's the natural
+   place), drag, and let go. Positions come in the scene's coordinates (300 by 180), and a gold line runs from the ball
+   to your finger. A tap (a short press that hardly moves) is reported as one, so tapping still works where it did. */
+function lvDrag(stage, o){
+  const at = ev => { const r = stage.getBoundingClientRect(); return [(ev.clientX - r.left)/r.width*300, (ev.clientY - r.top)/r.height*180]; };
+  const svg = stage.querySelector("svg"); let d = null, line = null;
+  const draw = p => { if (!o.from || !svg) return; if (!line){ svg.insertAdjacentHTML("beforeend", `<path class="lv-dragline" fill="none" stroke="#F5C542" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="6 5" opacity=".9"/>`); line = svg.lastElementChild; }
+    line.setAttribute("d", p ? `M${o.from[0].toFixed(1)} ${o.from[1].toFixed(1)}L${p[0].toFixed(1)} ${p[1].toFixed(1)}` : ""); };
+  stage.addEventListener("pointerdown", ev=>{
+    if (d || ev.target.closest("button") || (o.ok && !o.ok())) return;
+    ev.preventDefault(); try{ stage.setPointerCapture(ev.pointerId); }catch(e){}
+    const p = at(ev); d = {p0:p, t0:performance.now(), moved:0, open:null}; o.start?.(p, d);
+  });
+  stage.addEventListener("pointermove", ev=>{ if (!d) return; const p = at(ev); d.moved = Math.max(d.moved, Math.hypot(p[0] - d.p0[0], p[1] - d.p0[1])); if (d.moved>=6) draw(o.line ? o.line(p, d) : p); o.move?.(p, d); });
+  stage.addEventListener("pointerup", ev=>{ if (!d) return; const p = at(ev), dd = d; d = null; draw(null); o.end?.(p, dd, dd.moved<10 && performance.now() - dd.t0<260); });
+  stage.addEventListener("pointercancel", ()=>{ if (!d) return; d = null; draw(null); o.cancel?.(); });
+}
+// which of some targets a drag from `from` towards `p` is pointing at (the nearest in angle, within 35°), or -1
+function lvDragPick(from, p, targets){
+  const a = Math.atan2(p[1] - from[1], p[0] - from[0]); let best = -1, bd = .62;
+  if (Math.hypot(p[0] - from[0], p[1] - from[1]) < 16) return -1;
+  targets.forEach((t, i)=>{ if (!t) return; const b = Math.atan2(t[1] - from[1], t[0] - from[0]), dd = Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))); if (dd<bd){ bd = dd; best = i; } });
+  return best;
+}
 // a player (any <g> drawn at the origin) gliding to (x, y)
 const lvGlide = (id, a, b, ms, ease = lvEaseInOut) => lvTween(ms, k=>{ const q = ease(k); lvMove(id, a[0] + (b[0]-a[0])*q, a[1] + (b[1]-a[1])*q); });
 // a pitch from above: attacking the goal at the top, or defending yours at the bottom ("side" puts the goal on the right)
@@ -346,26 +371,26 @@ const LV_HELP = {
     "The rest of the match is simulated around them, so the final score includes what you did. When your team's on top you get more attacking moments; under pressure, more defending.",
     "Every match ends with a <b>rating</b>. Ratings decide your form, the manager's trust, how fast you grow, your value and the season's awards.",
     "Your attributes, boots, form and sharpness make every mini-game easier. Tap <b>Sim the match</b> on a match's intro to skip it."]},
-  shot:{t:"How to shoot", steps:["<b>Tap the goal</b> where you want to shoot. The corners are hardest to save.",
-    "A marker slides along the power bar. Tap <b>Shoot!</b> (or the bar) while it's <b>in the green</b>.",
+  shot:{t:"How to shoot", steps:["<b>Drag the ball</b> up to where you want to shoot (or tap that part of the goal). The corners are hardest to save.",
+    "Keep your finger down while the marker slides along the power bar, and <b>let go</b> while it's <b>in the green</b> (or tap <b>Shoot!</b>).",
     "Too early and the shot is weak; too late and it flies over. For free kicks, low shots in the middle hit the wall."],
-    svg:`<svg viewBox="0 0 240 160"><rect x="30" y="10" width="180" height="72" fill="rgba(255,255,255,.05)" stroke="#F4F7F2" stroke-width="4"/><circle cx="182" cy="30" r="10" fill="none" stroke="#F5C542" stroke-width="3"/><circle cx="182" cy="30" r="3" fill="#F5C542"/>${LV_TXT(120,52,"1 · TAP TO AIM")}
-      <rect x="30" y="112" width="180" height="16" rx="8" fill="rgba(255,255,255,.14)"/><rect x="138" y="112" width="34" height="16" fill="rgba(74,222,128,.8)"/><rect x="152" y="106" width="5" height="28" rx="2" fill="#fff"/>${LV_TXT(120,152,"2 · STOP IT IN THE GREEN")}</svg>`},
+    svg:`<svg viewBox="0 0 240 160"><rect x="30" y="10" width="180" height="72" fill="rgba(255,255,255,.05)" stroke="#F4F7F2" stroke-width="4"/><circle cx="182" cy="30" r="10" fill="none" stroke="#F5C542" stroke-width="3"/><circle cx="182" cy="30" r="3" fill="#F5C542"/>${LV_TXT(120,52,"1 · DRAG TO AIM")}
+      <rect x="30" y="112" width="180" height="16" rx="8" fill="rgba(255,255,255,.14)"/><rect x="138" y="112" width="34" height="16" fill="rgba(74,222,128,.8)"/><rect x="152" y="106" width="5" height="28" rx="2" fill="#fff"/>${LV_TXT(120,152,"2 · LET GO IN THE GREEN")}</svg>`},
   header:{t:"How to head it", steps:["A cross is coming in. A <b>ring closes in</b> on the ball.", "Tap <b>Head it!</b> the moment it lines up with the <b>gold target ring</b>.",
     "Spot on and it flies into the corner; a bit off and the keeper has a chance; way off and it goes over."],
     svg:lvDemo("top", `<circle cx="150" cy="70" r="16" fill="none" stroke="#F5C542" stroke-width="3"/><circle cx="150" cy="70" r="34" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 5"/><circle cx="150" cy="70" r="5" fill="#fff"/>`, "TAP WHEN THE RINGS MEET")},
   pass:{t:"How to pass", steps:["Two of your teammates are marked: a <b>defender</b> is right next to them.",
-    "<b>Tap the free teammate</b> before the timer runs out.", "The defenders keep moving, so look again just before you tap."],
+    "<b>Drag the ball</b> towards the free teammate and let go (or tap him) before the timer runs out.", "The defenders keep moving: the man who was free when you started dragging is the one that counts."],
     svg:`<svg viewBox="0 0 240 160"><rect width="240" height="160" rx="12" fill="#1D6537"/><circle cx="45" cy="50" r="13" fill="#F4F7F2"/><circle cx="58" cy="62" r="7" fill="#EF4444"/><circle cx="195" cy="50" r="13" fill="#F4F7F2"/><circle cx="182" cy="62" r="7" fill="#EF4444"/>
-      <circle cx="120" cy="34" r="13" fill="#F4F7F2" stroke="#F5C542" stroke-width="4"/><circle cx="120" cy="128" r="12" fill="#F5C542"/><path d="M120 114V52" stroke="#FFE9A8" stroke-width="2.5" stroke-dasharray="5 5"/>${LV_TXT(120,152,"TAP THE ONE WITH NO DEFENDER")}</svg>`},
+      <circle cx="120" cy="34" r="13" fill="#F4F7F2" stroke="#F5C542" stroke-width="4"/><circle cx="120" cy="128" r="12" fill="#F5C542"/><path d="M120 114V52" stroke="#FFE9A8" stroke-width="2.5" stroke-dasharray="5 5"/>${LV_TXT(120,152,"DRAG IT TO THE FREE MAN")}</svg>`},
   move:{t:"Attacking move", steps:["A three-step move. <b>1:</b> find the free teammate to start it.", "<b>2:</b> beat your defender: watch for him to commit and go the other way.",
-    "<b>3:</b> shoot, or square it to a teammate for a tap-in. Lose it at any step and the move breaks down."]},
+    "<b>3:</b> shoot, or drag it square to a teammate for a tap-in. Lose it at any step and the move breaks down."]},
   takeon:{t:"How to take him on", steps:["Your defender is waiting. When he <b>commits</b> (a <b>!</b> flashes and he shifts), go the <b>other way</b>.",
     "Tap <b>◀ Left</b> or <b>Right ▶</b>, or that side of the pitch. Go too early and he reads you.", "Beat him and you're through on goal."],
     svg:lvDemo("top", `${lvMan(170,92,"#EF4444")}<text x="186" y="52" font-size="22" font-weight="900" fill="#F5C542">!</text>${lvMan(150,140,"#F5C542")}<path d="M138 120l-30-30" stroke="#FFE9A8" stroke-width="3" stroke-dasharray="5 4"/>`, "HE GOES RIGHT, YOU GO LEFT")},
   cross:{t:"How to cross", steps:["Two teammates make runs into the box, each towards a <b>green spot</b>. One of them is marked.",
-    "<b>Tap the free runner</b> as he reaches his green spot to whip the ball in.", "Pick the marked man, or cross too early or late, and it's cleared."],
-    svg:lvDemo("top", `<circle cx="128" cy="34" r="12" fill="rgba(74,222,128,.35)" stroke="#4ADE80"/><circle cx="172" cy="38" r="12" fill="rgba(74,222,128,.35)" stroke="#4ADE80"/>${lvMan(130,46,"#F4F7F2")}${lvMan(176,58,"#F4F7F2")}${lvMan(184,62,"#EF4444")}${lvMan(268,40,"#F5C542")}`, "TAP THE FREE RUNNER ON HIS SPOT")},
+    "<b>Drag the ball</b> onto the free runner and <b>let go</b> as he reaches his green spot (or tap him then).", "Pick the marked man, or cross too early or late, and it's cleared."],
+    svg:lvDemo("top", `<circle cx="128" cy="34" r="12" fill="rgba(74,222,128,.35)" stroke="#4ADE80"/><circle cx="172" cy="38" r="12" fill="rgba(74,222,128,.35)" stroke="#4ADE80"/>${lvMan(130,46,"#F4F7F2")}${lvMan(176,58,"#F4F7F2")}${lvMan(184,62,"#EF4444")}${lvMan(268,40,"#F5C542")}`, "DRAG IT TO THE FREE RUNNER")},
   tackle:{t:"How to tackle", steps:["The attacker runs along the line towards the <b>green zone</b>.",
     "Tap <b>Tackle!</b> while he's inside the green.", "Too early and you dive in; too late and he's past you."],
     svg:`<svg viewBox="0 0 240 120"><rect width="240" height="120" rx="12" fill="#1D6537"/><path d="M14 60H226" stroke="rgba(255,255,255,.35)" stroke-width="4"/><rect x="146" y="28" width="40" height="64" rx="8" fill="rgba(74,222,128,.35)" stroke="#4ADE80" stroke-width="2"/>
@@ -480,11 +505,11 @@ async function lvFullTime(st, home, away){
 
 /* ---------- shots: aim, then power (one-on-ones, in the box, from distance, free kicks) ---------- */
 const LV_SHOT = {
-  oneonone:{t:"Through on goal!", s:"Pick your spot, then stop the power bar in the green.", z:.2, k:.85, per:1300},
-  box:{t:"Space in the box", s:"Pick your spot, then stop the power bar in the green.", z:.16, k:1, per:1200},
-  long:{t:"Shot from 25 yards", s:"Pick your spot. Hit it too hard and it's in the stands.", z:.11, k:1.25, per:1000},
-  freekick:{t:"Free kick in range", s:"Go over the wall or for a corner, then stop the bar in the green.", z:.12, k:1.1, per:1050},
-  pen:{t:"Penalty", s:"Pick your spot, then stop the power bar in the green.", z:.2, k:.95, per:1250}
+  oneonone:{t:"Through on goal!", s:"Drag the ball to your spot, hold, and let go with the power in the green.", z:.2, k:.85, per:1300},
+  box:{t:"Space in the box", s:"Drag the ball to your spot, hold, and let go with the power in the green.", z:.16, k:1, per:1200},
+  long:{t:"Shot from 25 yards", s:"Drag the ball to your spot. Let go too late and it's in the stands.", z:.11, k:1.25, per:1000},
+  freekick:{t:"Free kick in range", s:"Drag it over the wall or into a corner, and let go with the power in the green.", z:.12, k:1.1, per:1050},
+  pen:{t:"Penalty", s:"Drag the ball to your spot, hold, and let go with the power in the green.", z:.2, k:.95, per:1250}
 };
 // where the keeper ends up: at the ball when he saves it, close when it beats his hands, the other way when he's fooled
 function lvKeeperTo(tx, ty, reach, kcol){
@@ -506,7 +531,7 @@ function lvShotCore(st, m, v, head, title){
         <div class="lv-aims">${["tl","tc","tr","bl","bc","br"].map(z=>`<button type="button" class="lv-aim" data-z="${z}" aria-label="Aim ${{t:"high",b:"low"}[z[0]]} ${{l:"left",c:"centre",r:"right"}[z[1]]}"></button>`).join("")}</div>
         <span class="lv-reticle" hidden></span></div>
       ${lvBarHTML(mid, zone)}
-      <button type="button" class="btn big lv-act" disabled>Tap the goal to aim</button>`);
+      <button type="button" class="btn big lv-act" disabled>Drag the ball to aim</button>`);
     lvSkippable(res);
     let aim = null, pt = null, t0 = 0, p = 0, fired = false;
     const act = lv$(".lv-act"), ret = lv$(".lv-reticle"), stage = lv$(".lv-stage");
@@ -516,10 +541,16 @@ function lvShotCore(st, m, v, head, title){
       const r = stage.getBoundingClientRect(), br = b.getBoundingClientRect(), tap = ev && ev.pointerType && ev.clientX!=null;
       pt = [clamp(((tap ? ev.clientX : br.left + br.width/2) - r.left)/r.width*300, 40, 260), clamp(((tap ? ev.clientY : br.top + br.height/2) - r.top)/r.height*180, 30, 114)];
       ret.hidden = false; ret.setAttribute("style", lvPct(pt[0], pt[1])); ret.classList.remove("pop"); void ret.offsetWidth; ret.classList.add("pop");
-      if (!t0){ t0 = performance.now(); act.disabled = false; act.classList.add("primary"); act.textContent = "Shoot!";
-        lvLoop(now=>{ if (fired) return false; p = (1 - Math.cos(2*Math.PI*(now-t0)/per))/2; lvBarSet(p, lo, hi); }); }
+      startBar();
     };
+    const startBar = () => { if (t0) return; t0 = performance.now(); act.disabled = false; act.classList.add("primary"); act.textContent = "Shoot!";
+      lvLoop(now=>{ if (fired) return false; p = (1 - Math.cos(2*Math.PI*(now-t0)/per))/2; lvBarSet(p, lo, hi); }); };
     lvEl.querySelectorAll(".lv-aim").forEach(b=>lvTap(b, ev=>setAim(b, ev)));
+    // dragging: the spot follows your finger (just above it, so you can see it) and the power starts swinging; let go to shoot
+    const dragAim = q => { const at = [clamp(q[0], 40, 260), clamp(q[1] - 12, 30, 114)], z = (at[1]<72 ? "t" : "b") + (at[0]<110 ? "l" : at[0]>190 ? "r" : "c");
+      if (fired) return; aim = z; pt = at; lvEl.querySelectorAll(".lv-aim").forEach(x=>x.classList.toggle("on", x.dataset.z===z));
+      ret.hidden = false; ret.setAttribute("style", lvPct(at[0], at[1])); startBar(); };
+    lvDrag(stage, {from:[150, 166], ok:()=>!fired, line:q=>[clamp(q[0], 40, 260), clamp(q[1] - 12, 30, 166)], move:(q, d)=>{ if (d.moved>=10) dragAim(q); }, end:(q, d, tap)=>{ if (!tap && aim) fire(); }});
     const fire = async ()=>{
       if (!aim || fired) return; fired = true; cancelAnimationFrame(lvRaf); act.disabled = true; ret.hidden = true;
       const row = aim[0], col = aim[1];
@@ -601,7 +632,7 @@ async function lvGameClaim(st, m){
   return Math.random() < .45*m.q ? {ok:false, big:"They score", small:"You came for it and missed", ga:1, bonus:-.35} : {ok:false, big:"Missed it", small:"Their header went wide", bonus:-.1};
 }
 
-/* ---------- passes: tap the free teammate ---------- */
+/* ---------- passes: drag the ball to the free teammate (or tap him) ---------- */
 // resolves {ok, why} or "skip"; extra gives more (or less) time
 function lvPassCore(st, head, title, sub, extra=0){
   const f = st.f, a = lvAttr(st), e = lvEase(st, a.pas), kit = lvKits(st);
@@ -616,7 +647,7 @@ function lvPassCore(st, head, title, sub, extra=0){
       <div class="lv-timer"><span></span></div>
       <button type="button" class="btn big lv-act" disabled>Find the free man</button>`);
     lvSkippable(res);
-    let open = Math.floor(Math.random()*3), prev = -1, switched = 0, done = false;
+    let open = Math.floor(Math.random()*3), prev = -1, switched = 0, done = false, downOpen = -1;
     const place = ()=>{
       const marked = [0,1,2].filter(i=>i!==open), ds = lvEl.querySelectorAll(".lv-dg");
       marked.forEach((i,k)=>{ ds[k].style.transform = `translate(${spots[i][0] + (k ? -12 : 12)}px,${spots[i][1] + 4}px)`; });
@@ -634,13 +665,18 @@ function lvPassCore(st, head, title, sub, extra=0){
     const finish = async i=>{
       if (done) return; done = true; cancelAnimationFrame(lvRaf);
       // a fraction of a second's grace when the defenders have only just moved
-      const ok = i>=0 && (i===open || (i===prev && performance.now()-switched<220));
+      const ok = i>=0 && (i===open || i===downOpen || (i===prev && performance.now()-switched<220));
       // the ball goes to him, or to the defender who was waiting for it
       if (i>=0){ const [x,y] = spots[i], far = Math.hypot(x-150, y-150) > 90;
         lvKick(); await lvFly("#lvPb", [150, 150], ok ? [x, y] : [x + (x<150 ? 9 : x>150 ? -9 : 0), y + 8], far ? 420 : 320, {h:far ? 16 : 5, spin:1}); }
       res({ok, i, why: i<0 ? "You took too long" : ok ? "" : "He was marked"});
     };
     lvEl.querySelectorAll(".lv-mate").forEach(b=>lvTap(b, ()=>finish(+b.dataset.i)));
+    // a drag towards one of them: whoever was free when you started the drag counts, as a tap would have
+    const mates = lvEl.querySelectorAll(".lv-mate");
+    lvDrag(lv$(".lv-stage"), {from:[150, 150], ok:()=>!done, start:()=>{ downOpen = open; },
+      move:q=>{ const i = lvDragPick([150, 150], q, spots); mates.forEach((b, j)=>b.classList.toggle("aim", j===i)); },
+      end:q=>{ const i = lvDragPick([150, 150], q, spots); mates.forEach(b=>b.classList.remove("aim")); if (i>=0) finish(i); else downOpen = -1; }});
     lvKey = k=>{ const i = {l:0, c:1, r:2}[k]; if (i!=null) finish(i); };
   });
 }
@@ -648,7 +684,7 @@ function lvPassCore(st, head, title, sub, extra=0){
 const lvConv = (st, m, base) => clamp(base + (st.X.base - st.f.oppStr)*.008, base*.55, base*1.5)*m.q;
 async function lvGamePass(st, m){
   const title = {LB:"Overlap down the wing", RB:"Overlap down the wing", ST:"Hold it up and lay it off", LW:"Cutting inside", RW:"Cutting inside", CDM:"Switch the play"}[lvPos(st)] || "Teammate making a run";
-  const r = await lvPassCore(st, lvHead(st, m.min), title, "Tap the teammate who's free before the defenders close him down.");
+  const r = await lvPassCore(st, lvHead(st, m.min), title, "Drag the ball to the teammate who's free before the defenders close him down.");
   if (r==="skip") return r;
   if (!r.ok) return {ok:false, big: r.i<0 ? "Closed down" : "Intercepted", small:r.why, bonus:-.1};
   return Math.random() < lvConv(st, m, .32) ? {ok:true, big:"Assist!", small:"Your teammate finished it off", a:1} : {ok:true, big:"Chance created", small:"Great ball, but his shot was saved", bonus:.1};
@@ -736,7 +772,7 @@ async function lvGameMove(st, m){
 function lvWeight(st, m, head){
   const e = lvEase(st, lvAttr(st).pas), zone = clamp(.26*(1 + e), .14, .4), mid = .6, per = 1100, kit = lvKits(st);
   return new Promise(res=>{
-    lvShow(`${head}<h2 class="lv-t">Square it</h2><p class="lv-s">Weight the pass: stop the bar in the green.</p>
+    lvShow(`${head}<h2 class="lv-t">Square it</h2><p class="lv-s">Drag the ball across to him and let go with the bar in the green.</p>
       <div class="lv-stage">${lvField("top", `${lvMan(108,70,kit.us,{ring:"#F5C542"})}${lvMan(196,52,kit.us,{num:9})}${lvMan(150,20,kit.them)}${lvBallSvg("lvSq",116,74,4)}`)}</div>
       ${lvBarHTML(mid, zone)}
       <button type="button" class="btn big primary lv-act">Pass!</button>`);
@@ -746,6 +782,7 @@ function lvWeight(st, m, head){
     const go = async ()=>{ if (done) return; done = true; cancelAnimationFrame(lvRaf); lv$(".lv-act").disabled = true; const ok = Math.abs(p-mid)<=zone/2;
       lvKick(); await lvFly("#lvSq", [116, 74], ok ? [190, 54] : [156 + (p>mid ? 40 : 0), p>mid ? 40 : 72], 320, {spin:1}); res(ok); };
     lvTap(lv$(".lv-act"), go); lv$(".lv-bar").addEventListener("pointerdown", go);
+    lvDrag(lv$(".lv-stage"), {from:[116, 74], ok:()=>!done, end:(q, d, tap)=>{ if (!tap) go(); }});
     lvKey = k=>{ if (k==="go") go(); };
   });
 }
@@ -756,7 +793,7 @@ function lvGameCross(st, m){
   const R = [{from:[X(214),124], to:[X(170),26], spot:[X(172),38]}, {from:[X(138),140], to:[X(122),20], spot:[X(128),34]}];
   const marked = Math.floor(Math.random()*2), per = clamp(1750*(1 + e*.35), 1250, 2300), rr = clamp(14*(1 + e), 9, 21);
   return new Promise(res=>{
-    lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">Cross it in</h2><p class="lv-s">Tap the free runner as he reaches his green spot.</p>
+    lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">Cross it in</h2><p class="lv-s">Drag the ball onto the free runner and let go as he reaches his green spot.</p>
       <div class="lv-stage">${lvField("top", R.map((r,i)=>`<circle cx="${r.spot[0]}" cy="${r.spot[1]}" r="${rr}" fill="rgba(74,222,128,.28)" stroke="#4ADE80" stroke-width="1.5"/>`).join("")
           + R.map((r,i)=>`<g id="lvR${i}">${lvMan(0,0,kit.us,{num:[9,11][i], run:true})}</g>`).join("") + `<g id="lvRd">${lvMan(0,0,kit.them,{run:true})}</g>` + lvMan(X(272), 34, kit.us, {ring:"#F5C542"}) + lvBallSvg("lvCb", X(262), 36, 4))}
         ${R.map((r,i)=>`<button type="button" class="lv-tap lv-run-btn" data-i="${i}" ${i===marked?"data-marked":""} aria-label="Cross to number ${[9,11][i]}"></button>`).join("")}</div>
@@ -781,6 +818,10 @@ function lvGameCross(st, m){
       res(Math.random() < lvConv(st, m, .42) ? {ok:true, big:"Assist!", small:"A perfect cross, buried with a header", a:1} : {ok:true, big:"Great cross", small:"His header was saved", bonus:.12});
     };
     btns.forEach(b=>lvTap(b, ()=>end(+b.dataset.i)));
+    const from = [X(262), 36], aimAt = q => { if (Math.hypot(q[0] - from[0], q[1] - from[1]) < 16) return -1;
+      let best = -1, bd = 46; R.forEach((r, i)=>{ const [x, y] = pos(r, Math.min(t, 1.1)), d = Math.hypot(q[0] - x, q[1] - (y - 10)); if (d<bd){ bd = d; best = i; } }); return best; };
+    lvDrag(lv$(".lv-stage"), {from, ok:()=>!done, move:q=>{ const i = aimAt(q); btns.forEach((b, j)=>b.classList.toggle("aim", j===i)); },
+      end:q=>{ const i = aimAt(q); btns.forEach(b=>b.classList.remove("aim")); if (i>=0) end(i); }});
     lvKey = k=>{ const i = {l:left?0:1, r:left?1:0}[k]; if (i!=null) end(i); };
   });
 }

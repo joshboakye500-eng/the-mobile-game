@@ -82,7 +82,7 @@ const LAB_GAMES = [
   {id:"beep", t:"Beep test", d:"Training drill: turn at each line, faster and faster.", cat:"drill", ic:"shuttle", help:"beep", run:labBeep},
   ...(typeof LAB_NEW!=="undefined" ? LAB_NEW : [])
 ];
-const LAB_CATS = {match:"In matches", drill:"Training", new:"New · lab only"};
+const LAB_CATS = {match:"In matches", drill:"Training", new:"New · lab only", drag:"Drag · lab only"};
 
 /* ---------- the sandbox ---------- */
 // a pretend match for one game: attributes and ease from the difficulty, your club's kit if you have a career
@@ -116,11 +116,11 @@ function labHome(){
     <p class="lab-intro">Every mini-game in the game, to try out as often as you like. <b>Nothing here touches your career</b>: no coins, no stats, no training, no saves. The new games aren't used in matches.</p>
     <div class="lab-bar">
       <div class="lab-seg" role="group" aria-label="Difficulty">${Object.entries(LAB_DIFF).map(([k,D])=>`<button type="button" data-lab="diff" data-k="${k}" aria-pressed="${k===labDiff}">${D.t}</button>`).join("")}</div>
-      <div class="chips lab-cats" role="group" aria-label="Show">${["all","match","drill","new"].map(c=>`<button type="button" class="chip ${c===labCat?"on":""}" data-lab="cat" data-k="${c}" aria-pressed="${c===labCat}">${c==="all" ? "All" : LAB_CATS[c].split(" ·")[0]} <small>${n(c)}</small></button>`).join("")}</div>
+      <div class="chips lab-cats" role="group" aria-label="Show">${["all","match","drill","new","drag"].map(c=>`<button type="button" class="chip ${c===labCat?"on":""}" data-lab="cat" data-k="${c}" aria-pressed="${c===labCat}">${c==="all" ? "All" : LAB_CATS[c].split(" ·")[0]} <small>${n(c)}</small></button>`).join("")}</div>
     </div>
     <div class="lab-grid">${list.map(g=>`<button type="button" class="lab-card ${g.cat}" data-lab="play" data-k="${g.id}">
       <span class="lab-ic">${labIcon(g.ic)}</span><span class="lab-txt"><b>${esc(g.t)}</b><small>${esc(g.d)}</small></span>
-      <span class="lab-tag">${g.cat==="new" ? "New" : g.cat==="drill" ? "Drill" : "Match"}</span></button>`).join("")}</div>
+      <span class="lab-tag">${{new:"New", drag:"Drag", drill:"Drill"}[g.cat] || "Match"}</span></button>`).join("")}</div>
   </div>`;
 }
 // the lab's front page: resolves the button pressed, as [action, key]
