@@ -74,7 +74,6 @@ const LAB_GAMES = [
   {id:"tackle", t:"Tackle", d:"Time your challenge as he runs into the green.", cat:"match", ic:"tackle", help:"tackle", run:labMatch("tackle")},
   {id:"block", t:"Block", d:"Throw yourself in front of the shot at the right moment.", cat:"match", ic:"block", help:"block", run:labMatch("block")},
   {id:"intercept", t:"Interception", d:"Read the passer's eyes and cut out the pass.", cat:"match", ic:"eye", help:"intercept", run:labMatch("intercept")},
-  {id:"shadow", t:"Shadow your man", d:"Stay in his lane as he switches.", cat:"match", ic:"lanes", help:"shadow", run:labMatch("shadow")},
   {id:"save", t:"Save", d:"Keeper: watch the ball and dive the right way.", cat:"match", ic:"glove", help:"save", run:labMatch("save")},
   {id:"pen-save", t:"Penalty save", d:"Keeper: a penalty, so even less time.", cat:"match", ic:"spot", help:"save", run:labMatch("save", "pen")},
   {id:"claim", t:"Claim a cross", d:"Keeper: come for the cross as the rings meet.", cat:"match", ic:"claim", help:"claim", run:labMatch("claim")},

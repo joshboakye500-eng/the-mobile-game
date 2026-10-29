@@ -1013,7 +1013,6 @@ details.nego-d[open] summary{margin-bottom:8px}
 .lv-reticle::after{width:40px;height:2px}
 .lv-aim.on{background:rgba(245,197,66,.1);box-shadow:inset 0 0 0 1.5px rgba(245,197,66,.6)}
 .lv-aim.on::after{display:none}
-.lv-sl{transition:transform .2s cubic-bezier(.3,.7,.3,1)}
 .lv-ico{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;margin-bottom:4px}
 .lv-ico svg{width:28px;height:28px}
 .lv-ico.good{background:rgba(74,222,128,.2);color:#86EFAC;box-shadow:0 0 0 2px rgba(74,222,128,.6)}

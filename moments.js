@@ -1,7 +1,7 @@
 /* ================= KEY MOMENTS =================
    Every match you're picked for is played as key moments, like FC's player career: four if you start, one or two
    off the bench, drawn by position from LV_POOL's mini-games: shots and free kicks, headers, passes, a full
-   attacking move, take-ons and crosses; tackles, blocks, interceptions and shadowing your man; and for keepers
+   attacking move, take-ons and crosses; tackles, blocks and interceptions; and for keepers
    saves, penalties, claiming crosses and rushing out. How many are attacking rather than defending, and how good the
    chances are, follow how the match is going for your team (mcXg's expected goals each way). The rest of the match
    is simulated around them: the expected goals each way minus what the moments stand in for (LV_EV at average
@@ -13,15 +13,15 @@ const LV_POOL = {
   RW:{att:["shot:box","takeon","cross","move","pass"], def:["intercept","tackle"]},
   CAM:{att:["shot:box","pass","move","takeon","pass","shot:freekick"], def:["intercept"]},
   CM:{att:["pass","move","shot:long"], def:["intercept","tackle"]},
-  CDM:{att:["pass","shot:long"], def:["intercept","tackle","shadow","block"]},
-  LB:{att:["cross","takeon","pass"], def:["tackle","shadow","intercept","block"]},
-  RB:{att:["cross","takeon","pass"], def:["tackle","shadow","intercept","block"]},
-  CB:{att:["header"], def:["tackle","block","intercept","shadow"]},
+  CDM:{att:["pass","shot:long"], def:["intercept","tackle","block"]},
+  LB:{att:["cross","takeon","pass"], def:["tackle","intercept","block"]},
+  RB:{att:["cross","takeon","pass"], def:["tackle","intercept","block"]},
+  CB:{att:["header"], def:["tackle","block","intercept"]},
   GK:{att:[], def:["save","save","save","claim","rush"]}
 };
 // expected goals each moment stands for at average skill: scored (attacking) or conceded (defending)
 const LV_EV = {"shot:oneonone":.45, "shot:box":.34, "shot:long":.13, "shot:freekick":.17, header:.26, pass:.18, move:.3, takeon:.24, cross:.16,
-  intercept:.1, tackle:.2, block:.28, shadow:.18, save:.36, "save:pen":.6, claim:.14, rush:.3};
+  intercept:.1, tackle:.2, block:.28, save:.36, "save:pen":.6, claim:.14, rush:.3};
 // the share of the goals your team concedes that a position's defending moments can stand for
 const LV_DSHARE = {GK:.75, CB:.4, LB:.3, RB:.3, CDM:.25, CM:.15};
 const LV_COLS = {l:75, c:150, r:225}, LV_ROWS = {t:50, b:98};
@@ -376,9 +376,6 @@ const LV_HELP = {
   intercept:{t:"How to intercept", steps:["Their midfielder has the ball, with three teammates to pass to.", "Watch him: a <b>gold arrow</b> shows where he's looking. <b>Tap that lane</b> to cut the pass out.",
     "Good passers sometimes look one way and pass the other, so wait for the real look."],
     svg:lvDemo("bottom", `${lvMan(150,40,"#EF4444")}${lvMan(70,110,"#EF4444")}${lvMan(150,124,"#EF4444")}${lvMan(230,110,"#EF4444")}<path d="M150 46L222 100" stroke="#F5C542" stroke-width="4" stroke-dasharray="7 5"/>${lvMan(150,84,"#F5C542")}`, "TAP THE LANE HE'S LOOKING AT")},
-  shadow:{t:"How to shadow your man", steps:["Stay in front of the attacker. He switches between three lanes.", "When he moves, <b>tap the same lane</b> (left, middle or right) to stay with him.",
-    "Lose him twice and he's through on goal."],
-    svg:lvDemo("bottom", `<path d="M100 10v140M200 10v140" stroke="rgba(255,255,255,.25)" stroke-dasharray="6 6"/>${lvMan(250,56,"#EF4444")}${lvMan(250,124,"#F5C542")}<path d="M150 124h80" stroke="#FFE9A8" stroke-width="3" stroke-dasharray="5 4"/>`, "MOVE TO HIS LANE")},
   save:{t:"How to save", steps:["The striker lines up his shot. Don't move too early: strikers punish keepers who guess.",
     "Watch which way the ball goes, then <b>tap that side of the goal</b>: left, middle or right.", "Your shot-stopping decides how much time you get. Penalties are quicker."],
     svg:`<svg viewBox="0 0 240 150"><rect x="20" y="10" width="200" height="90" fill="rgba(255,255,255,.05)" stroke="#F4F7F2" stroke-width="4"/><path d="M87 12v86M153 12v86" stroke="rgba(255,255,255,.3)" stroke-dasharray="5 5"/>
@@ -863,40 +860,6 @@ function lvGameIntercept(st, m){
   });
 }
 
-/* ---------- shadowing: stay in his lane ---------- */
-function lvGameShadow(st, m){
-  const a = lvAttr(st), e = lvEase(st, a.def*.6 + a.pac*.4), kit = lvKits(st), X = {l:75, c:150, r:225};
-  const react = clamp(640*(1 + e), 330, 980), moves = 4;
-  return new Promise(res=>{
-    lvShow(`${lvHead(st, m.min)}<h2 class="lv-t">Shadow your man</h2><p class="lv-s">When he switches lane, tap the same lane to stay in front of him.</p>
-      <div class="lv-stage">${lvField("bottom", `<path d="M112 10v150M188 10v150" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="6 6"/>
-          <g id="lvAt" class="lv-sl">${lvMan(0,0,kit.them,{run:true})}</g><g id="lvMe" class="lv-sl">${lvMan(0,0,kit.us,{ring:"#F5C542", run:true})}</g>`)}
-        <div class="lv-thirds">${["l","c","r"].map(z=>`<button type="button" class="lv-tap" data-z="${z}" aria-label="Move ${{l:"left",c:"to the middle",r:"right"}[z]}"></button>`).join("")}</div></div>
-      <div class="lv-timer"><span></span></div>
-      <button type="button" class="btn big lv-act" disabled>Stay with him</button>`);
-    lvSkippable(res);
-    const stage = lv$(".lv-stage"), bar = lv$(".lv-timer span");
-    let his = "c", mine = "c", n = 0, misses = 0, next = performance.now() + 900, deadline = 0, done = false;
-    const slide = (id, x, y) => { const g = lv$(id); if (g) g.style.transform = `translate(${x}px,${y}px)`; };
-    slide("#lvAt", X.c, 58); slide("#lvMe", X.c, 128); stage.dataset.lane = his;
-    lvLoop(now=>{
-      if (done) return false;
-      if (deadline && now>=deadline){ if (mine!==his) misses++; deadline = 0; n++; next = now + 450 + Math.random()*350; if (n>=moves){ end(); return false; } }
-      if (!deadline && now>=next){ his = pick(["l","c","r"].filter(z=>z!==his)); stage.dataset.lane = his; slide("#lvAt", X[his], 58); deadline = now + react; }
-      bar.style.width = (100 - (n/moves)*100) + "%";
-    });
-    const step = z=>{ if (done) return; mine = z; slide("#lvMe", X[z], 128); };
-    const end = ()=>{
-      done = true;
-      if (misses===0) return res({ok:true, big:"Kept him in front", small:"He had nowhere to go", bonus:.3});
-      if (misses===1) return res({ok:true, big:"Stayed with him", small:"Only just", bonus:.15});
-      res(Math.random() < (misses>=3 ? .5 : .36)*m.q ? {ok:false, big:"They score", small:"He got away from you", ga:1, bonus:-.3} : {ok:false, big:"He got past you", small:"…but the shot went wide", bonus:-.12});
-    };
-    lvEl.querySelectorAll(".lv-thirds button").forEach(b=>lvTap(b, ()=>step(b.dataset.z)));
-    lvKey = k=>{ if (k!=="go") step(k); };
-  });
-}
-
 /* ---------- saves and penalties: react to the shot ---------- */
 function lvGameSave(st, m){
   const f = st.f, a = lvAttr(st), pen = m.v==="pen", kit = lvKits(st), e = lvEase(st, a.def);
@@ -977,4 +940,4 @@ function lvGameRush(st, m){
 }
 
 const LV_GAMES = {shot:lvGameShot, header:lvGameHeader, pass:lvGamePass, move:lvGameMove, takeon:lvGameTakeon, cross:lvGameCross,
-  tackle:lvGameTiming, block:lvGameTiming, intercept:lvGameIntercept, shadow:lvGameShadow, save:lvGameSave, claim:lvGameClaim, rush:lvGameRush};
+  tackle:lvGameTiming, block:lvGameTiming, intercept:lvGameIntercept, save:lvGameSave, claim:lvGameClaim, rush:lvGameRush};
