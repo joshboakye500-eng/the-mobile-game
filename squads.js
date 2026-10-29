@@ -225,7 +225,7 @@ function sqCard(club, i, base = strOf(club), season = S.season){
     ${x && x[0] ? `<div class="totals pl-four">${tile("Games", x[0])}${tile("Goals", x[1])}${tile("Assists", x[2])}${tile("Avg", (x[3]/10/x[0]).toFixed(2))}</div>
       <p class="hint" style="margin:10px 0 0">${top.map(([r,t])=>`${ord(r)} ${t}`).join(" · ") || "Not in the league's top 20 for goals, assists or ratings yet."}</p>`
     : `<p class="hint" style="margin:0">${L ? "No league games this season yet." : season!==S.season ? "No games for the club yet." : "Only your own league is played out week by week, so there are no season numbers here."}</p>`}
-    ${season===S.season ? cpCardLine(me ? "me" : club, i) : ""}</section>
+    ${season===S.season ? cpCardLine(me ? "me" : club, i) + euCardLine(me ? "me" : club, i) : ""}</section>
     ${me && S.history.length && !lvEl ? `<button type="button" class="btn" data-act="my-profile" style="justify-self:start">Your full profile ›</button>` : ""}
   </div>`;
 }

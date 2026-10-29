@@ -1219,3 +1219,12 @@ small.boot{display:inline-flex;align-items:center}
 .pen-sum{display:flex;align-items:baseline;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(245,197,66,.08);border:1px solid rgba(245,197,66,.3)}
 .pen-sum b{font-family:var(--f-display);font-weight:900;font-size:28px;color:#F5C542;margin-left:4px}
 @media (max-width:420px){ .pen-row{grid-template-columns:minmax(0,1fr) 64px} .pen-row input[type=range]{grid-column:1/-1;grid-row:2} }
+
+/* Europe in full (europe.js): the league-phase table's cut lines, its key, and the recent winners */
+.eu-t tr.cut td{border-top:2px dashed var(--line)}
+.eu-key{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 0}
+.eu-key i.z{display:inline-block;width:10px;height:10px;border-radius:3px;margin-left:6px}
+.eu-key i.z:first-child{margin-left:0}
+.eu-hon{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.eu-hon li{display:flex;align-items:center;gap:8px;font-size:14px}
+.eu-hon .label{min-width:62px}

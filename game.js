@@ -1072,6 +1072,7 @@ function simSeason(comps){
 
   // cups and Europe: from the match centre's fixtures when you played the season there, otherwise driven by your stats
   cpFinishAll();   // the English cups played out in full in the match centre get their winners (cups.js)
+  euFinishAll();   // and Europe (europe.js)
   const out = cupSpecs(our).map(c=>mcCupResult(our, c) || runCup({...c, my:my(c.code), need:need(c.code)}));
   const euCode = W.europe[our];
   if (euCode) out.push(mcEuroResult(our, euCode) || runEurope(euCode, my(euCode), need(euCode), our));
@@ -1860,7 +1861,7 @@ function finishSeason(comps, janFrom){
     if (parts.length) note("info", "Promotion and relegation round-up", parts.join(" ")); }
   // the season goes into the roll of honour, and the other clubs do their summer business
   lgHonours(sim);
-  cpSeasonNote();
+  cpSeasonNote(); euSeasonNote();
   sqNewsNote(sqWindow(S.season + 1));
   (S.notes ||= []).push({season:sim.season, kind:"club", title:`${sim.season} season review`, text:"The papers, the fans, the manager and the club have had their say. Open to read it.", rev:sim.season});
   if (loanEnded) note("info", "Loan finished", `Your season at ${loanEnded} is over and you're back at ${S.club}.`);

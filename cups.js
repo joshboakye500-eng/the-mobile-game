@@ -239,7 +239,7 @@ function cpSeasonNote(){
   const G = S.cups; if (!G || G.s!==seasonLabel(S.season) || G.off) return;
   const lines = Object.keys(CP_ROUNDS).filter(k=>G.C[k] && G.C[k].win).map(k=>{
     const C = G.C[k], f = (C.res[CP_ROUNDS[k].length-1] || [])[0], g = cpLeaders(C, 0)[0];
-    return `${CP_NAMES[k]}: ${C.win}${f ? `, beating ${cpOther(f, C.win)} ${Math.max(f[2], f[3])}–${Math.min(f[2], f[3])}${f[4] ? " on penalties" : ""} in the final` : ""}${g ? `. Top scorer: ${g.me ? "you" : `${g.name} (${g.club})`}, ${g.n}` : ""}.`;
+    return `${CP_NAMES[k]}: ${C.win}${f ? `, beating ${cpOther(f, C.win)} ${f[4] ? `on penalties after a ${f[2]}–${f[3]} draw` : `${Math.max(f[2], f[3])}–${Math.min(f[2], f[3])}`} in the final` : ""}${g ? `. Top scorer: ${g.me ? "you" : `${g.name} (${g.club})`}, ${g.n}` : ""}.`;
   });
   if (lines.length) note("info", "The cup winners", lines.join(" "));
 }

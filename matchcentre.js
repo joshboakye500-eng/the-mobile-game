@@ -108,9 +108,10 @@ function mcEuPhaseEnd(r, E){
 }
 function mcEuRec(rec, code, half){
   if (rec.eu && rec.eu.code===code) return rec.eu;
-  const E = EURO[code];
-  const r = rec.eu = {code, opps:shuffle(euroField(code, S.club)).slice(0, E.phase), pts:0, gp:0, alive:true, next:null, games:0, beaten:[], tie:null};
-  if (half===2){ r.opps.forEach(o=>{ r.pts += match(strOf(S.club), o.str); }); r.gp = r.games = E.phase; mcEuPhaseEnd(r, E); }
+  // Europe played out in full (europe.js) gives your club its schedule, and in January how its league phase went
+  const E = EURO[code], full = euOpps(code, S.club);
+  const r = rec.eu = {code, opps:full || shuffle(euroField(code, S.club)).slice(0, E.phase), pts:0, gp:0, alive:true, next:null, games:0, beaten:[], tie:null};
+  if (half===2 && !euPhaseFill(code, S.club, r)){ r.opps.forEach(o=>{ r.pts += match(strOf(S.club), o.str); }); r.gp = r.games = E.phase; mcEuPhaseEnd(r, E); }
   return r;
 }
 
@@ -156,7 +157,7 @@ function mcBuild(){
   const eu = S.world.europe[our];
   if (eu && codes.has(eu)){
     const r = mcEuRec(rec, eu, half), E = EURO[eu];
-    if (half===1) r.opps.forEach((o,k)=>at(.1 + .85*k/Math.max(1, E.phase-1), {code:eu, eu:true, ri:-1, gi:k, round:`League phase, game ${k+1}`, opp:o.n, oppStr:o.str, home:k%2===0, big:o.str>=base+3}));
+    if (half===1) r.opps.forEach((o,k)=>at(.1 + .85*k/Math.max(1, E.phase-1), {code:eu, eu:true, ri:-1, gi:k, round:`League phase, game ${k+1}`, opp:o.n, oppStr:o.str, home:o.home ?? k%2===0, big:o.str>=base+3}));
     else KO_EU.forEach((round,i)=>{
       const fx = {code:eu, eu:true, ri:i, nr:KO_EU.length, round, big:true, neutral:round==="Final"};
       if (i<4){ at(.12 + .2*i, {...fx, leg:1}); at(.12 + .2*i + 1.5/W, {...fx, leg:2}); } else at(.97, {...fx, leg:0});
@@ -241,11 +242,13 @@ function mcSetup(f, w, specs){
   const r = f.code==="league" ? null : f.eu ? rec.eu : rec.cups[f.code];
   if (f.code!=="league"){
     if (!mcTieOn(f, r)){ f.skip = true; return false; }
+    // Europe played out in full: the matchday's other games are played first, and the schedule says who you play
+    if (f.eu && f.ri===-1 && !f.res){ const o = euPhaseOpp(f.code, f.gi, our); if (o){ f.opp = o.n; f.oppStr = o.str; f.home = o.home; } }
     if (!f.opp){
       if (f.leg===2){ f.opp = r.tie.opp; f.oppStr = r.tie.str; f.home = !r.tie.home; }
       else {
         // an English cup played out in full gives you the club you were drawn against (cups.js)
-        const o = f.eu ? shuffle(euroField(f.code, our)).slice(0, 2+f.ri).sort((x,y)=>y.str-x.str)[0] : cpOpp(f.code, f.gi!=null ? 0 : f.ri, our) || specs[f.code].oppFor(f.gi!=null ? 0 : f.ri);
+        const o = f.eu ? euKoOpp(f.code, f.ri, our) || shuffle(euroField(f.code, our)).slice(0, 2+f.ri).sort((x,y)=>y.str-x.str)[0] : cpOpp(f.code, f.gi!=null ? 0 : f.ri, our) || specs[f.code].oppFor(f.gi!=null ? 0 : f.ri);
         f.opp = o.n; f.oppStr = o.str; f.home = o.home ?? Math.random()<.5;
       }
     }
@@ -304,6 +307,7 @@ function mcResolve(f, w, live){
   mcAfter(f, r, rec, X.base);
   if (f.code==="league") lgOnResult(f, det);
   else if (f.cup) cpOnResult(f, det);
+  else if (f.eu) euOnResult(f, det);
 }
 // a played fixture moves the league record on, and decides cup and European ties
 function mcAfter(f, r, rec, base){
@@ -311,7 +315,7 @@ function mcAfter(f, r, rec, base){
   (rec.form ||= []).push(pts===3 ? "W" : pts===1 ? "D" : "L"); if (rec.form.length>10) rec.form.shift();
   if (f.code==="league"){ const L = rec.lg; L.p++; L.gf += gf; L.ga += ga; if (pts===3) L.w++; else if (pts===1) L.d++; else L.l++; return; }
   r.games++;
-  if (f.eu && f.ri===-1){ r.pts += pts; r.gp++; if (r.gp>=EURO[f.code].phase) mcEuPhaseEnd(r, EURO[f.code]); return; }
+  if (f.eu && f.ri===-1){ r.pts += pts; r.gp++; euPhaseResult(f, S.mc.club); if (r.gp>=EURO[f.code].phase && !euPhaseEnd(r, f.code, S.mc.club)) mcEuPhaseEnd(r, EURO[f.code]); return; }
   if (f.gi!=null){ r.pts += pts; r.gp++; if (r.gp>=3){ if (r.pts>=4 || (r.pts===3 && Math.random()<.4)) r.next = 1; else mcOut(r, "Group stage", null, 0); } return; }
   if (f.leg===1){ r.tie = {i:f.ri, opp:f.opp, str:f.oppStr, gf, ga, home:f.home}; return; }
   let F = gf, A = ga; if (f.leg===2){ F += r.tie.gf; A += r.tie.ga; f.agg = [F, A]; }
@@ -335,13 +339,14 @@ async function mcWeek(live=true){
   if (!wk.trained){ mcTrain(M.wi); wk.trained = true; }
   for (const f of wk.fx.slice().sort((x,y)=>(x.code==="league")-(y.code==="league"))){
     if (f.res || f.skip) continue;
-    if (!mcSetup(f, M.wi, specs)){ if (f.cup && f.gi==null) cpAdvance(f.code, f.ri); continue; }   // a cup you're out of still plays its round
+    if (!mcSetup(f, M.wi, specs)){ if (f.cup && f.gi==null) cpAdvance(f.code, f.ri); else if (f.eu) euAdvance(f.code, f.ri); continue; }   // a cup you're out of still plays its round
     if (live && f.me.mins){
       save();
       try{ await lvPlayMatch(f, M.wi); } catch(err){ console.error(err); if (!f.res) mcResolve(f, M.wi); }   // never leave a match half-played
     } else mcResolve(f, M.wi);
   }
   lgWeekDone(M);
+  euTick(mcFrac(M.wi));   // Europe's other games, up to this week
   M.wi++; if (M.wi>=M.weeks.length) M.done = true;
 }
 let mcBusy = false;
@@ -405,15 +410,16 @@ function mcCupResult(our, c){
 function mcEuroResult(our, code){
   const rec = mcRecIf(our), r = rec && rec.eu; if (!r || r.code!==code) return null;
   const E = EURO[code], base = strOf(our), field = euroField(code, our);
+  euFate(code, our, r);   // Europe played out in full: the rest of your run comes from the bracket
   if (r.next===null && r.alive){ r.opps.slice(r.gp).forEach(o=>{ r.pts += match(base, o.str); r.games++; }); r.gp = E.phase; mcEuPhaseEnd(r, E); }
-  if (r.reached==="League phase") return {code, name:E.name, games:r.games, won:false, stage:0, reached:"League phase", out:`Out in the league phase with ${r.pts} points`};
+  if (r.reached==="League phase") return {code, name:E.name, games:r.games, won:false, stage:0, reached:"League phase", out:`Out in the league phase with ${r.pts} points${r.rank ? `, ${ord(r.rank)} of 36` : ""}`};
   while (r.alive && !r.won && r.next<KO_EU.length){
     const i = r.next, L = i===4 ? 1 : 2, o = r.tie && r.tie.i===i ? {n:r.tie.opp, str:r.tie.str} : shuffle(field).slice(0,2+i).sort((x,y)=>y.str-x.str)[0];
     r.games += L - (r.tie && r.tie.i===i ? 1 : 0); r.tie = null;
     if (tie(base, o.str, L)){ r.beaten.push(o.n); r.next++; if (r.next>=KO_EU.length){ r.alive = false; r.won = true; } } else mcOut(r, KO_EU[i], o.n, i);
   }
   return {code, name:E.name, games:r.games, won:!!r.won, stage:r.won ? KO_EU.length : r.stage, reached:r.won ? "Winners" : r.reached, lostTo:r.lostTo, beaten:r.beaten,
-    out:`${r.pts} pts in the league phase${r.top8 ? " (top 8, straight to the last 16)" : ""}. ${mcKoOut(r)}`};
+    out:`${r.pts} pts in the league phase${r.rank ? `, ${ord(r.rank)}` : ""}${r.top8 ? " (top 8, straight to the last 16)" : ""}. ${mcKoOut(r)}`};
 }
 
 /* ---------- the panel ---------- */
@@ -445,7 +451,7 @@ function mcHero(f, w){
 }
 function mcPanel(){
   if (!S.mc || S.mc.key!==mcKey()) { mcBuild(); save(); }
-  const M = S.mc, c = S.cond, a = S.attr, W = M.weeks.length, h = M.half, cups = cpPanel();
+  const M = S.mc, c = S.cond, a = S.attr, W = M.weeks.length, h = M.half, cups = cpPanel(), eup = euPanel();
   const list = []; M.weeks.forEach((wk,w)=>wk.fx.slice().sort((x,y)=>(x.code==="league")-(y.code==="league")).forEach(f=>{ if (!f.skip && (f.res || mcLive(f) || f.code==="league")) list.push([f,w]); }));
   const played = list.filter(([f])=>f.res), now = list.filter(([f,w])=>!f.res && w===M.wi), later = list.filter(([f,w])=>!f.res && w>M.wi);
   const tot = {apps:0, g:0, a:0, cs:0, r:[], potm:0, mins:0, of:0}; played.forEach(([f])=>{ if (!f.me) return; tot.of += 90; if (f.me.mins){ tot.apps++; tot.g += f.me.g; tot.a += f.me.a; if (f.me.cs) tot.cs++; tot.r.push(f.me.r); if (f.potm) tot.potm++; tot.mins += f.me.mins; } });
@@ -486,6 +492,7 @@ function mcPanel(){
       ["results", "Results", `${played.length ? fx(played.slice(-5).reverse()) : `<p class="empty">No results yet. Tap Play next week to get going.</p>`}${later.length ? `<h3>Coming up</h3>${fx(later.slice(0,3))}` : ""}`],
       lgGet(M.lgk) && ["table", "Table", lgPanel()],
       cups && ["cups", "Cups", cups],
+      eup && ["europe", "Europe", eup],
       S.tg && S.tg.s===seasonLabel(S.season) && ["targets", "Targets", tgPanel()],
       ["you", "You", `<div class="totals">${[["Apps",tot.apps],["Goals",tot.g],["Assists",tot.a],...(showCS?[["Clean sheets",tot.cs]]:[]),["Avg rating",avgR],["Minutes",tot.of ? Math.round(tot.mins/tot.of*100)+"%" : "–"],["Player of the Match",tot.potm]].map(([l,v])=>`<div class="total"><div class="label">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
         <h3>Your attributes</h3>
