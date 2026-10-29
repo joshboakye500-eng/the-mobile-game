@@ -10,7 +10,20 @@
    Loaded before game.js; only called once the game is running. */
 let lgTab = "table";
 
-function lgGet(k){ return k!=null && S.lg && S.lg.s===seasonLabel(S.season) ? S.lg.L[k] || null : null; }
+function lgGet(k){ const L = k!=null && S.lg && S.lg.s===seasonLabel(S.season) ? S.lg.L[k] || null : null; if (L && !L.mended) lgMend(L); return L; }
+// a one-off repair for seasons played on version 1.18, when only matches against your club were counted in other
+// clubs' players' numbers: each club's missing games are shared out across its XI from its goals in the table (who
+// scored and set them up picked as in lgSide), so the charts match the fixtures played
+function lgMend(L){
+  L.mended = 1;
+  L.teams.forEach(club=>{
+    const t = L.tab[club]; if (!t || !t[0]) return;
+    const ps = L.ps[club] ||= SQ_SLOTS.map(()=>[0,0,0,0]), miss = t[0] - Math.max(...ps.map(p=>p[0])); if (miss<=0) return;
+    const xi = sqSquad(club), on = xi.map(()=>true), goals = Math.max(0, t[4] - ps.reduce((s,p)=>s + p[1], 0));
+    ps.forEach(p=>{ const avg = p[0] ? p[3]/p[0] : 63; p[0] += miss; p[3] += Math.round(avg*miss); });
+    for (let g=0; g<goals; g++){ const s = sqPick(xi, on, 0, -1); ps[s][1]++; if (Math.random()<.72) ps[sqPick(xi, on, 1, s)][2]++; }
+  });
+}
 // a league this season, started if needed; a club that joins in January finds the first half already played
 function lgEnsure(k){
   const T = TIERS[k]; if (!T || T.pool || !T.games) return null;

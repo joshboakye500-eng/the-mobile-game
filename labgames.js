@@ -43,7 +43,7 @@ function lgHoldOn(el, on){
   ["pointerup","pointercancel","lostpointercapture"].forEach(t=>el.addEventListener(t, ()=>on(false)));
 }
 // a side-on view: the stand behind, the advertising boards, and the grass
-function lgSide(inner = ""){
+function lgSideView(inner = ""){
   return `<svg viewBox="0 0 300 180" aria-hidden="true"><defs>${LV_DEFS}<linearGradient id="lgSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#081A12"/><stop offset="1" stop-color="#10301F"/></linearGradient>
       <radialGradient id="lgFl" cx="50%" cy="0%" r="75%"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".25"/><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"/></radialGradient>
       <linearGradient id="lgTurf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17542E"/><stop offset="1" stop-color="#23783F"/></linearGradient></defs>
@@ -102,7 +102,7 @@ function lgKeepy(st){
   const kit = lvKits(st), e = st.lab.ease, zw = 34*(1 + e*1.2), goal = lgTarget(st, 15, 1.25);
   return new Promise(res=>{
     lgShow(st, "Keepy-uppy", `Tap when the ball drops into the green band at your feet. Get to ${goal}.`,
-      lgSide(`<rect x="0" y="${170 - zw}" width="300" height="${zw}" fill="rgba(74,222,128,.16)"/><path d="M0 ${170 - zw}h300" stroke="#4ADE80" stroke-width="1.2" stroke-dasharray="5 4" opacity=".8"/>
+      lgSideView(`<rect x="0" y="${170 - zw}" width="300" height="${zw}" fill="rgba(74,222,128,.16)"/><path d="M0 ${170 - zw}h300" stroke="#4ADE80" stroke-width="1.2" stroke-dasharray="5 4" opacity=".8"/>
         <g id="lgP">${lvMan(0, 0, kit.us, {s:2.1})}</g>${lvBallSvg("lgB", 150, 170, 6.5)}`) + lgHud(0, "touches"),
       `<button type="button" class="btn primary big lv-act">Touch!</button>`);
     const fin = r => { off(); res(r); }, off = lgKeys(k=>{ if (k===" " || k==="Enter"){ tap(); return true; } });
@@ -508,7 +508,7 @@ function lgBicycle(st){
     st.lab.tally = `${got} of 3`;
     const per = clamp(1450*(1 + e*.4) - k*110, 1000, 1800), [j1x, j1y] = P(U1), [j2x, j2y] = P(U2);
     lgShow(st, "Bicycle kick", `Go ${k+1} of 3. Tap to jump as the ball reaches the big ring, then again to kick as it hits the small one.`,
-      lgSide(`${lgSideGoal()}<g id="lgK">${lvMan(0, 0, gk, {s:1.3})}</g>
+      lgSideView(`${lgSideGoal()}<g id="lgK">${lvMan(0, 0, gk, {s:1.3})}</g>
         <circle cx="${j1x.toFixed(1)}" cy="${j1y.toFixed(1)}" r="13" fill="none" stroke="#F5C542" stroke-width="2.4" stroke-dasharray="5 4"/>
         <circle id="lgK2" cx="${j2x.toFixed(1)}" cy="${j2y.toFixed(1)}" r="8" fill="none" stroke="#4ADE80" stroke-width="2.4" opacity=".35"/>
         <ellipse id="lgSh" cx="150" cy="171" rx="15" ry="3" fill="rgba(0,0,0,.35)"/><g id="lgMe">${lvMan(0, 18, kit.us, {s:1.5, you:true, noShadow:true})}</g>${lvBallSvg("lgB", 298, 170, 5)}`) + lgHud(got, "goals"),
@@ -655,7 +655,7 @@ function lgRace(st){
   const kit = lvKits(st), e = st.lab.ease, beat = 520, win = clamp(140*(1 + e*1.2), 90, 190), vd = 64*(1 - e*.3);
   return new Promise(res=>{
     lgShow(st, "Race to the ball", "A loose ball and a defender after it. Tap on the beat, as the ring closes on the dot, to stride faster.",
-      lgSide(`${lvBallSvg("lgB", 150, 166, 5)}<g id="lgDf">${lvMan(0, 0, kit.them, {run:true, s:1.4})}</g><g id="lgMe">${lvMan(0, 0, kit.us, {you:true, mark:true, run:true, s:1.4})}</g>`)
+      lgSideView(`${lvBallSvg("lgB", 150, 166, 5)}<g id="lgDf">${lvMan(0, 0, kit.them, {run:true, s:1.4})}</g><g id="lgMe">${lvMan(0, 0, kit.us, {you:true, mark:true, run:true, s:1.4})}</g>`)
         + `<div class="lg-beat" aria-hidden="true"><span class="lg-beat-r"></span><span class="lg-beat-c"></span></div>`,
       `<button type="button" class="btn primary big lv-act">Stride!</button>`);
     let done = false;
@@ -975,7 +975,7 @@ function lgAirDuel(st){
     st.lab.tally = `${won} of 3`;
     const T = clamp(1700 - k*120 + Math.random()*300, 1300, 2000), D = [150, 91], from = [-12, 70], C = [60, -10], their = 30 + Math.random()*spread*(1 - k*.12);
     lgShow(st, "Air duel", `Duel ${k+1} of 3. Tap to jump: be at the top of your jump as the ball arrives, before he is.`,
-      lgSide(`<circle cx="${D[0]}" cy="${D[1]}" r="10" fill="none" stroke="#F5C542" stroke-width="2" stroke-dasharray="4 3" opacity=".8"/>
+      lgSideView(`<circle cx="${D[0]}" cy="${D[1]}" r="10" fill="none" stroke="#F5C542" stroke-width="2" stroke-dasharray="4 3" opacity=".8"/>
         <ellipse id="lgSh0" cx="164" cy="166.5" rx="14" ry="3" fill="rgba(0,0,0,.3)"/><ellipse id="lgSh1" cx="142" cy="171" rx="15" ry="3.2" fill="rgba(0,0,0,.35)"/>
         <g id="lgOp">${lvMan(0, 0, kit.them, {s:1.45, noShadow:true})}</g><g id="lgMe">${lvMan(0, 0, kit.us, {s:1.5, you:true, mark:true, noShadow:true})}</g>${lvBallSvg("lgB", from[0], 170, 5)}`) + lgHud(won, "won"),
       `<button type="button" class="btn primary big lv-act">Jump!</button>`);
