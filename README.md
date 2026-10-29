@@ -99,7 +99,7 @@ The **mini-game lab** is a development area for trying out mini-games: every one
 
 It's hidden from players. To show it on a phone, open the Account menu and tap the *Game version* line at the bottom five times (or open the game once with `?dev` at the end of its address): a **Development** section appears in the menu with *Open the mini-game lab*. *Hide this section* (or five more taps) hides it again.
 
-- Pick **Easy**, **Normal** or **Hard** at the top, and filter by *In matches*, *Training*, *New* or *Drag*.
+- Pick **Easy**, **Normal** or **Hard** at the top, and filter by *In matches*, *Training*, *New*, *Drag* or *Full match*.
 - **In matches:** every key-moment game, with the shots and saves split up, 16 in all: one-on-ones, shots in the box and from range, free kicks, headers, passes, the attacking move, take-ons, crosses, tackles, blocks, interceptions, saves, penalty saves, claiming crosses and rushing out.
 - **Training:** the sprint-start and beep-test drills.
 - **New, lab only:** 20 games that aren't in matches yet: penalty shootout, keepy-uppy, crossbar challenge, nutmeg, target practice, dribble slalom, volley, through ball, switch the play, one-two, bicycle kick, chip the keeper, skill combo, race to the ball, offside trap, clear the cross, rondo, shield the ball, bend it (swipe a curling free kick) and air duel.
@@ -114,6 +114,13 @@ It's hidden from players. To show it on a phone, open the Account menu and tap t
   - *Flick penalty:* the direction of your flick is the aim, its speed the height, with a Panenka.
   - *Block it:* drag into the line of a shot.
   - *Pass golf:* roll the ball round cones to a teammate in as few passes as you can.
+
+- **Full match, lab only: Play the 90.** A whole match, top-down, 11 against 11, played in 3, 5 or 8 real minutes:
+  - **You control only your own player** (the gold ring). Put a finger down anywhere and drag, like a joystick, to run. Let go and you take up your position again. Arrow keys work too.
+  - **With the ball:** *Pass* finds the best-placed team-mate the way you're running, including a ball in behind. *Shoot* stops the match for the shot mini-game (one-on-one, in the box or from range).
+  - **Without it:** *Call for it* asks the man on the ball to find you, and *Tackle* goes in when you're close to their man on the ball.
+  - **The other 21 play themselves:** teams keep their shape and shift with the ball. Forwards make runs as far as the last defender. One man presses while the next covers. Players pass into open lanes, cross from wide and shoot.
+  - **Full time:** the score, your goals, assists, passes and tackles, a rating, the scorers, shots and possession. The difficulty sets how good the other side is.
 
 Each game has a card with how to play it, a score at the end, and *Play again*.
 
@@ -154,6 +161,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
 | `moments.js` | Key moments: the live match screen, its mini-games, and the drawing and animation they share (players, ball, goal, crowd) |
 | `labgames.js` | The 30 new mini-games (10 of them played by dragging), played only in the lab |
+| `p90.js` | Play the 90: a whole match in real time, top-down, in the lab only |
 | `lab.js` | The mini-game lab under the Account menu's Development section |
 | `squads.js` | Every club's starting XI, the line-ups before a match, scorers, match ratings, Player of the Match, player cards, the Squad view and the summer transfers between clubs |
 | `league.js` | Your league played out week by week: the table, top scorers, assists, ratings and results, and the roll of honour |
