@@ -1097,7 +1097,7 @@ function lgCorner(st){
       if (cut) return fin({ok:false, big:"Cleared at the near post", small:"Curl it round him: bow your swipe"});
       if (j<0) return fin({ok:false, big:"Nobody there", small:"Land it on one of your men"});
       if (j!==free) return fin({ok:false, big:"Won by the defender", small:"Pick the man who isn't marked"});
-      lvHop(`#lgM${j} .lv-man`); const sc = Math.random()<.65 + (c.bend>18 ? .1 : 0);
+      lvHop(`#lgM${j} .lv-man`); const sc = Math.random()<.75 + (c.bend>18 ? .1 : 0);
       await lvFly("#lgB", [mates[j][0], mates[j][1] - 30], [140 + Math.random()*20, 178], 300, {spin:2});
       if (sc){ got++; lgSetHud(got); }
       fin(sc ? {ok:true, big:"Header, goal!", small:c.bend>18 ? "A wicked inswinger" : "Right on his head"} : {ok:false, big:"Header saved", small:"Great delivery, though"});
@@ -1155,28 +1155,30 @@ lgDragAdd({id:"dribble", t:"Dribble drag", d:"Drag your man round the chasing de
 
 /* ---------- D4. Through the gap: drag a pass through the sliding back line ---------- */
 function lgGap(st){
-  const kit = lvKits(st), e = st.lab.ease, vb = 250, sp = clamp(1.4*(1 - e*.8), 1, 1.9); let got = 0;
+  const kit = lvKits(st), e = st.lab.ease, vb = 205, sp = clamp(1.4*(1 - e*.8), 1, 1.9), hit = clamp(12*(1 - e*.6), 9, 15), limit = clamp(2600*(1 + e*.6), 1800, 3400); let got = 0;
   const one = k => new Promise(res=>{
     st.lab.tally = `${got} of 5`;
-    const sx = 110 + Math.random()*80, ph = Math.random()*6, n = 3 + (k>2 ? 1 : 0);
+    const sx = 110 + Math.random()*80, ph = Math.random()*6, n = 3 + (k>1 ? 1 : 0);
     lgShow(st, "Through the gap", `Pass ${k+1} of 5. Drag from the ball and let go: it goes straight that way. Thread it through to the 9.`,
       lvField("top", `<path d="M30 96H270" stroke="rgba(255,255,255,.18)" stroke-dasharray="4 5"/>${[...Array(n)].map((_, i)=>`<g id="lgD${i}">${lvMan(0, 0, kit.them)}</g>`).join("")}
-        <g id="lgS">${lvMan(sx, 40, kit.us, {num:9})}</g>${lvMan(150, 168, kit.us, {ring:"#F5C542"})}${lvBallSvg("lgB", 150, 156, 4)}`) + lgHud(got, "through"));
+        <g id="lgS">${lvMan(sx, 40, kit.us, {num:9})}</g>${lvMan(150, 168, kit.us, {ring:"#F5C542"})}${lvBallSvg("lgB", 150, 156, 4)}`) + lgHud(got, "through"), lgTimerHTML);
     let done = false; const t0 = performance.now(), D = [...Array(n)].map(()=>[0, 96]);
     const fin = r => { done = true; res(r); }; lvSkippable(fin);
-    const place = now => { const t = (now - t0)/1000; D.forEach((d, i)=>{ d[0] = 150 + (i - (n - 1)/2)*(240/n) + 34*Math.sin(t*sp + ph + i*1.7); lvMove(`#lgD${i}`, d[0], d[1]); }); };
-    lvLoop(now=>{ if (done) return false; place(now); });
+    const place = now => { const t = (now - t0)/1000; D.forEach((d, i)=>{ d[0] = 150 + (i - (n - 1)/2)*(240/n) + 40*Math.sin(t*sp + ph + i*1.7); lvMove(`#lgD${i}`, d[0], d[1]); }); };
+    place(t0);
+    // he can only hold his run so long before he's offside
+    lvLoop(now=>{ if (done) return false; place(now); lgSetTimer(1 - (now - t0)/limit); if (now - t0>limit){ fin({ok:false, big:"Offside", small:"He couldn't hold his run: play it sooner"}); return false; } });
     lvDrag(lv$(".lv-stage"), {from:[150, 156], ok:()=>!done, line:q=>{ const a = Math.atan2(q[1] - 156, q[0] - 150); return [150 + Math.cos(a)*170, 156 + Math.sin(a)*170]; },
-      end:(q, d, tap)=>{ const a = Math.atan2(q[1] - 156, q[0] - 150); if (tap || Math.sin(a)>-.35) return; pass(a); }});
+      end:(q, d, tap)=>{ const a = Math.atan2(q[1] - 156, q[0] - 150); if (done || tap || Math.sin(a)>-.35) return; pass(a); }});
     const pass = async a => {
       done = true; lvKick(".lv-you"); const svg = lv$(".lv-stage svg"); let cut = -1, tStart = performance.now(), x = 150, y = 156;
       const reach = (38 - 156)/Math.sin(a), T = Math.max(0, reach)/vb*1000;
       await new Promise(r2=>{ const tick = now=>{ if (st.lab.quit || !lvEl?.contains(svg)) return; const k2 = Math.min(1, (now - tStart)/T); x = 150 + Math.cos(a)*reach*k2; y = 156 + Math.sin(a)*reach*k2; place(now);
-        lvBallAt("#lgB", x, y, 1, 0, k2*600, true); const i = D.findIndex(d=>Math.hypot(d[0] - x, d[1] - y)<10); if (i>=0){ cut = i; return r2(); } if (k2>=1) return r2(); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+        lvBallAt("#lgB", x, y, 1, 0, k2*600, true); const i = D.findIndex(d=>Math.hypot(d[0] - x, d[1] - y)<hit); if (i>=0){ cut = i; return r2(); } if (k2>=1) return r2(); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
       if (st.lab.quit) return;
       if (cut>=0) return fin({ok:false, big:"Cut out", small:"Wait for the gap to open"});
       const off = Math.abs(x - sx);
-      if (off>18) return fin({ok:false, big:"Missed him", small:x<sx ? "Too far left" : "Too far right"});
+      if (off>15) return fin({ok:false, big:"Missed him", small:x<sx ? "Too far left" : "Too far right"});
       got++; lgSetHud(got); fin({ok:true, big:"Through!", small:off<7 ? "Right to his feet" : "He reached it"});
     };
   });
@@ -1187,15 +1189,15 @@ function lgGap(st){
 }
 lgDragAdd({id:"gap", t:"Through the gap", d:"Drag a pass through the sliding back line to your striker.", ic:"lanes", run:lgGap},
   {t:"Through the gap", steps:["Your striker (the 9) is waiting beyond a back line that slides from side to side.", "<b>Drag from the ball</b> towards him and <b>let go</b>: the pass goes straight along your drag, fast.",
-    "Let go as a gap opens in line with him. Hit a defender and it's cut out. Five passes, an extra defender for the last two."]});
+    "Let go as a gap opens in line with him, before the timer runs out and he drifts offside. Hit a defender and it's cut out. Five passes, an extra defender for the last three."]});
 
 /* ---------- D5. Fingertips: you're in goal, drag yourself across to the shot ---------- */
 function lgFingertips(st){
-  const kit = lvKits(st), e = st.lab.ease, vK = clamp(360*(1 + e*.8), 260, 460); let got = 0;
+  const kit = lvKits(st), e = st.lab.ease, vK = clamp(330*(1 + e*.8), 250, 420); let got = 0;
   const one = k => new Promise(res=>{
     st.lab.tally = `${got} of 6`;
     const A = [110 + Math.random()*80, 166], T = [46 + Math.random()*208, 30 + Math.random()*82];
-    const F = clamp((760 - k*35)*(1 + e*.5), 480, 950), cv = (Math.random()*2 - 1)*(10 + k*4);
+    const F = clamp((720 - k*30)*(1 + e*.5), 480, 900), cv = (Math.random()<.5 ? -1 : 1)*(12 + Math.random()*10 + k*4);
     lgShow(st, "Fingertips", `Shot ${k+1} of 6. You're in goal: drag yourself across to the ball before it gets there.`,
       lvGoalSvg(lgKeeperKit(kit), null, true) + lgHud(got, "saves"));
     lvBallAt("#lvBall", A[0], A[1]);
