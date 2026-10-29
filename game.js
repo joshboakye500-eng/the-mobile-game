@@ -633,7 +633,7 @@ function backupPanel(){
   </section>`;
 }
 
-function meta(n){ return META[n] || (S&&S.customClubs||[]).find(c=>c.n===n) || {n, c1:"#555555", c2:"#FFFFFF", r:.7}; }
+function meta(n){ return META[n] || (S&&S.customClubs||[]).find(c=>c.n===n) || (typeof NAT_KIT!=="undefined" && NAT_KIT[n] ? {n, c1:NAT_KIT[n][0], c2:NAT_KIT[n][1], r:.8} : null) || {n, c1:"#555555", c2:"#FFFFFF", r:.7}; }
 function tierOf(n){ for (const t of ALLKEYS) if (S.world.tiers[t] && S.world.tiers[t].includes(n)) return t; return 6; }
 function strOf(n){ return S.world.str[n] ?? 36; }
 function baseStr(t, r){ const T = TIERS[t]; return T.lo + (r-.6)/.4*(T.hi-T.lo); }
@@ -1325,7 +1325,10 @@ const NATIONS = {
   "France":["UEFA",1520],"England":["UEFA",1360],"Spain":["UEFA",1220],"Portugal":["UEFA",1010],"Germany":["UEFA",947],"Brazil":["CONMEBOL",928],
   "Argentina":["CONMEBOL",808],"Netherlands":["UEFA",754],"Norway":["UEFA",590],"Belgium":["UEFA",548],"Ivory Coast":["CAF",522],"Senegal":["CAF",478],
   "Turkey":["UEFA",474],"Morocco":["CAF",448],"Sweden":["UEFA",406],"Croatia":["UEFA",387],"United States":["CONCACAF",386],"Ecuador":["CONMEBOL",369],
-  "Uruguay":["CONMEBOL",359],"Switzerland":["UEFA",333],"Colombia":["CONMEBOL",302],"Japan":["AFC",271],"Algeria":["CAF",257],"Austria":["UEFA",245],
+  "Uruguay":["CONMEBOL",359],"Switzerland":["UEFA",333],"Colombia":["CONMEBOL",302],"United Arab Emirates":["AFC",22],"Oman":["AFC",12],"Bahrain":["AFC",10],"Syria":["AFC",12],"Palestine":["AFC",8],"Thailand":["AFC",14],"Vietnam":["AFC",12],"Indonesia":["AFC",30],"Tajikistan":["AFC",8],"Kyrgyzstan":["AFC",6],"Lebanon":["AFC",6],"North Korea":["AFC",6],"Malaysia":["AFC",9],
+  "Gabon":["CAF",30],"Angola":["CAF",22],"Benin":["CAF",15],"Uganda":["CAF",12],"Equatorial Guinea":["CAF",10],"Mozambique":["CAF",8],"Tanzania":["CAF",8],"Sudan":["CAF",6],
+  "Honduras":["CONCACAF",15],"El Salvador":["CONCACAF",8],"Guatemala":["CONCACAF",9],"Trinidad and Tobago":["CONCACAF",8],"Suriname":["CONCACAF",14],"Nicaragua":["CONCACAF",4],"Cuba":["CONCACAF",3],"Guadeloupe":["CONCACAF",5],
+  "Japan":["AFC",271],"Algeria":["CAF",257],"Austria":["UEFA",245],
   "Ghana":["CAF",235],"Canada":["CONCACAF",199],"Mexico":["CONCACAF",192],"Czech Republic":["UEFA",188],"Scotland":["UEFA",170],"Paraguay":["CONMEBOL",154],
   "Bosnia and Herzegovina":["UEFA",146],"DR Congo":["CAF",144],"South Korea":["AFC",139],"Egypt":["CAF",116],"Uzbekistan":["AFC",85],"Australia":["AFC",77],
   "Tunisia":["CAF",70],"Haiti":["CONCACAF",56],"Cape Verde":["CAF",49],"South Africa":["CAF",49],"Saudi Arabia":["AFC",41],"Panama":["CONCACAF",35],
@@ -1492,16 +1495,10 @@ function runTourney(t, str, need){
 }
 const tourMax = key => 3 + TOUR_FMT[key].rounds.length - 1;
 function tournamentPanel(){
-  const T = S.tourney, showCS = DEF.includes(S.player.pos), max = tourMax(T.key);
+  const T = S.tourney, showCS = DEF.includes(S.player.pos), max = tourMax(T.key), P = tGet();
   const roleHint = T.role==="Starter" ? "You're a starter: you'd expect to play every game." : T.role==="Bench" ? "You're on the bench: expect to come on in most games." : "You're a squad reserve: minutes will be hard to come by.";
-  return `<section class="panel pop win-tourney" id="actionPanel">
-    <div class="win-tag">★ ${esc(T.name)}</div>
-    <h2>${esc(T.nation)} · ${esc(T.role)}</h2>
-    <p class="hint">${roleHint} ${penOwned() ? "Play the tournament, then enter your numbers, or have it played out for you." : "It's played out for you: your games, goals and assists follow your role and your level."} The summer transfer window opens afterwards.</p>
-    <p class="hint">${TOUR_FMT[T.key].rounds.join(" → ")} · up to ${max} games</p>
-    ${penOwned() ? "" : `<div class="row" style="margin-top:14px"><button type="button" class="btn primary" data-act="tour-sim">Play the tournament</button></div>
-      <p class="hint" style="margin-top:10px">Want to type in your own numbers? That takes the <button type="button" class="linkbtn" data-penact="shop">${PEN_IC("pen-ic tiny")} Editor pen</button>.</p>`}
-    ${!penOwned() ? "" : `<form id="tourForm" class="col" style="gap:14px;margin-top:14px">
+  // with the Editor pen, before a ball's kicked, you can type in your own numbers instead
+  const form = penOwned() && !P.mine.length ? `<details class="t-hand"><summary>${PEN_IC("pen-ic tiny")} Enter your own numbers instead</summary><form id="tourForm" class="col" style="gap:14px;margin-top:14px">
       <div class="statgrid sheet"><div class="statrow sheet-h" style="--cols:${showCS?4:3}" aria-hidden="true"><span>Tournament</span><span>Apps</span><span>Goals</span><span>Assists</span>${showCS?`<span>Clean sh.</span>`:""}</div><div class="statrow" style="--cols:${showCS?4:3}">
         <div class="cname">${esc(T.name)}<small>up to ${max} games</small></div>
         <div class="field"><label for="tr-apps">Apps</label><input id="tr-apps" type="number" min="0" max="${max}" inputmode="numeric" value="0"></div>
@@ -1509,34 +1506,31 @@ function tournamentPanel(){
         <div class="field"><label for="tr-a">Assists</label><input id="tr-a" type="number" min="0" inputmode="numeric" value="0"></div>
         ${showCS?`<div class="field"><label for="tr-cs">Clean sh.</label><input id="tr-cs" type="number" min="0" inputmode="numeric" value="0"></div>`:""}
       </div></div>
-      <div class="row"><button class="btn primary" type="submit">Play the tournament</button><button type="button" class="btn" data-act="tour-sim">Play it out for me</button><span class="err" id="tourErr" role="alert"></span></div>
-    </form>`}
+      <div class="row"><button class="btn primary" type="submit">Save my numbers</button><span class="err" id="tourErr" role="alert"></span></div>
+    </form></details>` : "";
+  return `<section class="panel pop win-tourney" id="actionPanel">
+    <div class="win-tag">★ ${esc(T.name)}</div>
+    <h2>${esc(T.nation)} · ${esc(T.role)}</h2>
+    ${tPanelHTML(T, roleHint)}
+    ${form}
   </section>`;
 }
-// a tournament played out for you (typing in your own numbers takes the Editor pen): your games follow your role and
-// how far the team goes, your goals and assists your position and how good you are
-function tourAuto(T, games){
-  const pos = S.player.pos, ovr = S.attr ? mcOvr() : 70, q = clamp(1 + (ovr - 75)/35, .45, 1.7), [gs, as] = MC_SHARE[pos] || MC_SHARE.CM;
-  const apps = T.role==="Starter" ? games : T.role==="Bench" ? Math.round(games*(.45 + Math.random()*.4)) : Math.min(games, Math.floor(Math.random()*3));
-  const mins = T.role==="Starter" ? .92 : .35, team = 1.4;
-  const g = mcPoisson(apps*team*gs*mins*q), a = mcPoisson(apps*team*as*mins*q);
-  const cs = DEF.includes(pos) ? [...Array(apps)].filter(()=>Math.random()<.32*clamp(q, .7, 1.3)).length : 0;
-  return {apps, g, a, cs};
-}
-function submitTournament(auto){
+// your own numbers for the tournament, typed in (with the Editor pen); without it the tournament's played out instead
+function submitTournament(){
   const T = S.tourney, max = tourMax(T.key), err = $("#tourErr");
-  let st, run;
-  if (auto || !penOwned()){ run = runTourney(T, T.str, 0); st = tourAuto(T, run.games); }
-  else {
-    const v = id => { const el = $("#"+id); return el ? +el.value.trim() : 0; };
-    st = {apps:v("tr-apps"), g:v("tr-g"), a:v("tr-a"), cs:v("tr-cs")};
-    if ([st.apps,st.g,st.a,st.cs].some(n=>!Number.isInteger(n)||n<0)){ err.textContent = "Use whole numbers of 0 or more."; return; }
-    if (st.apps>max){ err.textContent = `${T.name} has at most ${max} games.`; return; }
-    if (st.cs>st.apps){ err.textContent = "Clean sheets can't be more than appearances."; return; }
-    if (!st.apps && (st.g||st.a)){ err.textContent = "Goals or assists need at least one appearance."; return; }
-    const perfBoost = T.role==="Starter" ? clamp(((st.g+st.a)/Math.max(1,st.apps) - .4)*3, -1, 2.5) : 0;
-    run = runTourney(T, T.str + perfBoost, st.apps);
-  }
+  if (!penOwned()) return tSimRest();
+  const v = id => { const el = $("#"+id); return el ? +el.value.trim() : 0; };
+  const st = {apps:v("tr-apps"), g:v("tr-g"), a:v("tr-a"), cs:v("tr-cs")};
+  if ([st.apps,st.g,st.a,st.cs].some(n=>!Number.isInteger(n)||n<0)){ err.textContent = "Use whole numbers of 0 or more."; return; }
+  if (st.apps>max){ err.textContent = `${T.name} has at most ${max} games.`; return; }
+  if (st.cs>st.apps){ err.textContent = "Clean sheets can't be more than appearances."; return; }
+  if (!st.apps && (st.g||st.a)){ err.textContent = "Goals or assists need at least one appearance."; return; }
+  const perfBoost = T.role==="Starter" ? clamp(((st.g+st.a)/Math.max(1,st.apps) - .4)*3, -1, 2.5) : 0;
+  tourDone(T, st, runTourney(T, T.str + perfBoost, st.apps));
+}
+// the tournament's over (played out in tournament.js, or typed in): caps, a medal, your value and the Ballon d'Or.
+// winner: who won it, when it wasn't you
+function tourDone(T, st, run, winner){
   addCaps(st.apps, st);
   const rec = {name:T.name, year:T.year, nation:T.nation, role:T.role, apps:st.apps, g:st.g, a:st.a, result:run.reached};
   (S.intl.tours ||= []).push(rec);
@@ -1544,7 +1538,7 @@ function submitTournament(auto){
   const medal = run.won && st.apps>0;
   if (medal) S.trophies.push({name:trophyName, kind:"intl", season:label, club:T.nation});
   note(run.won?"good":"info", `${T.name}: ${run.won?`${T.nation} are champions!`:`${T.nation} ${run.reached==="Runners-up"?"lose in the final":run.reached==="Group stage"?"go out in the group stage":"out in the "+run.reached.toLowerCase()}`}`,
-    `${st.apps} game${st.apps===1?"":"s"}, ${st.g} goal${st.g===1?"":"s"}, ${st.a} assist${st.a===1?"":"s"} as a ${T.role.toLowerCase()}.${medal?" A winner's medal is in your trophy cabinet.":run.won?" You didn't get on the pitch, so there's no medal.":""}`);
+    `${st.apps} game${st.apps===1?"":"s"}, ${st.g} goal${st.g===1?"":"s"}, ${st.a} assist${st.a===1?"":"s"} as a ${T.role.toLowerCase()}.${medal?" A winner's medal is in your trophy cabinet.":run.won?" You didn't get on the pitch, so there's no medal.":""}${winner ? ` ${winner} won it.` : ""}`);
   // a big tournament moves your value
   const bump = clamp(.015*(st.g+st.a) + (medal ? .08 : run.reached==="Runners-up" ? .04 : 0) - (st.apps>=3 && st.g+st.a===0 && T.role==="Starter" ? .04 : 0), -.06, .25);
   S.value = roundTM(S.value*(1+bump));
@@ -2972,7 +2966,9 @@ document.addEventListener("click", e=>{
   const b = e.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act;
   if (a.startsWith("mc-")){ mcAction(a, b); return; }
-  if (a==="tour-sim"){ if (S && S.tourney) submitTournament(true); return; }
+  if (a==="tour-sim"){ if (S && S.tourney) tSimRest(); return; }   // international tournaments (tournament.js)
+  if (a==="tour-play" || a==="tour-simgame"){ if (S && S.tourney) tPlay(a==="tour-play"); return; }
+  if (a==="tour-done"){ if (S && S.tourney) tDone(); return; }
   if (a==="tab" && b.dataset.k==="lab"){ labOpen(); return; }
   if (a==="tab"){ tab = b.dataset.k; render(); uiEnter(document.getElementById("tabBody")); if (matchMedia("(max-width:720px)").matches){ const tb = document.getElementById("tabBody"); if (tb) window.scrollTo({top: tb.getBoundingClientRect().top + scrollY - 12}); } }
   else if (a==="backup-export"){ exportBackup(); }

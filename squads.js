@@ -70,6 +70,7 @@ const sqNames = nat => (SQ_NAMES[nat] || SQ_NAMES.England).map(s=>s.split("|"));
 // the club's country, for its players' names, and how many of them are home-grown
 function sqHome(club){
   if (SQ_CLUB_NAT[club]) return {home:SQ_CLUB_NAT[club], dom:.55, near:false};
+  if (typeof NATIONS!=="undefined" && NATIONS[club]) return {home:natNames(club), dom:1, near:false};   // a national side (tournament.js)
   const t = ALLKEYS.find(k=>S.world.tiers[k] && S.world.tiers[k].includes(club));
   if (t==null) return {home:null, dom:0, near:false};
   return {home:TIERS[t].country, dom:SQ_DOMESTIC[t] ?? .7, near:TIERS[t].country==="England" && TIERS[t].level>=3};

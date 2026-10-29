@@ -69,7 +69,9 @@ const lvEaseOut = k => 1 - Math.pow(1-k, 2.2), lvEaseInOut = k => k<.5 ? 2*k*k :
    nothing it does reaches the career: no coins, no stats, no saves. */
 const lvAttr = st => st.lab ? st.lab.a : mcA();
 const lvPos = st => st.lab ? st.lab.pos : S.player.pos;
-const lvCols = st => { if (st.lab) return st.lab.cols; const k = meta(S.mc.club); return [k.c1, k.c2 || "#FFFFFF", "#F5C542", "#FFFFFF"]; };
+// the side you play for: your club, or your country at a tournament (tournament.js)
+const lvUs = st => st.us || S.mc.club;
+const lvCols = st => { if (st.lab) return st.lab.cols; const k = meta(lvUs(st)); return [k.c1, k.c2 || "#FFFFFF", "#F5C542", "#FFFFFF"]; };
 
 /* ---------- drawing ---------- */
 const lvPct = (x, y) => `left:${(x/3).toFixed(2)}%;top:${(y/1.8).toFixed(2)}%`;
@@ -83,7 +85,7 @@ function lvNear(x, y){ const h = s => [1,3,5].map(i=>parseInt(String(s).slice(i,
 const LV_TRIM = {}, LV_SKIN = ["#F1C9A5","#D9A37A","#B57D52","#8A5A3B","#5C3A24"], LV_HAIR = ["#17130F","#2B1B12","#4A2E1A","#17130F","#B5872F","#0E0B09"];
 function lvKits(st){
   if (st.lab){ const k = st.lab.kits; LV_TRIM[k.us] = k.usTrim; LV_TRIM[k.them] = k.themTrim; return {us:k.us, them:k.them}; }
-  const us = meta(S.mc.club), them = meta(st.f.opp);
+  const us = meta(lvUs(st)), them = meta(st.f.opp);
   let t = them.c1, tt = them.c2;
   if (lvNear(us.c1, t)){ if (them.c2 && !lvNear(us.c1, them.c2)){ t = them.c2; tt = them.c1; } else { t = lvLight(us.c1) ? "#1F2937" : "#E5E7EB"; tt = null; } }
   LV_TRIM[us.c1] = us.c2; LV_TRIM[t] = tt;
@@ -279,7 +281,7 @@ function lvScore(st, min){ let f = 0, a = 0; st.ev.forEach(e=>{ if (e.min<min){ 
 function lvHead(st, min, step){
   if (st.lab) return labHead(st, step);   // the mini-game lab (lab.js) has its own
   if (st.drill) return drHead(st);   // a training drill (drills.js) has its own scoreboard
-  const [f, a] = lvScore(st, min), left = st.f.home || st.f.neutral, us = lvAbbr(left ? S.mc.club : st.f.opp), them = lvAbbr(left ? st.f.opp : S.mc.club);
+  const [f, a] = lvScore(st, min), left = st.f.home || st.f.neutral, us = lvAbbr(left ? lvUs(st) : st.f.opp), them = lvAbbr(left ? st.f.opp : lvUs(st));
   const [l, r] = left ? [f, a] : [a, f];
   return `<div class="lv-top"><span class="lv-sc"><b>${esc(us)}</b> ${l}–${r} <b>${esc(them)}</b></span><span>${min}'</span>
     ${step ? `<span class="lv-steps-dots" aria-label="Step ${step[0]} of ${step[1]}">${[...Array(step[1])].map((_,i)=>`<i class="${i<step[0]?"on":""}"></i>`).join("")}</span>` : ""}

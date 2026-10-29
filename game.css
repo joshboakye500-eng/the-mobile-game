@@ -1228,3 +1228,15 @@ small.boot{display:inline-flex;align-items:center}
 .eu-hon{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .eu-hon li{display:flex;align-items:center;gap:8px;font-size:14px}
 .eu-hon .label{min-width:62px}
+
+/* international tournaments, played (tournament.js): your next game, your results, entering your own numbers */
+.t-next{display:grid;gap:8px;margin:14px 0 0;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--surface-2)}
+.t-next.done{border-color:var(--accent)}
+.t-vs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-size:20px;line-height:1.1}
+.t-vs i{font-style:normal;color:var(--muted);font-size:14px}
+.t-mine{list-style:none;margin:0 0 6px;padding:0;display:grid;gap:4px}
+.t-mine li{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr) auto;gap:2px 10px;align-items:center;font-size:14px;padding:6px 10px;border-radius:10px;background:var(--surface-2)}
+.t-mine li>span:first-child{color:var(--muted);font-size:12px}
+.t-mine li small{grid-column:1/-1;color:var(--muted)}
+.t-hand{margin-top:14px}
+.t-hand summary{cursor:pointer;font-weight:600}
