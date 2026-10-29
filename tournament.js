@@ -279,10 +279,10 @@ function tPanelHTML(T, roleHint){
   const results = P.mine.map(x=>`<li><span>${esc(x.round)}</span><span>${clubBadge(x.opp, 16)} ${esc(x.opp)}</span><b>${x.gf}–${x.ga}${x.pens ? ` (${x.pens==="won" ? "won" : "lost"} on pens)` : ""}</b><small>${x.mins ? `${x.r.toFixed(1)} · ${[x.g ? `${x.g}G` : "", x.a ? `${x.a}A` : ""].filter(Boolean).join(" ") || "played"}` : "didn't play"}</small></li>`).join("");
   const over = !c;
   const verdict = P.win===me ? `${esc(me)} are champions!` : P.out ? (P.out.reached==="Group stage" ? `${esc(me)} went out in the group stage.` : P.out.reached==="Runners-up" ? `${esc(me)} lost the final to ${esc(P.out.lostTo)}.` : `${esc(me)} went out in the ${esc(P.out.reached.toLowerCase())} to ${esc(P.out.lostTo)}.`) : "";
-  return `<p class="hint">${roleHint} The summer transfer window opens afterwards.</p>
+  return `<p class="hint">${roleHint} ${T.winter ? "It's played in the middle of the season: you're back with your club afterwards, a few weeks into the second half." : "The summer transfer window opens afterwards."}</p>
     <p class="hint">${F.rounds.join(" → ")} · ${P.n.length} nations, ${P.G.length} groups of four</p>
     ${over ? `<div class="t-next done"><b>${verdict}</b><span class="hint">You played ${P.me[0]} game${P.me[0]===1 ? "" : "s"}: ${P.me[1]} goal${P.me[1]===1 ? "" : "s"}, ${P.me[2]} assist${P.me[2]===1 ? "" : "s"}.</span>
-        <button type="button" class="btn primary" data-act="tour-done">${P.win===me ? "Lift the trophy" : "On to the summer window"}</button></div>`
+        <button type="button" class="btn primary" data-act="tour-done">${P.win===me ? "Lift the trophy" : T.winter ? "Back to your club" : "On to the summer window"}</button></div>`
       : `<div class="t-next"><span class="label">Next · ${esc(c.round)}</span><div class="t-vs">${clubBadge(me, 30)}<b>${esc(me)}</b><i>v</i><b>${esc(c.opp)}</b>${clubBadge(c.opp, 30)}</div>
         <span class="hint">${sel}</span>
         <div class="row">${c.me.mins ? `<button type="button" class="btn primary" data-act="tour-play">Play key moments</button>` : ""}<button type="button" class="btn ${c.me.mins ? "" : "primary"}" data-act="tour-simgame">Sim the match</button></div>

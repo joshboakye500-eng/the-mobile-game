@@ -1439,29 +1439,6 @@ function friendlies(part, score){
   note("good", `${nat.name} ${part} friendlies`, `Called up as a ${role.toLowerCase()}${role==="Starter"?"":role==="Bench"?" (coming off the bench)":" (squad reserve)"}: ${apps} cap${apps===1?"":"s"}, ${n.g} goal${n.g===1?"":"s"}, ${n.a} assist${n.a===1?"":"s"}. Total caps: ${S.intl.caps}.`);
   return {role, apps, ...n};
 }
-function playTournament(t, score){
-  const nat = nationOf(S.player.nation); if (!nat) return null;
-  if (intlAnswer(`t-${t.key}-${t.year}`)===false){ note("info", `${t.name}`, `You made yourself unavailable for ${t.name}.`); return null; }
-  if (!qualifies(nat, t)){ note("info", `${nat.name} miss out on ${t.name}`, `${nat.name} didn't qualify for ${t.name}.`); return null; }
-  const role = intlRole(nat, S.value, score);
-  // the team's run
-  const F = TOUR_FMT[t.key], str = natStrength(nat.value) + (role==="Starter" ? clamp((score-.6)*4, -1, 2.5) : 0);
-  let games = 0, stage = 0, won = false, gp = 0;
-  for (let k=0;k<3;k++) gp += match(str, F.base - 4 + gauss()*4);
-  games = 3;
-  if (gp < 4 && !(gp===3 && Math.random()<.5)){ stage = 0; }
-  else { stage = 1; for (; stage<F.rounds.length; stage++){ games++; const opp = F.base + stage*2 + gauss()*3; if (!tie(str, opp, 1)) break; } if (stage===F.rounds.length){ won = true; stage = F.rounds.length-1; } }
-  const reached = won ? "Winners" : stage===0 ? "Group stage" : F.rounds[stage]==="Final" ? "Runners-up" : F.rounds[stage];
-  if (!role){ note("info", `${t.name}: not selected`, `${nat.name} ${won?"won":"reached the "+reached.toLowerCase()+" of"} ${t.name}${won?"":""}, but you weren't in the squad: you're not in the top three in your position.`); return {t, role:null, reached, won:false}; }
-  const apps = intlGames(role, games), n = intlNumbers(apps, role, clamp(score, .3, 1.2));
-  addCaps(apps, n);
-  const rec = {name:t.name, year:t.year, nation:nat.name, role, apps, g:n.g, a:n.a, result:reached};
-  S.intl.tours.push(rec);
-  if (won && apps>0){ S.trophies.push({name:t.key==="wc"?"World Cup":CONF_CUP[t.conf]||t.name, kind:"intl", season:seasonLabel(S.season), club:nat.name}); }
-  note(won?"good":"info", `${t.name}: ${won?`${nat.name} are champions!`:`${nat.name} ${reached==="Runners-up"?"lose in the final":reached==="Group stage"?"go out in the group stage":"out in the "+reached.toLowerCase()}`}`,
-    `You went as a ${role.toLowerCase()}: ${apps} game${apps===1?"":"s"}, ${n.g} goal${n.g===1?"":"s"}, ${n.a} assist${n.a===1?"":"s"}.${won&&apps>0?" A winner's medal is in your trophy cabinet.":won?" You didn't get on the pitch, so there's no medal.":""}`);
-  return {...rec, won: won && apps>0, key:t.key};
-}
 function prepareTournament(t, score){
   const nat = nationOf(S.player.nation); if (!nat) return null;
   if (intlAnswer(`t-${t.key}-${t.year}`)===false){ note("info", t.name, `You made yourself unavailable for ${t.name}.`); return null; }
@@ -1473,7 +1450,7 @@ function prepareTournament(t, score){
     note("info", `${t.name}: not selected`, `${nat.name} ${r.won?"won":"reached the "+r.reached.toLowerCase()+" of"} ${t.name}, but you weren't in the squad: you're not in the top three in your position.`);
     return null;
   }
-  note("good", `Selected for ${t.name}`, `${nat.name} have named you in their squad as a ${role.toLowerCase()}. The tournament is played before the summer transfer window opens.`);
+  note("good", `Selected for ${t.name}`, `${nat.name} have named you in their squad as a ${role.toLowerCase()}. The tournament is played ${t.when==="winter" ? "in the middle of the season, before the January window" : "before the summer transfer window opens"}.`);
   return {key:t.key, name:t.name, year:t.year, conf:t.conf, nation:nat.name, role, str:natStrength(nat.value)};
 }
 // the team's run; your appearances prove how far they got at least
@@ -1542,6 +1519,15 @@ function tourDone(T, st, run, winner){
   // a big tournament moves your value
   const bump = clamp(.015*(st.g+st.a) + (medal ? .08 : run.reached==="Runners-up" ? .04 : 0) - (st.apps>=3 && st.g+st.a===0 && T.role==="Starter" ? .04 : 0), -.06, .25);
   S.value = roundTM(S.value*(1+bump));
+  // one played in the middle of the season counts towards its awards and the Ballon d'Or at the end of it, and you're
+  // back with your club a few weeks into the second half
+  if (T.winter){
+    (S.seasonIntl ||= []).push({...rec, won:medal, key:T.key}); S.intlAway = .85;
+    S.tourney = null; S.phase = "winter"; tab = "season";
+    save(); recordCareer(); render();
+    $("#actionPanel")?.scrollIntoView({behavior:"smooth", block:"start"});
+    return;
+  }
   const last = S.history[S.history.length-1]; if (last){ last.after = S.value; }
   // now the Ballon d'Or, with the tournament counted
   const B = T.bd, wonAll = B.won.concat(medal ? [{name:trophyName, kind:"intl"}] : []);
@@ -2048,9 +2034,11 @@ function midSeason(comps){
   }
   const sel2 = selectShare();
   S.seasonIntl = [];
+  let winterT = null;
   if (!(S.inj && availability()<.3)){
     const fr = friendlies("autumn", pf.score);
-    tournamentsIn(S.season+1).filter(t=>t.when==="winter").forEach(t=>{ const nat = nationOf(S.player.nation); if (!nat || (t.conf!=="ALL" && t.conf!==nat.conf)) return; const r = playTournament(t, pf.score); if (r && r.apps){ S.seasonIntl.push(r); S.intlAway = .85; } });
+    // a mid-season tournament you're picked for is played game by game before the January window (tournament.js)
+    tournamentsIn(S.season+1).filter(t=>t.when==="winter").forEach(t=>{ const nat = nationOf(S.player.nation); if (winterT || !nat || (t.conf!=="ALL" && t.conf!==nat.conf)) return; const T = prepareTournament(t, pf.score); if (T) winterT = {...T, winter:true}; });
   }
   const value0 = S.value;
   S.value = roundTM(S.value * clamp(1 + (pf.score-.65)*.25, .85, 1.18));
@@ -2066,7 +2054,8 @@ function midSeason(comps){
   const offers = onLoan ? {list:[], loans:[], renewal:null, demand:0}
     : genOffers({...pf}, {january:true, listed: sale==="available", sale: sale==="cashin" ? "cashin" : null, share: t.apps ? .6 : .2});
   S.pending = {jan:true, pf, sel1, sel2, trust0:t0, trust1:M.trust, sale, offers, comps, bad};
-  S.phase = "winter"; tab = "season";
+  if (winterT){ S.tourney = winterT; S.phase = "tournament"; } else S.phase = "winter";
+  tab = "season";
   save(); render();
   $("#actionPanel")?.scrollIntoView({behavior:"smooth", block:"start"});
 }

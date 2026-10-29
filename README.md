@@ -60,7 +60,7 @@ The Season screen keeps it short: this week's match (both badges, the competitio
   - **Knockouts:** a seeded bracket, with extra time and penalties when it's level, all the way to a winner.
   - **Your games:** play the key moments or sim each match. How much you play follows your role (starter, bench or squad reserve).
 
-  The tournament screen shows your next game, your results and ratings, your group, every group, the knockouts and the top scorers. Caps, a winner's medal, your value and the Ballon d'Or follow as before. The World Cup 2034 and other tournaments played mid-season are still simulated. With the Editor pen you can type in your own numbers instead, before the first game.
+  The tournament screen shows your next game, your results and ratings, your group, every group, the knockouts and the top scorers. Caps, a winner's medal, your value and the Ballon d'Or follow as before. Tournaments held mid-season (the 2034 World Cup and the Asian Cup) are played the same way, between the two halves of the season, before the January window; you're back with your club a few weeks into the second half, and they count towards that season's awards and the Ballon d'Or. With the Editor pen you can type in your own numbers instead, before the first game.
 - **Europe, in full.** In a match centre season the Champions League, the Europa League and the Conference League are all played out, week by week:
   - **36 clubs each:** the game's own clubs that qualified, topped up with real clubs from the rest of Europe.
   - **A real league phase:** 8 matchdays (6 in the Conference League), with every other game simulated alongside yours and a full table. 1st to 8th go straight to the last 16, and 9th to 24th play a two-legged knockout play-off.
