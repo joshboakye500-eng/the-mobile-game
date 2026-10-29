@@ -93,7 +93,7 @@ function lvKits(st){
 }
 // a player seen from above or the front: (x, y) is where his feet are. Shirt and socks in the kit colour, shorts and
 // trim in its second; skin and hair vary with where he stands, and you (o.ring) look like your player. o.run sets his
-// legs going
+// legs going; o.back shows him from behind (the back of his head, his number on his back)
 function lvMan(x, y, kit, o={}){
   let trim = o.trim || LV_TRIM[kit];
   if (!trim || lvNear(trim, kit)) trim = lvLight(kit) ? "#1F2937" : "#F3F4F6";
@@ -113,10 +113,10 @@ function lvMan(x, y, kit, o={}){
     ${arm(-1, 1)}${arm(1, 2)}
     <path d="M-8 -26q8-4 16 0v8h-16z" fill="${kit}" stroke="rgba(0,0,0,.35)" stroke-width=".8"/>
     <path d="M2.6 -27.7q3.1.5 5.4 1.7v8h-5.4z" fill="#000" opacity=".13"/><path d="M-8 -26q2-1.2 4-1.7v9.7h-4z" fill="#fff" opacity=".08"/>
-    <path d="M-3.2 -27.6q3.2 2 6.4 0" fill="none" stroke="${trim}" stroke-width="1.5"/>
+    ${o.back ? `<path d="M-3.4 -27.3h6.8" stroke="${trim}" stroke-width="1.5"/>` : `<path d="M-3.2 -27.6q3.2 2 6.4 0" fill="none" stroke="${trim}" stroke-width="1.5"/>`}
     <circle cy="-31" r="5.6" fill="${skin}"/><path d="M1.6 -35.6a5.6 5.6 0 0 1 0 9.2a5.6 5.6 0 0 0 0-9.2z" fill="#000" opacity=".1"/>
-    ${hair ? `<path d="M-5.6 -31.4a5.6 5.6 0 0 1 11.2 0q-2.3-2.4-5.6-2.4q-3.3 0-5.6 2.4z" fill="${hair}"/>` : ""}
-    ${o.num!=null ? `<text y="-19.6" text-anchor="middle" font-size="7.6" font-weight="800" fill="${lvLight(kit) ? "#15171A" : "#FFFFFF"}" font-family="Barlow Condensed,sans-serif">${o.num}</text>` : ""}
+    ${hair ? (o.back ? `<path d="M-5.6 -31a5.6 5.6 0 0 1 11.2 0v.8q-5.6 3.4-11.2 0z" fill="${hair}"/>` : `<path d="M-5.6 -31.4a5.6 5.6 0 0 1 11.2 0q-2.3-2.4-5.6-2.4q-3.3 0-5.6 2.4z" fill="${hair}"/>`) : ""}
+    ${o.num!=null ? `<text y="${o.back ? -18.6 : -19.6}" text-anchor="middle" font-size="${o.back ? 9.6 : 7.6}" font-weight="800" fill="${lvLight(kit) ? "#15171A" : "#FFFFFF"}" font-family="Barlow Condensed,sans-serif">${o.num}</text>` : ""}
     </g></g>
     ${o.mark ? `<path class="lv-mark-you" d="M-4.5 -47h9l-4.5 5.5z" fill="#F5C542" stroke="rgba(0,0,0,.4)" stroke-width=".6"/>` : ""}
     ${o.label ? `<text y="-42" text-anchor="middle" font-size="9" font-weight="700" fill="#FFE9A8" font-family="Barlow Condensed,sans-serif" letter-spacing=".5">${o.label}</text>` : ""}

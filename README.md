@@ -117,7 +117,12 @@ It's hidden from players. To show it on a phone, open the Account menu and tap t
   - *Block it:* drag into the line of a shot.
   - *Pass golf:* roll the ball round cones to a teammate in as few passes as you can.
 
-- **Full match, lab only: Play the 90.** A whole match, top-down, 11 against 11, played in 3, 5 or 8 real minutes:
+- **Full match, lab only: Play the 90.** A whole match, 11 against 11, played in 3, 5 or 8 real minutes and seen as on television:
+  - **The camera** sits behind your goal looking up the pitch and follows the ball, pulling back when play nears your goal so it stays in view and tilting down near the far end.
+  - **The pitch** is in perspective, with mowing stripes, markings that thin into the distance, goals and nets, advertising boards, and a stand of supporters (some in your colours) under floodlights.
+  - **The players** are figures in their kits, numbers on their backs, shown from the front or behind depending on which way they face. Their legs and arms move at the pace they're running, they kick, keepers dive, and scorers celebrate.
+  - **The movement:** everyone speeds up, slows down and turns like a footballer, walking or jogging to hold position and sprinting to press or chase. The man on the ball pushes it a stride ahead. Long passes, crosses and shots fly with the ball's shadow on the grass, and the ball bounces.
+  - **Drawing:** it's drawn on a canvas, so it stays smooth on a phone.
   - **You control only your own player** (the gold ring). Put a finger down anywhere and drag, like a joystick, to run. Let go and you take up your position again. Arrow keys work too.
   - **With the ball:** *Pass* finds the best-placed team-mate the way you're running, including a ball in behind. *Shoot* stops the match for the shot mini-game (one-on-one, in the box or from range).
   - **Without it:** *Call for it* asks the man on the ball to find you, and *Tackle* goes in when you're close to their man on the ball.
@@ -165,7 +170,7 @@ Players on different phones can't see each other's careers. That would need an o
 | `matchcentre.js` | The match centre: fixtures, training, attributes, form, selection and match simulation |
 | `moments.js` | Key moments: the live match screen, its mini-games, and the drawing and animation they share (players, ball, goal, crowd) |
 | `labgames.js` | The 30 new mini-games (10 of them played by dragging), played only in the lab |
-| `p90.js` | Play the 90: a whole match in real time, top-down, in the lab only |
+| `p90.js` | Play the 90: a whole match in real time, seen as on television (drawn on a canvas), in the lab only |
 | `lab.js` | The mini-game lab under the Account menu's Development section |
 | `squads.js` | Every club's starting XI, the line-ups before a match, scorers, match ratings, Player of the Match, player cards, the Squad view and the summer transfers between clubs |
 | `league.js` | Your league played out week by week: the table, top scorers, assists, ratings and results, and the roll of honour |
