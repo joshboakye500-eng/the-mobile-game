@@ -910,7 +910,7 @@ function lvGameSave(st, m){
         <span class="lv-cue">${pen ? "Penalty" : "Here he comes"}…</span></div>
       <button type="button" class="btn big lv-act" disabled>Watch the ball</button>`);
     lvSkippable(res);
-    let dir = null, ty = LV_ROWS.b, tap = null, tapAt = 0, rel = 0, done = false, curl = 0;
+    let dir = null, ty = LV_ROWS.b, tap = null, tapAt = 0, rel = 0, done = false, curl = 0, diving = null;
     const windUp = (pen ? 1100 : 650) + Math.random()*700, t0 = performance.now();
     const pickDir = ()=>{ const all = ["l","c","r"]; if (tap && Math.random()<.8) return pick(all.filter(z=>z!==tap)); return pick(["l","l","c","r","r"]); };   // strikers punish keepers who go early
     lvLoop(now=>{
@@ -921,10 +921,12 @@ function lvGameSave(st, m){
     const dive = z=>{
       if (tap || done) return; tap = z; tapAt = performance.now(); lv$("#lvKp")?.classList.add("dive");
       const kx = LV_COLS[z], rot = z==="l" ? -62 : z==="r" ? 62 : 0;
-      lvTween(240, k=>{ const q = lvEaseOut(k); lvMove("#lvKp", 150 + (kx-150)*q, 84 + (z==="c" ? -20 : 8)*q, rot*q, 1 + .06*q); }).then(()=>{ if (dir && !done) end(); });
+      diving = lvTween(240, k=>{ const q = lvEaseOut(k); lvMove("#lvKp", 150 + (kx-150)*q, 84 + (z==="c" ? -20 : 8)*q, rot*q, 1 + .06*q); });
     };
+    // the ball always finishes its flight and your dive always finishes, however late you went, before the verdict
     const end = async ()=>{
-      if (done) return; done = true; cancelAnimationFrame(lvRaf);
+      if (done) return; done = true;
+      if (diving) await diving;
       if (!dir) dir = pickDir();
       const saved = tap===dir && Math.random() > clamp((f.oppStr - a.def)/50, 0, .2);
       // a save stops it in your gloves; a goal ripples the net
