@@ -1085,12 +1085,12 @@ function simSeason(comps){
   if (isTop(t)){
     const [q1,q2,q3] = T.eu, zone = row.pos<=q1 ? "UCL" : row.pos<=q1+q2 ? "UEL" : row.pos<=q1+q2+q3 ? "UECL" : null;
     outcome = champs ? (T.champs || "Champions of England!") : zone==="UCL" ? "Champions League qualification" : zone==="UEL" ? "Europa League qualification" : zone==="UECL" ? "Conference League qualification"
-      : moved==="down" ? `Relegated to the ${TIERS[T.second].name}${relPO==="lost"?" after losing the relegation play-off":""}` : relPO==="won" ? "Survived the relegation play-off" : row.pos>=tbl.length-5 ? "Survived a relegation scrap" : "Mid-table";
+      : moved==="down" ? `Relegated to ${theName(T.second)}${relPO==="lost"?" after losing the relegation play-off":""}` : relPO==="won" ? "Survived the relegation play-off" : row.pos>=tbl.length-5 ? "Survived a relegation scrap" : "Mid-table";
   } else {
-    const upName = TIERS[t-1].name;
-    outcome = champs ? `Champions, promoted to the ${upName}` : moved==="up" ? (ourPO==="won" ? `Play-off winners, promoted to the ${upName}` : `Promoted to the ${upName}`)
+    const upName = theName(t-1);
+    outcome = champs ? `Champions, promoted to ${upName}` : moved==="up" ? (ourPO==="won" ? `Play-off winners, promoted to ${upName}` : `Promoted to ${upName}`)
       : ourPO==="lost final" ? "Lost the play-off final" : ourPO==="lost semi" ? "Knocked out in the play-off semi-finals"
-      : moved==="down" ? `Relegated to ${TIERS[t+1].name}` : reprieved ? "Finished in the drop zone but reprieved after another club folded" : row.pos<=T.po[1]+2 ? "Just missed the play-offs" : "Mid-table";
+      : moved==="down" ? `Relegated to ${theName(t+1)}` : reprieved ? "Finished in the drop zone but reprieved after another club folded" : row.pos<=T.po[1]+2 ? "Just missed the play-offs" : "Mid-table";
   }
   out.unshift({code:"league", name:T.name, games:leagueGames, won:champs, out:`Finished ${ord(row.pos)} of ${tbl.length} with ${row.pts} points`, outcome, po:ourPO});
 
